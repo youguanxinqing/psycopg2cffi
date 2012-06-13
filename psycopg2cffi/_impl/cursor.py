@@ -468,11 +468,13 @@ class Cursor(object):
             raise TypeError("file must be a readable file-like object for"
                 " COPY FROM; a writeable file-like object for COPY TO.")
 
+        self._copysize = size
         self._copyfile = file
         try:
             self._pq_execute(sql)
         finally:
             self._copyfile = None
+            self._copysize = None
 
     @check_closed
     def setinputsizes(self, sizes):
