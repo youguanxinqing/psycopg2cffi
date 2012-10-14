@@ -189,6 +189,15 @@ def _parse_time(value, cursor):
     The given value is in the format of `16:28:09.506488+01`
 
     """
+    return datetime.time(*_parse_time_to_args(value, cursor))
+
+
+def _parse_time_to_args(value, cursor):
+    """Return arguemnts for datetime.time constructor
+
+    The given value is in the format of `16:28:09.506488+01`
+
+    """
     microsecond = 0
     hour, minute, second = value.split(':', 2)
 
@@ -215,15 +224,17 @@ def _parse_time(value, cursor):
         second, microsecond = second.split('.')
         microsecond = int(microsecond) * int(math.pow(10.0, 6.0 - len(microsecond)))
 
-    return datetime.time(int(hour), int(minute), int(second), microsecond,
-        tzinfo)
+    return int(hour), int(minute), int(second), microsecond, tzinfo
 
 
 def parse_datetime(value, length, cursor):
     date, time = value.split(' ')
-    date = _parse_date(date)
-    time = _parse_time(time, cursor)
-    return datetime.datetime.combine(date, time)
+    date_args = date.split('-')
+    return datetime.datetime(
+            int(date_args[0]), 
+            int(date_args[1]), 
+            int(date_args[2]), 
+            *_parse_time_to_args(time, cursor))
 
 
 def parse_date(value, length, cursor):
