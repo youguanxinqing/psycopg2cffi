@@ -826,8 +826,10 @@ class Cursor(object):
             if not val and libpq.PQgetisnull(self._pgres, row_num, i):
                 val = None
             else:
-                length = libpq.PQgetlength(self._pgres, row_num, i)
-                val = typecasts.typecast(self._casts[i], val, length, self)
+                caster = self._casts[i]
+                length = libpq.PQgetlength(self._pgres, row_num, i) \
+                        if caster.needs_length else None
+                val = typecasts.typecast(caster, val, length, self)
             row[i] = val
 
         if is_tuple:
