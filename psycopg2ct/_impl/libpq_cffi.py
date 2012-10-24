@@ -77,20 +77,6 @@ typedef enum
  PQTRANS_UNKNOWN    /* cannot determine status */
 } PGTransactionStatusType;
 
-typedef enum
-{
- PQERRORS_TERSE,    /* single-line error messages */
- PQERRORS_DEFAULT,   /* recommended style */
- PQERRORS_VERBOSE   /* all the facts, ma'am */
-} PGVerbosity;
-
-typedef enum
-{
- PQPING_OK,     /* server is accepting connections */
- PQPING_REJECT,    /* server is alive but rejecting connections */
- PQPING_NO_RESPONSE,   /* could not establish connection */
- PQPING_NO_ATTEMPT   /* connection not attempted (bad params) */
-} PGPing;
 typedef ... PGconn;
 typedef ... PGresult;
 typedef ... PGcancel;
@@ -112,8 +98,8 @@ extern void PQfinish(PGconn *conn);
 
 // Connection status functions
 
-extern ConnStatusType PQstatus(const PGconn *conn);
-extern PGTransactionStatusType PQtransactionStatus(const PGconn *conn);
+extern /*ConnStatusType*/ int PQstatus(const PGconn *conn);
+extern /*PGTransactionStatusType*/ int PQtransactionStatus(const PGconn *conn);
 extern const char *PQparameterStatus(const PGconn *conn, const char *paramName);
 extern int PQprotocolVersion(const PGconn *conn);
 extern int PQserverVersion(const PGconn *conn);
@@ -124,7 +110,7 @@ extern int PQbackendPID(const PGconn *conn);
 // Command execution functions
 
 extern PGresult *PQexec(PGconn *conn, const char *query);
-extern ExecStatusType PQresultStatus(const PGresult *res);
+extern /*ExecStatusType*/ int PQresultStatus(const PGresult *res);
 extern char *PQresultErrorMessage(const PGresult *res);
 extern char *PQresultErrorField(const PGresult *res, int fieldcode);
 extern void PQclear(PGresult *res);
@@ -230,18 +216,6 @@ def string_or_None(char_cdata):
 
 # copied from libpq_ctypes
 
-libpq.CONNECTION_OK = 0
-libpq.CONNECTION_BAD = 1
-
-libpq.PGRES_EMPTY_QUERY = 0
-libpq.PGRES_COMMAND_OK = 1
-libpq.PGRES_TUPLES_OK = 2
-libpq.PGRES_COPY_OUT = 3
-libpq.PGRES_COPY_IN = 4
-libpq.PGRES_BAD_RESPONSE = 5
-libpq.PGRES_NONFATAL_ERROR = 6
-libpq.PGRES_FATAL_ERROR = 7
-
 libpq.PG_DIAG_SEVERITY = ord('S')
 libpq.PG_DIAG_SQLSTATE = ord('C')
 libpq.PG_DIAG_MESSAGE_PRIMARY = ord('M')
@@ -254,9 +228,3 @@ libpq.PG_DIAG_CONTEXT = ord('W')
 libpq.PG_DIAG_SOURCE_FILE = ord('F')
 libpq.DIAG_SOURCE_LINE = ord('L')
 libpq.PG_DIAG_SOURCE_FUNCTION = ord('R')
-
-libpq.PGRES_POLLING_FAILED = 0
-libpq.PGRES_POLLING_READING = 1
-libpq.PGRES_POLLING_WRITING = 2
-libpq.PGRES_POLLING_OK = 3
-libpq.PGRES_POLLING_ACTIVE = 4

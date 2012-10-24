@@ -111,7 +111,8 @@ class Connection(object):
         self_ref = weakref.ref(self)
         self._notice_callback = libpq_ffi.callback(
             'void(void *, const char *)',
-            lambda arg, message: self_ref()._process_notice(arg, message))
+            lambda arg, message: self_ref()._process_notice(
+                arg, libpq_ffi.string(message)))
 
         if not self._async:
             self._connect_sync()
@@ -463,7 +464,7 @@ class Connection(object):
             libpq.PGRES_POLLING_READING: consts.POLL_READ,
             libpq.PGRES_POLLING_WRITING: consts.POLL_WRITE,
             libpq.PGRES_POLLING_FAILED: consts.POLL_ERROR,
-            libpq.PGRES_POLLING_ACTIVE: consts.POLL_ERROR
+            libpq.PGRES_POLLING_ACTIVE: consts.POLL_ERROR,
         }
         res = status_map.get(libpq.PQconnectPoll(self._pgconn), None)
 
