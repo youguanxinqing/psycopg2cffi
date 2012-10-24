@@ -96,14 +96,14 @@ class Cursor(object):
         self._query = None
         self._statusmessage = None
         self._typecasts = {}
-        self._pgres = None
+        self._pgres = libpq_ffi.NULL
         self._copyfile = None
         self._copysize = None
 
     def __del__(self):
         if self._pgres:
             libpq.PQclear(self._pgres)
-            self._pgres = None
+            self._pgres = libpq_ffi.NULL
 
     @property
     def closed(self):
@@ -638,7 +638,7 @@ class Cursor(object):
     def _clear_pgres(self):
         if self._pgres:
             libpq.PQclear(self._pgres)
-            self._pgres = None
+            self._pgres = libpq_ffi.NULL
 
     def _pq_execute(self, query, async=False):
         """Execute the query"""

@@ -93,7 +93,7 @@ typedef struct pgNotify
 
 extern PGconn *PQconnectdb(const char *conninfo);
 extern PGconn *PQconnectStart(const char *conninfo);
-extern PostgresPollingStatusType PQconnectPoll(PGconn *conn);
+extern /*PostgresPollingStatusType*/ int PQconnectPoll(PGconn *conn);
 extern void PQfinish(PGconn *conn);
 
 // Connection status functions

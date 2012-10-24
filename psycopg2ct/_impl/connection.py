@@ -91,7 +91,7 @@ class Connection(object):
         self._encoding = None
 
         self._closed = False
-        self._cancel = None
+        self._cancel = libpq_ffi.NULL
         self._typecasts = {}
         self._tpc_xid = None
         self._notifies = []
@@ -149,7 +149,7 @@ class Connection(object):
             raise self._create_exception()
 
         libpq.PQsetNoticeProcessor(
-                self._pgconn, self._notice_callback, libpq.ffi.None)
+                self._pgconn, self._notice_callback, libpq_ffi.NULL)
 
     def __del__(self):
         self._close()
@@ -314,9 +314,10 @@ class Connection(object):
     @check_closed
     @check_tpc
     def cancel(self):
-        errbuf = libpq.create_string_buffer(256)
-        if libpq.PQcancel(self._cancel, errbuf, len(errbuf)) == 0:
-            raise self._create_exception(msg=errbuf)
+        err_length = 256
+        errbuf = libpq_ffi.new('char[]', err_length)
+        if libpq.PQcancel(self._cancel, errbuf, err_length) == 0:
+            raise self._create_exception(msg=libpq_ffi.string(errbuf))
 
     def isexecuting(self):
         if not self._async:
@@ -537,7 +538,7 @@ class Connection(object):
             self._equote = self._get_equote()
             self._get_encoding()
             self._cancel = libpq.PQgetCancel(self._pgconn)
-            if self._cancel is None:
+            if self._cancel == libpq_ffi.NULL:
                 raise exceptions.OperationalError("can't get cancellation key")
 
             self._autocommit = True
@@ -579,7 +580,7 @@ class Connection(object):
         self._get_encoding()
 
         self._cancel = libpq.PQgetCancel(self._pgconn)
-        if self._cancel is None:
+        if self._cancel == libpq_ffi.NULL:
             raise exceptions.OperationalError("can't get cancellation key")
 
         with self._lock:
@@ -676,7 +677,7 @@ class Connection(object):
 
         if self._cancel:
             libpq.PQfreeCancel(self._cancel)
-            self._cancel = None
+            self._cancel = libpq_ffi.NULL
 
         if self._pgconn:
             libpq.PQfinish(self._pgconn)
@@ -755,6 +756,7 @@ class Connection(object):
         # If no custom message is passed then get the message from postgres.
         # If pgres is available then we first try to get the message for the
         # last command, and then the error message for the connection
+        # FIXME - review
         if msg is None:
             if pgres:
                 msg = libpq_ffi.string(libpq.PQresultErrorMessage(pgres))
