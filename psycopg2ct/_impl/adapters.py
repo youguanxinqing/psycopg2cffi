@@ -210,7 +210,7 @@ class QuotedString(_BaseAdapter):
         if not self._conn:
             to = libpq_ffi.new('char []', ((length * 2) + 1))
             libpq.PQescapeString(to, string, length)
-            return "'%s'" % to.value
+            return "'%s'" % to[0]
 
         if PG_VERSION < 0x090000:
             to = libpq_ffi.new('char []', ((length * 2) + 1))
@@ -222,9 +222,9 @@ class QuotedString(_BaseAdapter):
                 return "E'%s'" % libpq_ffi.string(to)
             return "'%s'" % libpq_ffi.string(to)
 
-        data_pointer = libpq_ffi.string(libpq.PQescapeLiteral(
-            self._conn._pgconn, string, length))
-        data = libpq.cast(data_pointer, libpq.c_char_p).value
+        data_pointer = libpq.PQescapeLiteral(
+            self._conn._pgconn, string, length)
+        data = libpq_ffi.string(data_pointer)
         libpq.PQfreemem(data_pointer)
         return data
 

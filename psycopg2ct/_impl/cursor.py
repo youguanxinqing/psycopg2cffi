@@ -785,14 +785,14 @@ class Cursor(object):
         is_text = isinstance(self._copyfile, TextIOBase)
         pgconn = self._conn._pgconn
         while True:
-            buf = libpq.pointer(libpq.c_char_p())
+            buf = libpq_ffi.new('char *')
             length = libpq.PQgetCopyData(pgconn, buf, 0)
 
             if length > 0:
-                value = buf.contents.value
+                value = libpq_ffi.string(buf)
                 if is_text:
                     value = typecasts.parse_unicode(value, length, self)
-                libpq.PQfreemem(buf.contents)
+                libpq.PQfreemem(buf)
 
                 if value is None:
                     return
