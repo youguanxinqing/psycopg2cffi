@@ -99,7 +99,7 @@ def parse_binary(value, length, cursor):
     to_length = libpq_ffi.new('unsigned int *')
     s = libpq.PQunescapeBytea(value, to_length)
     try:
-        res = libpq_ffi.buffer(s, to_length[0])
+        res = buffer(libpq_ffi.buffer(s, to_length[0])[:])
     finally:
         libpq.PQfreemem(s)
     return res
