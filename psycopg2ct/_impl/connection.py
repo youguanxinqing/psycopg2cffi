@@ -740,9 +740,9 @@ class Connection(object):
                 break
 
             notify = Notify(
-                pg_notify.contents.be_pid,
-                pg_notify.contents.relname,
-                pg_notify.contents.extra)
+                pg_notify.be_pid,
+                libpq_ffi.string(pg_notify.relname),
+                libpq_ffi.string(pg_notify.extra))
             self._notifies.append(notify)
 
             libpq.PQfreemem(pg_notify)
