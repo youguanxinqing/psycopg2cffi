@@ -112,8 +112,6 @@ extern void PQfinish(PGconn *conn);
 
 // Connection status functions
 
-extern char *PQdb(const PGconn *conn);
-extern char *PQuser(const PGconn *conn);
 extern ConnStatusType PQstatus(const PGconn *conn);
 extern PGTransactionStatusType PQtransactionStatus(const PGconn *conn);
 extern const char *PQparameterStatus(const PGconn *conn, const char *paramName);
@@ -218,3 +216,47 @@ libpq = libpq_ffi.verify('''
         ''', 
         libraries=['pq'],
         include_dirs=['/usr/include/postgresql/'])
+
+
+def string_or_None(char_cdata):
+    ''' Return None is char_cdata is NULL, else a python string - 
+    mimicks ctypes behaviour
+    '''
+    if char_cdata == libpq_ffi.NULL:
+        return None
+    else:
+        return libpq_ffi.string(char_cdata)
+
+
+# copied from libpq_ctypes
+
+libpq.CONNECTION_OK = 0
+libpq.CONNECTION_BAD = 1
+
+libpq.PGRES_EMPTY_QUERY = 0
+libpq.PGRES_COMMAND_OK = 1
+libpq.PGRES_TUPLES_OK = 2
+libpq.PGRES_COPY_OUT = 3
+libpq.PGRES_COPY_IN = 4
+libpq.PGRES_BAD_RESPONSE = 5
+libpq.PGRES_NONFATAL_ERROR = 6
+libpq.PGRES_FATAL_ERROR = 7
+
+libpq.PG_DIAG_SEVERITY = ord('S')
+libpq.PG_DIAG_SQLSTATE = ord('C')
+libpq.PG_DIAG_MESSAGE_PRIMARY = ord('M')
+libpq.PG_DIAG_MESSAGE_DETAIL = ord('D')
+libpq.PG_DIAG_MESSAGE_HINT = ord('H')
+libpq.PG_DIAG_STATEMENT_POSITION = 'P'
+libpq.PG_DIAG_INTERNAL_POSITION = 'p'
+libpq.PG_DIAG_INTERNAL_QUERY = ord('q')
+libpq.PG_DIAG_CONTEXT = ord('W')
+libpq.PG_DIAG_SOURCE_FILE = ord('F')
+libpq.DIAG_SOURCE_LINE = ord('L')
+libpq.PG_DIAG_SOURCE_FUNCTION = ord('R')
+
+libpq.PGRES_POLLING_FAILED = 0
+libpq.PGRES_POLLING_READING = 1
+libpq.PGRES_POLLING_WRITING = 2
+libpq.PGRES_POLLING_OK = 3
+libpq.PGRES_POLLING_ACTIVE = 4

@@ -6,7 +6,7 @@ import weakref
 from psycopg2ct import tz
 from psycopg2ct._impl import consts
 from psycopg2ct._impl import exceptions
-from psycopg2ct._impl.libpq_cffi import libpq
+from psycopg2ct._impl.libpq_cffi import libpq, libpq_ffi
 from psycopg2ct._impl import typecasts
 from psycopg2ct._impl import util
 from psycopg2ct._impl.adapters import _getquoted
@@ -685,13 +685,13 @@ class Cursor(object):
 
     def _pq_fetch(self):
         pgstatus = libpq.PQresultStatus(self._pgres)
-        self._statusmessage = libpq.PQcmdStatus(self._pgres)
+        self._statusmessage = libpq_ffi.string(libpq.PQcmdStatus(self._pgres))
 
         self._no_tuples = True
         self._rownumber = 0
 
         if pgstatus == libpq.PGRES_COMMAND_OK:
-            rowcount = libpq.PQcmdTuples(self._pgres)
+            rowcount = libpq_ffi.string(libpq.PQcmdTuples(self._pgres))
             if not rowcount or not rowcount[0]:
                 self._rowcount = -1
             else:
@@ -744,7 +744,7 @@ class Cursor(object):
 
                 casts.append(self._get_cast(ftype))
                 description.append(Column(
-                    name=libpq.PQfname(self._pgres, i),
+                    name=libpq_ffi.string(libpq.PQfname(self._pgres, i)),
                     type_code=ftype,
                     display_size=None,
                     internal_size=isize,
@@ -822,7 +822,7 @@ class Cursor(object):
 
             # PQgetvalue will return an empty string for null values,
             # so check with PQgetisnull if the value is really null
-            val = libpq.PQgetvalue(self._pgres, row_num, i)
+            val = libpq_ffi.string(libpq.PQgetvalue(self._pgres, row_num, i))
             if not val and libpq.PQgetisnull(self._pgres, row_num, i):
                 val = None
             else:

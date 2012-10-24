@@ -2,7 +2,7 @@ import datetime
 import decimal
 import math
 
-from psycopg2ct._impl.libpq_cffi import libpq
+from psycopg2ct._impl.libpq_cffi import libpq, libpq_ffi
 from psycopg2ct._impl.encodings import encodings
 from psycopg2ct._impl.exceptions import ProgrammingError
 from psycopg2ct._config import PG_VERSION
@@ -49,12 +49,12 @@ class Binary(_BaseAdapter):
         to_length = libpq.c_uint()
 
         if self._conn:
-            data_pointer = libpq.PQescapeByteaConn(
+            data_pointer = libpq_ffi.string(libpq.PQescapeByteaConn(
                 self._conn._pgconn, str(self._wrapped), len(self._wrapped),
-                libpq.pointer(to_length))
+                libpq.pointer(to_length)))
         else:
-            data_pointer = libpq.PQescapeBytea(
-                self._wrapped, len(self._wrapped), libpq.pointer(to_length))
+            data_pointer = libpq_ffi.string(libpq.PQescapeBytea(
+                self._wrapped, len(self._wrapped), libpq.pointer(to_length)))
 
         data = data_pointer[:to_length.value - 1]
         libpq.PQfreemem(data_pointer)
@@ -208,22 +208,22 @@ class QuotedString(_BaseAdapter):
         length = len(string)
 
         if not self._conn:
-            to = libpq.create_string_buffer('\0', (length * 2) + 1)
+            to = libpq_ffi.new('char []', '\0' * ((length * 2) + 1))
             libpq.PQescapeString(to, string, length)
             return "'%s'" % to.value
 
         if PG_VERSION < 0x090000:
-            to = libpq.create_string_buffer('\0', (length * 2) + 1)
-            err = libpq.c_int()
+            to = libpq_ffi.new('char []', '\0' * ((length * 2) + 1))
+            err = libpq_ffi.new('int *')
             libpq.PQescapeStringConn(
                 self._conn._pgconn, to, string, length, err)
 
             if self._conn and self._conn._equote:
-                return "E'%s'" % to.value
-            return "'%s'" % to.value
+                return "E'%s'" % libpq_ffi.string(to)
+            return "'%s'" % libpq_ffi.string(to)
 
-        data_pointer = libpq.PQescapeLiteral(
-            self._conn._pgconn, string, length)
+        data_pointer = libpq_ffi.string(libpq.PQescapeLiteral(
+            self._conn._pgconn, string, length))
         data = libpq.cast(data_pointer, libpq.c_char_p).value
         libpq.PQfreemem(data_pointer)
         return data

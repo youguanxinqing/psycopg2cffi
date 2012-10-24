@@ -192,7 +192,7 @@ class Connection(object):
 
             if not pgres or libpq.PQresultStatus(pgres) != libpq.PGRES_TUPLES_OK:
                 raise exceptions.OperationalError("can't fetch %s" % name)
-            rv = libpq.PQgetvalue(pgres, 0, 0)
+            rv = libpq_ffi.string(libpq.PQgetvalue(pgres, 0, 0))
             libpq.PQclear(pgres)
             return rv
 
@@ -714,7 +714,7 @@ class Connection(object):
         with self._lock:
             if libpq.PQconsumeInput(self._pgconn) == 0:
                 raise exceptions.OperationalError(
-                    libpq.PQerrorMessage(self._pgconn))
+                    libpq_ffi.string(libpq.PQerrorMessage(self._pgconn)))
             res = libpq.PQisBusy(self._pgconn)
             self._process_notifies()
             return res
@@ -756,15 +756,16 @@ class Connection(object):
         # last command, and then the error message for the connection
         if msg is None:
             if pgres:
-                msg = libpq.PQresultErrorMessage(pgres)
+                msg = libpq_ffi.string(libpq.PQresultErrorMessage(pgres))
             if msg is None:
-                msg = libpq.PQerrorMessage(self._pgconn)
+                msg = libpq_ffi.string(libpq.PQerrorMessage(self._pgconn))
 
         # Get the correct exception class based on the error code
         if pgres:
             code = libpq.PQresultErrorField(pgres, libpq.PG_DIAG_SQLSTATE)
-            if code is not None:
-                exc_type = util.get_exception_for_sqlstate(code)
+            if code != libpq_ffi.NULL:
+                exc_type = util.get_exception_for_sqlstate(
+                        libpq_ffi.string(code))
 
         # Clear the connection if the status is CONNECTION_BAD (fatal error)
         if self._pgconn and libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
