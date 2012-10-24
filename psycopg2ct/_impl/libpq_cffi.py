@@ -107,18 +107,15 @@ typedef struct pgNotify
 
 extern PGconn *PQconnectdb(const char *conninfo);
 extern PGconn *PQconnectStart(const char *conninfo);
-// FIXME!!
-// extern PostgresPollingStatusType PQconnectPoll(PGconn *conn);
+extern PostgresPollingStatusType PQconnectPoll(PGconn *conn);
 extern void PQfinish(PGconn *conn);
 
 // Connection status functions
 
 extern char *PQdb(const PGconn *conn);
 extern char *PQuser(const PGconn *conn);
-// FIXME!!
-// extern ConnStatusType PQstatus(const PGconn *conn);
-// FIXME!!
-// extern PGTransactionStatusType PQtransactionStatus(const PGconn *conn);
+extern ConnStatusType PQstatus(const PGconn *conn);
+extern PGTransactionStatusType PQtransactionStatus(const PGconn *conn);
 extern const char *PQparameterStatus(const PGconn *conn, const char *paramName);
 extern int PQprotocolVersion(const PGconn *conn);
 extern int PQserverVersion(const PGconn *conn);
@@ -129,8 +126,7 @@ extern int PQbackendPID(const PGconn *conn);
 // Command execution functions
 
 extern PGresult *PQexec(PGconn *conn, const char *query);
-// FIXME
-// extern ExecStatusType PQresultStatus(const PGresult *res);
+extern ExecStatusType PQresultStatus(const PGresult *res);
 extern char *PQresultErrorMessage(const PGresult *res);
 extern char *PQresultErrorField(const PGresult *res, int fieldcode);
 extern void PQclear(PGresult *res);
