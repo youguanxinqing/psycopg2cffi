@@ -46,17 +46,17 @@ class Binary(_BaseAdapter):
         if self._wrapped is None:
             return 'NULL'
 
-        to_length = libpq.c_uint()
+        to_length = libpq_ffi.new('unsigned int *')
 
         if self._conn:
-            data_pointer = libpq_ffi.string(libpq.PQescapeByteaConn(
+            data_pointer = libpq.PQescapeByteaConn(
                 self._conn._pgconn, str(self._wrapped), len(self._wrapped),
-                libpq.pointer(to_length)))
+                to_length)
         else:
-            data_pointer = libpq_ffi.string(libpq.PQescapeBytea(
-                self._wrapped, len(self._wrapped), libpq.pointer(to_length)))
+            data_pointer = libpq.PQescapeBytea(
+                self._wrapped, len(self._wrapped), to_length)
 
-        data = data_pointer[:to_length.value - 1]
+        data = libpq_ffi.string(data_pointer)[:to_length[0] - 1]
         libpq.PQfreemem(data_pointer)
 
         if self._conn and self._conn._equote:
