@@ -3,7 +3,7 @@ import decimal
 import math
 from time import localtime
 
-from psycopg2ct._impl import libpq
+from psycopg2ct._impl.libpq_cffi import libpq
 
 
 string_types = {}

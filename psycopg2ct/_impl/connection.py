@@ -5,7 +5,7 @@ from functools import wraps
 from psycopg2ct._impl import consts
 from psycopg2ct._impl import encodings as _enc
 from psycopg2ct._impl import exceptions
-from psycopg2ct._impl import libpq
+from psycopg2ct._impl.libpq_cffi import libpq, libpq_ffi
 from psycopg2ct._impl import util
 from psycopg2ct._impl.cursor import Cursor
 from psycopg2ct._impl.lobject import LargeObject
@@ -109,7 +109,8 @@ class Connection(object):
         self._async_cursor = None
 
         self_ref = weakref.ref(self)
-        self._notice_callback = libpq.PQnoticeProcessor(
+        self._notice_callback = libpq_ffi.callback(
+            'void(void *, const char *)',
             lambda arg, message: self_ref()._process_notice(arg, message))
 
         if not self._async:
@@ -125,7 +126,8 @@ class Connection(object):
             raise self._create_exception()
 
         # Register notice processor
-        libpq.PQsetNoticeProcessor(self._pgconn, self._notice_callback, None)
+        libpq.PQsetNoticeProcessor(
+                self._pgconn, self._notice_callback, libpq_ffi.NULL)
 
         self.status = consts.STATUS_READY
         self._setup()
@@ -145,7 +147,8 @@ class Connection(object):
         elif libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
             raise self._create_exception()
 
-        libpq.PQsetNoticeProcessor(self._pgconn, self._notice_callback, None)
+        libpq.PQsetNoticeProcessor(
+                self._pgconn, self._notice_callback, libpq.ffi.None)
 
     def __del__(self):
         self._close()
@@ -279,7 +282,8 @@ class Connection(object):
         return libpq.PQbackendPID(self._pgconn)
 
     def get_parameter_status(self, parameter):
-        return libpq.PQparameterStatus(self._pgconn, parameter)
+        return libpq_ffi.string(
+                libpq.PQparameterStatus(self._pgconn, parameter))
 
     def get_transaction_status(self):
         return libpq.PQtransactionStatus(self._pgconn)
@@ -539,7 +543,8 @@ class Connection(object):
 
             # If the current datestyle is not compatible (not ISO) then
             # force it to ISO
-            datestyle = libpq.PQparameterStatus(self._pgconn, 'DateStyle')
+            datestyle = libpq_ffi.string(
+                    libpq.PQparameterStatus(self._pgconn, 'DateStyle'))
             if not datestyle or not datestyle.startswith('ISO'):
                 self.status = consts.STATUS_DATESTYLE
 
@@ -579,7 +584,8 @@ class Connection(object):
         with self._lock:
             # If the current datestyle is not compatible (not ISO) then
             # force it to ISO
-            datestyle = libpq.PQparameterStatus(self._pgconn, 'DateStyle')
+            datestyle = libpq_ffi.string(
+                    libpq.PQparameterStatus(self._pgconn, 'DateStyle'))
             if not datestyle or not datestyle.startswith('ISO'):
                 self.status = consts.STATUS_DATESTYLE
                 self._set_guc('datestyle', 'ISO')
@@ -700,8 +706,8 @@ class Connection(object):
         self._py_enc = _enc.encodings[self._encoding]
 
     def _get_equote(self):
-        ret = libpq.PQparameterStatus(
-            self._pgconn, 'standard_conforming_strings')
+        ret = libpq_ffi.string(libpq.PQparameterStatus(
+            self._pgconn, 'standard_conforming_strings'))
         return ret and ret == 'off'
 
     def _is_busy(self):

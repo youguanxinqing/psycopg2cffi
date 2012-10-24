@@ -3,7 +3,7 @@ from functools import wraps
 
 from psycopg2ct._impl import exceptions
 from psycopg2ct._impl import consts
-from psycopg2ct._impl import libpq
+from psycopg2ct._impl.libpq_cffi import libpq
 from psycopg2ct._impl import util
 
 INV_WRITE = 0x00020000

@@ -6,7 +6,7 @@ import weakref
 from psycopg2ct import tz
 from psycopg2ct._impl import consts
 from psycopg2ct._impl import exceptions
-from psycopg2ct._impl import libpq
+from psycopg2ct._impl.libpq_cffi import libpq
 from psycopg2ct._impl import typecasts
 from psycopg2ct._impl import util
 from psycopg2ct._impl.adapters import _getquoted

@@ -1,5 +1,5 @@
 from psycopg2ct._impl import exceptions
-from psycopg2ct._impl import libpq
+from psycopg2ct._impl.libpq_cffi import libpq
 from psycopg2ct._impl.adapters import QuotedString
 
 

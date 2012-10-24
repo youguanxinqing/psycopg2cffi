@@ -2,7 +2,7 @@ import datetime
 import decimal
 import math
 
-from psycopg2ct._impl import libpq
+from psycopg2ct._impl.libpq_cffi import libpq
 from psycopg2ct._impl.encodings import encodings
 from psycopg2ct._impl.exceptions import ProgrammingError
 from psycopg2ct._config import PG_VERSION

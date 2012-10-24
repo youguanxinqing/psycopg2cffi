@@ -2,11 +2,11 @@
 
 from cffi import FFI
 
-ffi = FFI()
+libpq_ffi = FFI()
 
 # order and comments taken from libpq (ctypes impl)
 
-ffi.cdef('''
+libpq_ffi.cdef('''
 
 // postgres_ext.h
 
@@ -212,7 +212,7 @@ extern int lo_truncate(PGconn *conn, int fd, size_t len);
 
 ''')
 
-ffi.verify('''
+libpq = libpq_ffi.verify('''
 #include "postgres_ext.h"
 #include <libpq-fe.h>
         ''', 
