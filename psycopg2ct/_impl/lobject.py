@@ -3,7 +3,7 @@ from functools import wraps
 
 from psycopg2ct._impl import exceptions
 from psycopg2ct._impl import consts
-from psycopg2ct._impl.libpq_cffi import libpq
+from psycopg2ct._impl.libpq_cffi import libpq, libpq_ffi
 from psycopg2ct._impl import util
 
 INV_WRITE = 0x00020000
@@ -65,15 +65,15 @@ class LargeObject(object):
         if size == 0:
             return ''
 
-        buf = libpq.create_string_buffer('\0', size)
+        buf = libpq_ffi.new('char []', size)
         length = libpq.lo_read(self._conn._pgconn, self._fd, buf, size)
         if length < 0:
             return
 
         if self._mode & consts.LOBJECT_BINARY:
-            return buf.raw
+            return libpq_ffi.string(buf)
         else:
-            return buf.value.decode(self._conn._py_enc)
+            return libpq_ffi.string(buf).decode(self._conn._py_enc)
 
     @check_closed
     @check_unmarked

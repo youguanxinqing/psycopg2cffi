@@ -204,16 +204,6 @@ libpq = libpq_ffi.verify('''
         include_dirs=['/usr/include/postgresql/'])
 
 
-def string_or_None(char_cdata):
-    ''' Return None is char_cdata is NULL, else a python string - 
-    mimicks ctypes behaviour
-    '''
-    if char_cdata == libpq_ffi.NULL:
-        return None
-    else:
-        return libpq_ffi.string(char_cdata)
-
-
 # copied from libpq_ctypes
 
 libpq.PG_DIAG_SEVERITY = ord('S')

@@ -208,12 +208,12 @@ class QuotedString(_BaseAdapter):
         length = len(string)
 
         if not self._conn:
-            to = libpq_ffi.new('char []', '\0' * ((length * 2) + 1))
+            to = libpq_ffi.new('char []', ((length * 2) + 1))
             libpq.PQescapeString(to, string, length)
             return "'%s'" % to.value
 
         if PG_VERSION < 0x090000:
-            to = libpq_ffi.new('char []', '\0' * ((length * 2) + 1))
+            to = libpq_ffi.new('char []', ((length * 2) + 1))
             err = libpq_ffi.new('int *')
             libpq.PQescapeStringConn(
                 self._conn._pgconn, to, string, length, err)
