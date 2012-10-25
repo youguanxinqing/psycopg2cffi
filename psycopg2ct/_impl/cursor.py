@@ -785,14 +785,14 @@ class Cursor(object):
         is_text = isinstance(self._copyfile, TextIOBase)
         pgconn = self._conn._pgconn
         while True:
-            buf = libpq_ffi.new('char *')
+            buf = libpq_ffi.new('char **')
             length = libpq.PQgetCopyData(pgconn, buf, 0)
 
             if length > 0:
-                value = libpq_ffi.buffer(buf, length)
+                value = libpq_ffi.buffer(buf[0], length)
                 if is_text:
                     value = typecasts.parse_unicode(value[:], length, self)
-                if value is None: # FIXME
+                if value is None: # FIXME - it can not be None here
                     return
 
                 self._copyfile.write(value)
