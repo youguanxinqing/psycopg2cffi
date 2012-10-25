@@ -773,7 +773,7 @@ class Cursor(object):
                 error = 2
                 break
 
-        errmsg = None
+        errmsg = libpq_ffi.NULL
         if error == 2:
             errmsg = 'error in PQputCopyData() call'
 
@@ -789,11 +789,10 @@ class Cursor(object):
             length = libpq.PQgetCopyData(pgconn, buf, 0)
 
             if length > 0:
-                value = libpq_ffi.string(buf)
+                value = libpq_ffi.buffer(buf, length)
                 if is_text:
-                    value = typecasts.parse_unicode(value, length, self)
-
-                if value is None:
+                    value = typecasts.parse_unicode(value[:], length, self)
+                if value is None: # FIXME
                     return
 
                 self._copyfile.write(value)
