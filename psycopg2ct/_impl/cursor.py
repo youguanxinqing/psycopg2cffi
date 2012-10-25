@@ -792,7 +792,6 @@ class Cursor(object):
                 value = libpq_ffi.string(buf)
                 if is_text:
                     value = typecasts.parse_unicode(value, length, self)
-                libpq.PQfreemem(buf)
 
                 if value is None:
                     return
