@@ -2,6 +2,9 @@
 
 from cffi import FFI
 
+from psycopg2ct._config import PG_VERSION
+
+
 libpq_ffi = FFI()
 
 # order and comments taken from libpq (ctypes impl)
@@ -133,10 +136,16 @@ extern char *PQcmdStatus(PGresult *res);
 extern char *PQcmdTuples(PGresult *res);
 extern Oid PQoidValue(const PGresult *res); /* new and improved */
 
-// Escaping string for inclusion in sql commands
+''')
 
-// TODO if PG_VERSION >= 0x090000:
+if PG_VERSION >= 0x090000:
+    libpq_ffi.cdef('''
+// Escaping string for inclusion in sql commands
 extern char *PQescapeLiteral(PGconn *conn, const char *str, size_t len);
+    ''')
+
+libpq_ffi.cdef('''
+// Escaping string for inclusion in sql commands
 extern size_t PQescapeStringConn(PGconn *conn,
     char *to, const char *from, size_t length,
     int *error);
