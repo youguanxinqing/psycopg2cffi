@@ -68,7 +68,6 @@ typedef enum
          * backend */
  PGRES_NONFATAL_ERROR,  /* notice or warning message */
  PGRES_FATAL_ERROR,   /* query failed */
- PGRES_COPY_BOTH    /* Copy In/Out data transfer in progress */
 } ExecStatusType;
 
 typedef enum
