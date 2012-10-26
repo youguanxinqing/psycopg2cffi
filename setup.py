@@ -250,16 +250,16 @@ with open('README', 'r') as fh:
 
 setup(
     name='psycopg2ct',
-    author='Michael van Tellingen',
-    author_email='michaelvantellingen@gmail.com',
+    author='Konstantin Lopuhin',
+    author_email='kostia.lopuhin@gmail.com',
     license='LGPL',
-    url='http://github.com/mvantellingen/psycopg2-ctypes',
+    url='http://github.com/lopuhin/psycopg2-ctypes',
     version='%s (%s)' % (PSYCOPG_VERSION, ' '.join(version_flags)),
     cmdclass={
         'build_py': build_py
     },
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)',
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 2.6',
@@ -276,4 +276,7 @@ setup(
     description=README[0].strip(),
     long_description=''.join(README),
     packages=['psycopg2ct', 'psycopg2ct._impl', 'psycopg2ct.tests'],
+    install_requires=[
+        'cffi==0.4', # currenty trunk
+        ],
 )
