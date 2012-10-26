@@ -71,7 +71,7 @@ class LargeObject(object):
             return
 
         if self._mode & consts.LOBJECT_BINARY:
-            return libpq_ffi.string(buf)
+            return libpq_ffi.buffer(buf, length)[:]
         else:
             return libpq_ffi.string(buf).decode(self._conn._py_enc)
 

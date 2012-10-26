@@ -174,14 +174,14 @@ class LargeObjectTests(LargeObjectMixin, unittest.TestCase):
 
     def test_read_binary(self):
         lo = self.conn.lobject()
-        length = lo.write(b("some data"))
+        length = lo.write(b("some\0 data"))
         lo.close()
 
         lo = self.conn.lobject(lo.oid, "rb")
         x = lo.read(4)
         self.assertEqual(type(x), type(b('')))
         self.assertEqual(x, b("some"))
-        self.assertEqual(lo.read(), b(" data"))
+        self.assertEqual(lo.read(), b("\0 data"))
 
     def test_read_text(self):
         lo = self.conn.lobject()
