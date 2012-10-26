@@ -756,12 +756,12 @@ class Connection(object):
         # If no custom message is passed then get the message from postgres.
         # If pgres is available then we first try to get the message for the
         # last command, and then the error message for the connection
-        # FIXME - review
         if msg is None:
             if pgres:
-                msg = libpq_ffi.string(libpq.PQresultErrorMessage(pgres))
-            if msg is None:
-                msg = libpq_ffi.string(libpq.PQerrorMessage(self._pgconn))
+                msg = libpq.PQresultErrorMessage(pgres)
+            if msg is None or msg == libpq_ffi.NULL:
+                msg = libpq.PQerrorMessage(self._pgconn)
+            msg = libpq_ffi.string(msg) if msg != libpq_ffi.NULL else None
 
         # Get the correct exception class based on the error code
         if pgres:

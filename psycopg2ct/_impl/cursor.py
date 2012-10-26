@@ -789,11 +789,11 @@ class Cursor(object):
             length = libpq.PQgetCopyData(pgconn, buf, 0)
 
             if length > 0:
+                if buf[0] == libpq_ffi.NULL:
+                    return
                 value = libpq_ffi.buffer(buf[0], length)
                 if is_text:
                     value = typecasts.parse_unicode(value[:], length, self)
-                if value is None: # FIXME - it can not be None here
-                    return
 
                 self._copyfile.write(value)
             elif length == -2:
