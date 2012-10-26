@@ -244,7 +244,7 @@ class build_py(_build_py):
         _build_py.run(self)
 
 README = []
-with open('README', 'r') as fh:
+with open('README.rst', 'r') as fh:
     README = fh.readlines()
 
 
