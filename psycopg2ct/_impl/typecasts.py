@@ -96,8 +96,9 @@ def parse_decimal(value, length, cursor):
 
 
 def parse_binary(value, length, cursor):
-    to_length = libpq_ffi.new('unsigned int *')
-    s = libpq.PQunescapeBytea(value, to_length)
+    to_length = libpq_ffi.new('size_t *')
+    s = libpq.PQunescapeBytea(
+            libpq_ffi.new('unsigned char[]', str(value)), to_length)
     try:
         res = buffer(libpq_ffi.buffer(s, to_length[0])[:])
     finally:
