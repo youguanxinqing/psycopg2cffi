@@ -12,26 +12,26 @@ This module holds all the extensions to the DBAPI-2.0 provided by psycopg.
 """
 import sys as _sys
 
-from psycopg2ct._impl import connection as _connection
-from psycopg2ct._impl.adapters import adapt, adapters
-from psycopg2ct._impl.adapters import Binary, Boolean, Int, Float
-from psycopg2ct._impl.adapters import QuotedString, AsIs, ISQLQuote
-from psycopg2ct._impl.connection import Connection as connection
-from psycopg2ct._impl.consts import *
-from psycopg2ct._impl.cursor import Cursor as cursor
-from psycopg2ct._impl.encodings import encodings
-from psycopg2ct._impl.exceptions import QueryCanceledError
-from psycopg2ct._impl.exceptions import TransactionRollbackError
-from psycopg2ct._impl.notify import Notify
-from psycopg2ct._impl.typecasts import (
+from psycopg2cffi._impl import connection as _connection
+from psycopg2cffi._impl.adapters import adapt, adapters
+from psycopg2cffi._impl.adapters import Binary, Boolean, Int, Float
+from psycopg2cffi._impl.adapters import QuotedString, AsIs, ISQLQuote
+from psycopg2cffi._impl.connection import Connection as connection
+from psycopg2cffi._impl.consts import *
+from psycopg2cffi._impl.cursor import Cursor as cursor
+from psycopg2cffi._impl.encodings import encodings
+from psycopg2cffi._impl.exceptions import QueryCanceledError
+from psycopg2cffi._impl.exceptions import TransactionRollbackError
+from psycopg2cffi._impl.notify import Notify
+from psycopg2cffi._impl.typecasts import (
     UNICODE, INTEGER, LONGINTEGER, BOOLEAN, FLOAT, TIME, DATE, INTERVAL,
     DECIMAL,
     BINARYARRAY, BOOLEANARRAY, DATEARRAY, DATETIMEARRAY, DECIMALARRAY,
     FLOATARRAY, INTEGERARRAY, INTERVALARRAY, LONGINTEGERARRAY, ROWIDARRAY,
     STRINGARRAY, TIMEARRAY, UNICODEARRAY)
-from psycopg2ct._impl.typecasts import string_types, binary_types
-from psycopg2ct._impl.typecasts import new_type, new_array_type, register_type
-from psycopg2ct._impl.xid import Xid
+from psycopg2cffi._impl.typecasts import string_types, binary_types
+from psycopg2cffi._impl.typecasts import new_type, new_array_type, register_type
+from psycopg2cffi._impl.xid import Xid
 
 
 # Return bytes from a string

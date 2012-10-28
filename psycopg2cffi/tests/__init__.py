@@ -1,5 +1,5 @@
 import unittest
-from psycopg2ct.tests import psycopg2_tests
+from psycopg2cffi.tests import psycopg2_tests
 
 def suite():
     suite = unittest.TestSuite()

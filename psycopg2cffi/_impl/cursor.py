@@ -3,14 +3,14 @@ from functools import wraps
 from io import TextIOBase
 import weakref
 
-from psycopg2ct import tz
-from psycopg2ct._impl import consts
-from psycopg2ct._impl import exceptions
-from psycopg2ct._impl.libpq import libpq, ffi
-from psycopg2ct._impl import typecasts
-from psycopg2ct._impl import util
-from psycopg2ct._impl.adapters import _getquoted
-from psycopg2ct._impl.exceptions import InterfaceError, ProgrammingError
+from psycopg2cffi import tz
+from psycopg2cffi._impl import consts
+from psycopg2cffi._impl import exceptions
+from psycopg2cffi._impl.libpq import libpq, ffi
+from psycopg2cffi._impl import typecasts
+from psycopg2cffi._impl import util
+from psycopg2cffi._impl.adapters import _getquoted
+from psycopg2cffi._impl.exceptions import InterfaceError, ProgrammingError
 
 
 def check_closed(func):

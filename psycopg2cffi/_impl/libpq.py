@@ -2,7 +2,7 @@
 
 from cffi import FFI
 
-from psycopg2ct._config import PG_VERSION
+from psycopg2cffi._config import PG_VERSION
 
 
 ffi = FFI()

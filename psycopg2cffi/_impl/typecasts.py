@@ -3,7 +3,7 @@ import decimal
 import math
 from time import localtime
 
-from psycopg2ct._impl.libpq import libpq, ffi
+from psycopg2cffi._impl.libpq import libpq, ffi
 
 
 string_types = {}
@@ -31,8 +31,8 @@ class Type(object):
 def register_type(type_obj, scope=None):
     typecasts = string_types
     if scope:
-        from psycopg2ct._impl.connection import Connection
-        from psycopg2ct._impl.cursor import Cursor
+        from psycopg2cffi._impl.connection import Connection
+        from psycopg2cffi._impl.cursor import Cursor
 
         if isinstance(scope, Connection):
             typecasts = scope._typecasts
@@ -340,7 +340,7 @@ def parse_interval(value, length, cursor):
 
 
 def Date(year, month, day):
-    from psycopg2ct.extensions.adapters import DateTime
+    from psycopg2cffi.extensions.adapters import DateTime
     date = datetime.date(year, month, day)
     return DateTime(date)
 
@@ -351,7 +351,7 @@ def DateFromTicks(ticks):
 
 
 def Binary(obj):
-    from psycopg2ct.extensions.adapters import Binary
+    from psycopg2cffi.extensions.adapters import Binary
     return Binary(obj)
 
 

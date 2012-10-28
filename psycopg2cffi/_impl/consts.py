@@ -1,4 +1,4 @@
-"""psycopg2ct -- global constants
+"""psycopg2cffi -- global constants
 
 This module can be imported from everywhere without problems of cross imports.
 """

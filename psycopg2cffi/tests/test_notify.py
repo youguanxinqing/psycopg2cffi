@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from psycopg2ct.extensions import Notify
+from psycopg2cffi.extensions import Notify
 
 
 class TestNotify(TestCase):

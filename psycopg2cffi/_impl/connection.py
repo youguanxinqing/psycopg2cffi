@@ -2,15 +2,15 @@ import threading
 import weakref
 from functools import wraps
 
-from psycopg2ct._impl import consts
-from psycopg2ct._impl import encodings as _enc
-from psycopg2ct._impl import exceptions
-from psycopg2ct._impl.libpq import libpq, ffi
-from psycopg2ct._impl import util
-from psycopg2ct._impl.cursor import Cursor
-from psycopg2ct._impl.lobject import LargeObject
-from psycopg2ct._impl.notify import Notify
-from psycopg2ct._impl.xid import Xid
+from psycopg2cffi._impl import consts
+from psycopg2cffi._impl import encodings as _enc
+from psycopg2cffi._impl import exceptions
+from psycopg2cffi._impl.libpq import libpq, ffi
+from psycopg2cffi._impl import util
+from psycopg2cffi._impl.cursor import Cursor
+from psycopg2cffi._impl.lobject import LargeObject
+from psycopg2cffi._impl.notify import Notify
+from psycopg2cffi._impl.xid import Xid
 
 
 # Map between isolation levels names and values and back.

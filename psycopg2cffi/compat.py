@@ -1,7 +1,7 @@
 import sys
-import psycopg2ct
+import psycopg2cffi
 
 
 def register():
-    sys.modules['psycopg2'] = psycopg2ct
+    sys.modules['psycopg2'] = psycopg2cffi
 

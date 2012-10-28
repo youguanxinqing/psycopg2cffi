@@ -2,11 +2,11 @@ import datetime
 import decimal
 import math
 
-from psycopg2ct._impl.libpq import libpq, ffi
-from psycopg2ct._impl.encodings import encodings
-from psycopg2ct._impl.exceptions import ProgrammingError
-from psycopg2ct._config import PG_VERSION
-from psycopg2ct.tz import LOCAL as TZ_LOCAL
+from psycopg2cffi._impl.libpq import libpq, ffi
+from psycopg2cffi._impl.encodings import encodings
+from psycopg2cffi._impl.exceptions import ProgrammingError
+from psycopg2cffi._config import PG_VERSION
+from psycopg2cffi.tz import LOCAL as TZ_LOCAL
 
 
 adapters = {}

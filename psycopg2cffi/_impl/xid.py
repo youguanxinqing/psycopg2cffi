@@ -1,7 +1,7 @@
 
 import re
 
-from psycopg2ct._impl import consts
+from psycopg2cffi._impl import consts
 
 
 class Xid(object):

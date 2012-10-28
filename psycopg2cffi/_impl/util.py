@@ -1,6 +1,6 @@
-from psycopg2ct._impl import exceptions
-from psycopg2ct._impl.libpq_cffi import libpq
-from psycopg2ct._impl.adapters import QuotedString
+from psycopg2cffi._impl import exceptions
+from psycopg2cffi._impl.libpq import libpq
+from psycopg2cffi._impl.adapters import QuotedString
 
 
 def pq_set_non_blocking(pgconn, arg, raise_exception=False):

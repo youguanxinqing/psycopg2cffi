@@ -14,14 +14,14 @@ from distutils.command.build_py import build_py as _build_py
 PLATFORM_IS_WINDOWS = sys.platform.lower().startswith('win')
 
 # read the version number from the package
-f = open(os.path.join(os.path.dirname(__file__), 'psycopg2ct/__init__.py'))
+f = open(os.path.join(os.path.dirname(__file__), 'psycopg2cffi/__init__.py'))
 try:
     for line in f:
         if line.startswith('__version__'):
             PSYCOPG_VERSION = line.split('=')[1].replace('"', '').replace("'", '').strip()
             break
     else:
-        raise ValueError('__version__ not found in psycopg2ct package')
+        raise ValueError('__version__ not found in psycopg2cffi package')
 finally:
     f.close()
 
@@ -232,7 +232,7 @@ class build_py(_build_py):
 
     def run(self):
         if not self.dry_run:
-            target_path = os.path.join(self.build_lib, 'psycopg2ct')
+            target_path = os.path.join(self.build_lib, 'psycopg2cffi')
             self.mkpath(target_path)
 
             with open(os.path.join(target_path, '_config.py'), 'w') as fh:
@@ -249,7 +249,7 @@ with open('README.rst', 'r') as fh:
 
 
 setup(
-    name='psycopg2ct',
+    name='psycopg2cffi',
     author='Konstantin Lopuhin',
     author_email='kostia.lopuhin@gmail.com',
     license='LGPL',
@@ -272,10 +272,10 @@ setup(
 
     ],
     platforms=['any'],
-    test_suite='psycopg2ct.tests.suite',
+    test_suite='psycopg2cffi.tests.suite',
     description=README[0].strip(),
     long_description=''.join(README),
-    packages=['psycopg2ct', 'psycopg2ct._impl', 'psycopg2ct.tests'],
+    packages=['psycopg2cffi', 'psycopg2cffi._impl', 'psycopg2cffi.tests'],
     install_requires=[
         'cffi==0.4', # currenty trunk
         ],

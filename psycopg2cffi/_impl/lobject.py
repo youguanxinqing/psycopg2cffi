@@ -1,10 +1,9 @@
 import os
 from functools import wraps
 
-from psycopg2ct._impl import exceptions
-from psycopg2ct._impl import consts
-from psycopg2ct._impl.libpq import libpq, ffi
-from psycopg2ct._impl import util
+from psycopg2cffi._impl import exceptions
+from psycopg2cffi._impl import consts
+from psycopg2cffi._impl.libpq import libpq, ffi
 
 INV_WRITE = 0x00020000
 INV_READ = 0x00040000
