@@ -3,7 +3,7 @@ import decimal
 import math
 from time import localtime
 
-from psycopg2ct._impl.libpq_cffi import libpq, libpq_ffi
+from psycopg2ct._impl.libpq import libpq, ffi
 
 
 string_types = {}
@@ -96,11 +96,11 @@ def parse_decimal(value, length, cursor):
 
 
 def parse_binary(value, length, cursor):
-    to_length = libpq_ffi.new('size_t *')
+    to_length = ffi.new('size_t *')
     s = libpq.PQunescapeBytea(
-            libpq_ffi.new('unsigned char[]', str(value)), to_length)
+            ffi.new('unsigned char[]', str(value)), to_length)
     try:
-        res = buffer(libpq_ffi.buffer(s, to_length[0])[:])
+        res = buffer(ffi.buffer(s, to_length[0])[:])
     finally:
         libpq.PQfreemem(s)
     return res

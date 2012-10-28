@@ -5,7 +5,7 @@ from functools import wraps
 from psycopg2ct._impl import consts
 from psycopg2ct._impl import encodings as _enc
 from psycopg2ct._impl import exceptions
-from psycopg2ct._impl.libpq_cffi import libpq, libpq_ffi
+from psycopg2ct._impl.libpq import libpq, ffi
 from psycopg2ct._impl import util
 from psycopg2ct._impl.cursor import Cursor
 from psycopg2ct._impl.lobject import LargeObject
@@ -91,7 +91,7 @@ class Connection(object):
         self._encoding = None
 
         self._closed = False
-        self._cancel = libpq_ffi.NULL
+        self._cancel = ffi.NULL
         self._typecasts = {}
         self._tpc_xid = None
         self._notifies = []
@@ -109,10 +109,10 @@ class Connection(object):
         self._async_cursor = None
 
         self_ref = weakref.ref(self)
-        self._notice_callback = libpq_ffi.callback(
+        self._notice_callback = ffi.callback(
             'void(void *, const char *)',
             lambda arg, message: self_ref()._process_notice(
-                arg, libpq_ffi.string(message)))
+                arg, ffi.string(message)))
 
         if not self._async:
             self._connect_sync()
@@ -128,7 +128,7 @@ class Connection(object):
 
         # Register notice processor
         libpq.PQsetNoticeProcessor(
-                self._pgconn, self._notice_callback, libpq_ffi.NULL)
+                self._pgconn, self._notice_callback, ffi.NULL)
 
         self.status = consts.STATUS_READY
         self._setup()
@@ -149,7 +149,7 @@ class Connection(object):
             raise self._create_exception()
 
         libpq.PQsetNoticeProcessor(
-                self._pgconn, self._notice_callback, libpq_ffi.NULL)
+                self._pgconn, self._notice_callback, ffi.NULL)
 
     def __del__(self):
         self._close()
@@ -193,7 +193,7 @@ class Connection(object):
 
             if not pgres or libpq.PQresultStatus(pgres) != libpq.PGRES_TUPLES_OK:
                 raise exceptions.OperationalError("can't fetch %s" % name)
-            rv = libpq_ffi.string(libpq.PQgetvalue(pgres, 0, 0))
+            rv = ffi.string(libpq.PQgetvalue(pgres, 0, 0))
             libpq.PQclear(pgres)
             return rv
 
@@ -283,7 +283,7 @@ class Connection(object):
         return libpq.PQbackendPID(self._pgconn)
 
     def get_parameter_status(self, parameter):
-        return libpq_ffi.string(
+        return ffi.string(
                 libpq.PQparameterStatus(self._pgconn, parameter))
 
     def get_transaction_status(self):
@@ -315,9 +315,9 @@ class Connection(object):
     @check_tpc
     def cancel(self):
         err_length = 256
-        errbuf = libpq_ffi.new('char[]', err_length)
+        errbuf = ffi.new('char[]', err_length)
         if libpq.PQcancel(self._cancel, errbuf, err_length) == 0:
-            raise self._create_exception(msg=libpq_ffi.string(errbuf))
+            raise self._create_exception(msg=ffi.string(errbuf))
 
     def isexecuting(self):
         if not self._async:
@@ -538,14 +538,14 @@ class Connection(object):
             self._equote = self._get_equote()
             self._get_encoding()
             self._cancel = libpq.PQgetCancel(self._pgconn)
-            if self._cancel == libpq_ffi.NULL:
+            if self._cancel == ffi.NULL:
                 raise exceptions.OperationalError("can't get cancellation key")
 
             self._autocommit = True
 
             # If the current datestyle is not compatible (not ISO) then
             # force it to ISO
-            datestyle = libpq_ffi.string(
+            datestyle = ffi.string(
                     libpq.PQparameterStatus(self._pgconn, 'DateStyle'))
             if not datestyle or not datestyle.startswith('ISO'):
                 self.status = consts.STATUS_DATESTYLE
@@ -580,13 +580,13 @@ class Connection(object):
         self._get_encoding()
 
         self._cancel = libpq.PQgetCancel(self._pgconn)
-        if self._cancel == libpq_ffi.NULL:
+        if self._cancel == ffi.NULL:
             raise exceptions.OperationalError("can't get cancellation key")
 
         with self._lock:
             # If the current datestyle is not compatible (not ISO) then
             # force it to ISO
-            datestyle = libpq_ffi.string(
+            datestyle = ffi.string(
                     libpq.PQparameterStatus(self._pgconn, 'DateStyle'))
             if not datestyle or not datestyle.startswith('ISO'):
                 self.status = consts.STATUS_DATESTYLE
@@ -677,7 +677,7 @@ class Connection(object):
 
         if self._cancel:
             libpq.PQfreeCancel(self._cancel)
-            self._cancel = libpq_ffi.NULL
+            self._cancel = ffi.NULL
 
         if self._pgconn:
             libpq.PQfinish(self._pgconn)
@@ -708,7 +708,7 @@ class Connection(object):
         self._py_enc = _enc.encodings[self._encoding]
 
     def _get_equote(self):
-        ret = libpq_ffi.string(libpq.PQparameterStatus(
+        ret = ffi.string(libpq.PQparameterStatus(
             self._pgconn, 'standard_conforming_strings'))
         return ret and ret == 'off'
 
@@ -716,7 +716,7 @@ class Connection(object):
         with self._lock:
             if libpq.PQconsumeInput(self._pgconn) == 0:
                 raise exceptions.OperationalError(
-                    libpq_ffi.string(libpq.PQerrorMessage(self._pgconn)))
+                    ffi.string(libpq.PQerrorMessage(self._pgconn)))
             res = libpq.PQisBusy(self._pgconn)
             self._process_notifies()
             return res
@@ -741,8 +741,8 @@ class Connection(object):
 
             notify = Notify(
                 pg_notify.be_pid,
-                libpq_ffi.string(pg_notify.relname),
-                libpq_ffi.string(pg_notify.extra))
+                ffi.string(pg_notify.relname),
+                ffi.string(pg_notify.extra))
             self._notifies.append(notify)
 
             libpq.PQfreemem(pg_notify)
@@ -759,16 +759,16 @@ class Connection(object):
         if msg is None:
             if pgres:
                 msg = libpq.PQresultErrorMessage(pgres)
-            if msg is None or msg == libpq_ffi.NULL:
+            if msg is None or msg == ffi.NULL:
                 msg = libpq.PQerrorMessage(self._pgconn)
-            msg = libpq_ffi.string(msg) if msg != libpq_ffi.NULL else None
+            msg = ffi.string(msg) if msg != ffi.NULL else None
 
         # Get the correct exception class based on the error code
         if pgres:
             code = libpq.PQresultErrorField(pgres, libpq.PG_DIAG_SQLSTATE)
-            if code != libpq_ffi.NULL:
+            if code != ffi.NULL:
                 exc_type = util.get_exception_for_sqlstate(
-                        libpq_ffi.string(code))
+                        ffi.string(code))
 
         # Clear the connection if the status is CONNECTION_BAD (fatal error)
         if self._pgconn and libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:

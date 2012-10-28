@@ -5,11 +5,11 @@ from cffi import FFI
 from psycopg2ct._config import PG_VERSION
 
 
-libpq_ffi = FFI()
+ffi = FFI()
 
 # order and comments taken from libpq (ctypes impl)
 
-libpq_ffi.cdef('''
+ffi.cdef('''
 
 // postgres_ext.h
 
@@ -138,12 +138,12 @@ extern Oid PQoidValue(const PGresult *res); /* new and improved */
 ''')
 
 if PG_VERSION >= 0x090000:
-    libpq_ffi.cdef('''
+    ffi.cdef('''
 // Escaping string for inclusion in sql commands
 extern char *PQescapeLiteral(PGconn *conn, const char *str, size_t len);
     ''')
 
-libpq_ffi.cdef('''
+ffi.cdef('''
 // Escaping string for inclusion in sql commands
 extern size_t PQescapeStringConn(PGconn *conn,
     char *to, const char *from, size_t length,
@@ -206,7 +206,7 @@ extern int lo_truncate(PGconn *conn, int fd, size_t len);
 
 ''')
 
-libpq = libpq_ffi.verify('''
+libpq = ffi.verify('''
 #include "postgres_ext.h"
 #include <libpq-fe.h>
         ''', 
@@ -214,7 +214,7 @@ libpq = libpq_ffi.verify('''
         include_dirs=['/usr/include/postgresql/'])
 
 
-# copied from libpq_ctypes
+# copied from ctypes libpq.py
 
 libpq.PG_DIAG_SEVERITY = ord('S')
 libpq.PG_DIAG_SQLSTATE = ord('C')

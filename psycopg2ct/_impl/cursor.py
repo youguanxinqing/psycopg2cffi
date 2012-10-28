@@ -6,7 +6,7 @@ import weakref
 from psycopg2ct import tz
 from psycopg2ct._impl import consts
 from psycopg2ct._impl import exceptions
-from psycopg2ct._impl.libpq_cffi import libpq, libpq_ffi
+from psycopg2ct._impl.libpq import libpq, ffi
 from psycopg2ct._impl import typecasts
 from psycopg2ct._impl import util
 from psycopg2ct._impl.adapters import _getquoted
@@ -96,14 +96,14 @@ class Cursor(object):
         self._query = None
         self._statusmessage = None
         self._typecasts = {}
-        self._pgres = libpq_ffi.NULL
+        self._pgres = ffi.NULL
         self._copyfile = None
         self._copysize = None
 
     def __del__(self):
         if self._pgres:
             libpq.PQclear(self._pgres)
-            self._pgres = libpq_ffi.NULL
+            self._pgres = ffi.NULL
 
     @property
     def closed(self):
@@ -638,7 +638,7 @@ class Cursor(object):
     def _clear_pgres(self):
         if self._pgres:
             libpq.PQclear(self._pgres)
-            self._pgres = libpq_ffi.NULL
+            self._pgres = ffi.NULL
 
     def _pq_execute(self, query, async=False):
         """Execute the query"""
@@ -685,13 +685,13 @@ class Cursor(object):
 
     def _pq_fetch(self):
         pgstatus = libpq.PQresultStatus(self._pgres)
-        self._statusmessage = libpq_ffi.string(libpq.PQcmdStatus(self._pgres))
+        self._statusmessage = ffi.string(libpq.PQcmdStatus(self._pgres))
 
         self._no_tuples = True
         self._rownumber = 0
 
         if pgstatus == libpq.PGRES_COMMAND_OK:
-            rowcount = libpq_ffi.string(libpq.PQcmdTuples(self._pgres))
+            rowcount = ffi.string(libpq.PQcmdTuples(self._pgres))
             if not rowcount or not rowcount[0]:
                 self._rowcount = -1
             else:
@@ -744,7 +744,7 @@ class Cursor(object):
 
                 casts.append(self._get_cast(ftype))
                 description.append(Column(
-                    name=libpq_ffi.string(libpq.PQfname(self._pgres, i)),
+                    name=ffi.string(libpq.PQfname(self._pgres, i)),
                     type_code=ftype,
                     display_size=None,
                     internal_size=isize,
@@ -773,7 +773,7 @@ class Cursor(object):
                 error = 2
                 break
 
-        errmsg = libpq_ffi.NULL
+        errmsg = ffi.NULL
         if error == 2:
             errmsg = 'error in PQputCopyData() call'
 
@@ -785,13 +785,13 @@ class Cursor(object):
         is_text = isinstance(self._copyfile, TextIOBase)
         pgconn = self._conn._pgconn
         while True:
-            buf = libpq_ffi.new('char **')
+            buf = ffi.new('char **')
             length = libpq.PQgetCopyData(pgconn, buf, 0)
 
             if length > 0:
-                if buf[0] == libpq_ffi.NULL:
+                if buf[0] == ffi.NULL:
                     return
-                value = libpq_ffi.buffer(buf[0], length)
+                value = ffi.buffer(buf[0], length)
                 if is_text:
                     value = typecasts.parse_unicode(value[:], length, self)
 
@@ -820,7 +820,7 @@ class Cursor(object):
 
             # PQgetvalue will return an empty string for null values,
             # so check with PQgetisnull if the value is really null
-            val = libpq_ffi.string(libpq.PQgetvalue(self._pgres, row_num, i))
+            val = ffi.string(libpq.PQgetvalue(self._pgres, row_num, i))
             if not val and libpq.PQgetisnull(self._pgres, row_num, i):
                 val = None
             else:
