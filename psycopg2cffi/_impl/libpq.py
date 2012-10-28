@@ -207,11 +207,12 @@ extern int lo_truncate(PGconn *conn, int fd, size_t len);
 ''')
 
 libpq = ffi.verify('''
-#include "postgres_ext.h"
+#include <postgres_ext.h>
 #include <libpq-fe.h>
         ''', 
         libraries=['pq'],
-        include_dirs=['/usr/include/postgresql/'])
+        include_dirs=['/usr/include/postgresql/'],
+        ext_package='psycopg2cffi')
 
 
 # copied from ctypes libpq.py

@@ -247,6 +247,7 @@ README = []
 with open('README.rst', 'r') as fh:
     README = fh.readlines()
 
+import psycopg2cffi._impl.libpq
 
 setup(
     name='psycopg2cffi',
@@ -279,4 +280,6 @@ setup(
     install_requires=[
         'cffi==0.4', # currenty trunk
         ],
+    ext_package='psycopg2cffi',
+    ext_modules=[psycopg2cffi._impl.libpq.ffi.verifier.get_extension()],
 )

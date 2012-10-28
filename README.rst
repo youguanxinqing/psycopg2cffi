@@ -7,10 +7,10 @@ The module is currently compatible with Psycopg 2.4.4.
 To use this package with Django or SQLAlchemy create a psycopg2.py file
 somewhere in your python path (e.g. the current working dir) and add::
 
-    from psycopg2ct import compat
+    from psycopg2cffi import compat
     compat.register()
 
-This will map psycopg2ct to psycopg2.
+This will map psycopg2cffi to psycopg2.
 
 This module is only tested with python 2.6+ and PyPy trunk (will be 2.0)
 
