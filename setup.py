@@ -252,10 +252,10 @@ import psycopg2cffi._impl.libpq
 setup(
     name='psycopg2cffi',
     author='Konstantin Lopuhin',
-    author_email='kostia.lopuhin@gmail.com',
+    author_email='konstantin.lopuhin@chtd.ru',
     license='LGPL',
-    url='http://github.com/lopuhin/psycopg2-ctypes',
-    version='%s (%s)' % (PSYCOPG_VERSION, ' '.join(version_flags)),
+    url='http://github.com/chtd/psycopg2cffi',
+    version='0.1',
     cmdclass={
         'build_py': build_py
     },
