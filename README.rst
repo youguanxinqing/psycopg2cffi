@@ -15,7 +15,9 @@ a ``psycopg2.py`` file with the following::
 
 This will map psycopg2cffi to psycopg2.
 
-This module is only tested with python 2.6+ and PyPy trunk (will be 2.0)
+This module is only tested with python 2.6+ and PyPy trunk (will be 2.0
+release, right now you can get a nighlty build for Linux or OS X from 
+http://buildbot.pypy.org/nightly/trunk/).
 
 This is a port of (Michael van Tellingen port 
 https://github.com/mvantellingen/psycopg2-ctypes 
