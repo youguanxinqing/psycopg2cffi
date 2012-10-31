@@ -6,8 +6,9 @@ need to install cffi from source::
 
     pip install -e https://bitbucket.org/cffi/cffi#egg=cffi
 
-To use this package with Django or SQLAlchemy create a psycopg2.py file
-somewhere in your python path (e.g. the current working dir) and add::
+To use this package with Django or SQLAlchemy create
+somewhere in your python path (e.g. the site-packages of your virtual env)
+a ``psycopg2.py`` file with the following::
 
     from psycopg2cffi import compat
     compat.register()
@@ -26,5 +27,4 @@ To run tests, install pytest and run them with::
 
     py.test psycopg2cffi
 
-Source code is hosted on github at https://github.com/chtd/psycopg2cffi.
 Submit issues to https://github.com/chtd/psycopg2cffi/issues 
