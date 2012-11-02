@@ -17,7 +17,6 @@ class Type(object):
         self.values = values
         self.caster = caster
         self.py_caster = py_caster
-        self.needs_length = getattr(caster, '_needs_length', False)
 
     def __eq__(self, other):
         return other in self.values
@@ -43,16 +42,6 @@ def register_type(type_obj, scope=None):
 
     for value in type_obj.values:
         typecasts[value] = type_obj
-
-
-def needs_length(fn):
-    """ Mark caster as needing length argument.
-    Most casters do not need it, and using this information we can 
-    avoid an expensive PQgetlength call.
-    Strangely enough, currently there are no casters that need length.
-    """
-    fn._needs_length = True
-    return fn
 
 
 def new_type(values, name, castobj):

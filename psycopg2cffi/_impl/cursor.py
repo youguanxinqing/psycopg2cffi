@@ -820,13 +820,13 @@ class Cursor(object):
 
             # PQgetvalue will return an empty string for null values,
             # so check with PQgetisnull if the value is really null
-            val = ffi.string(libpq.PQgetvalue(self._pgres, row_num, i))
+            length = libpq.PQgetlength(self._pgres, row_num, i)
+            val = ffi.buffer(libpq.PQgetvalue(self._pgres, row_num, i),
+                    length)[:]
             if not val and libpq.PQgetisnull(self._pgres, row_num, i):
                 val = None
             else:
                 caster = self._casts[i]
-                length = libpq.PQgetlength(self._pgres, row_num, i) \
-                        if caster.needs_length else None
                 val = typecasts.typecast(caster, val, length, self)
             row[i] = val
 
