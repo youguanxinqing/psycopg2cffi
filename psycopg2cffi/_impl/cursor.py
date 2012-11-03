@@ -550,9 +550,7 @@ class Cursor(object):
             rows = self.fetchmany(self.itersize)
             if not rows:
                 return
-            self._rownumber = 0
             for row in rows:
-                self._rownumber += 1
                 yield row
 
     @property

@@ -16,7 +16,7 @@ class CursorTests(unittest.TestCase):
     def tearDown(self):
         self.conn.close()
 
-    def _test(self):
+    def test(self):
         curs = self.conn.cursor()
         curs.itersize = 10
         curs.execute('create table inf_fetch_loop (id integer)')
