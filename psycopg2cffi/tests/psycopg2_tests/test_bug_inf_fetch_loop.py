@@ -17,6 +17,8 @@ class CursorTests(unittest.TestCase):
         self.conn.close()
 
     def test(self):
+        ''' Test for bug https://github.com/chtd/psycopg2cffi/issues/1
+        '''
         curs = self.conn.cursor()
         curs.itersize = 10
         curs.execute('create table inf_fetch_loop (id integer)')
@@ -25,9 +27,8 @@ class CursorTests(unittest.TestCase):
             curs.execute('insert into inf_fetch_loop values (%s)', (2 * i,))
 
         curs.execute('select * from inf_fetch_loop')
-        result = list(curs)
-        self.assertEqual(
-                result, 
-                [(2 * i,) for i in xrange(curs.itersize * 2)])
+        result = [(curs.rownumber, row) for row in curs]
+        self.assertEqual(result, [(1 + i % curs.itersize, (2 * i,)) 
+            for i in xrange(curs.itersize * 2)])
 
 

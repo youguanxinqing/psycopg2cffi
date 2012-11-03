@@ -550,8 +550,14 @@ class Cursor(object):
             rows = self.fetchmany(self.itersize)
             if not rows:
                 return
-            for row in rows:
-                yield row
+            real_rownumber = self._rownumber
+            try:
+                self._rownumber = 0
+                for row in rows:
+                    self._rownumber += 1
+                    yield row
+            finally:
+                self._rownumber = real_rownumber
 
     @property
     def lastrowid(self):
