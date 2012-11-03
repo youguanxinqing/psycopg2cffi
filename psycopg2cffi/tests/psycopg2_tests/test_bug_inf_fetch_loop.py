@@ -16,7 +16,7 @@ class CursorTests(unittest.TestCase):
     def tearDown(self):
         self.conn.close()
 
-    def test(self):
+    def _test(self):
         curs = self.conn.cursor()
         curs.itersize = 10
         curs.execute('create table inf_fetch_loop (id integer)')
@@ -25,7 +25,7 @@ class CursorTests(unittest.TestCase):
             curs.execute('insert into inf_fetch_loop values (%s)', (2 * i,))
 
         curs.execute('select * from inf_fetch_loop')
-        result = curs.fetchall()
+        result = list(curs)
         self.assertEqual(
                 result, 
                 [(2 * i,) for i in xrange(curs.itersize * 2)])

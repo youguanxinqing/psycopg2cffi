@@ -79,8 +79,8 @@ class Cursor(object):
 
         #: Read/write attribute specifying the number of rows to fetch from
         #: the backend at each network roundtrip during iteration on a named
-        #: cursor. The default is 2000
-        self.itersize = 100000
+        #: cursor. The default is 10000
+        self.itersize = 10000
 
         self.tzinfo_factory = tz.FixedOffsetTimezone
         self.row_factory = row_factory
