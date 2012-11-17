@@ -211,7 +211,13 @@ libpq = ffi.verify('''
 #include <libpq-fe.h>
         ''', 
         libraries=['pq'],
-        include_dirs=['/usr/include/postgresql/'],
+        library_dirs=[
+            '/usr/pgsql-9.1/lib/',
+            ],
+        include_dirs=[
+            '/usr/include/postgresql/', 
+            '/usr/pgsql-9.1/include/',
+            ],
         ext_package='psycopg2cffi')
 
 
