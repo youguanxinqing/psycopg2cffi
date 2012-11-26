@@ -1,12 +1,7 @@
 An implementation of the psycopg2 module using cffi.
 The module is currently compatible with Psycopg 2.4.4.
 
-In order to satisfy ``cffi==0.4`` requirement, you currently
-need to install cffi from source::
-
-    pip install -e hg+https://bitbucket.org/cffi/cffi#egg=cffi
-
-After that you can install ``psycopg2cffi`` from pypi::
+You can  install ``psycopg2cffi`` from pypi::
 
     pip install psycopg2cffi
 
@@ -23,9 +18,8 @@ a ``psycopg2.py`` file with the following::
 
 This will map psycopg2cffi to psycopg2.
 
-This module is only tested with python 2.6+ and PyPy trunk (will be 2.0
-release, right now you can get a nighlty build for Linux or OS X from 
-http://buildbot.pypy.org/nightly/trunk/).
+This module is only tested with python 2.6+ and PyPy 2.0 (and will 
+definityly not work on 1.9).
 
 This is a port of (Michael van Tellingen port 
 https://github.com/mvantellingen/psycopg2-ctypes 
@@ -38,3 +32,7 @@ To run tests, install pytest and run them with::
     py.test psycopg2cffi
 
 Submit issues to https://github.com/chtd/psycopg2cffi/issues 
+
+If you notice that ``psycopg2cffi`` under PyPy is noticably slower than 
+``psycopg2`` under CPython, submit this to the issues too - it should 
+not be the case.
