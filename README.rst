@@ -42,3 +42,6 @@ of Alex Gaynor's rpython port
 (https://bitbucket.org/alex_gaynor/pypy-postgresql/overview) of psycopg2 to
 python + ctypes) to cffi.
 
+The main motivation for a port was speed - the writeup with benchmarks
+is here: http://chtd.ru/blog/bystraya-rabota-s-postgres-pod-pypy/?lang=en
+
