@@ -708,9 +708,9 @@ class Connection(object):
         self._py_enc = _enc.encodings[self._encoding]
 
     def _get_equote(self):
-        ret = ffi.string(libpq.PQparameterStatus(
-            self._pgconn, 'standard_conforming_strings'))
-        return ret and ret == 'off'
+        ret = libpq.PQparameterStatus(
+            self._pgconn, 'standard_conforming_strings')
+        return ret and ffi.string(ret) == 'off'
 
     def _is_busy(self):
         with self._lock:
