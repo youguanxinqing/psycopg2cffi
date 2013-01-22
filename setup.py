@@ -261,7 +261,7 @@ setup(
     author_email='konstantin.lopuhin@chtd.ru',
     license='LGPL',
     url='http://github.com/chtd/psycopg2cffi',
-    version='0.1.3',
+    version='0.1.4',
     cmdclass={
         'build_py': build_py
     },
