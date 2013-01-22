@@ -17,14 +17,14 @@ It should be possible to make it work on Windows, but I did not even test it.
 This module is only tested with python 2.6+ and PyPy 2.0 (and will 
 definityly not work on PyPy 1.9).
 
-To use this package with Django or SQLAlchemy create
-somewhere in your python path (e.g. the site-packages of your virtual env)
-a ``psycopg2.py`` file with the following::
+To use this package with Django or SQLAlchemy invoke a compatability
+hook (for example, from ``settings.py`` in case of django, or 
+from a ``psycopg2.py`` file in site-packages of your virtual env)::
 
     from psycopg2cffi import compat
     compat.register()
 
-This will map ``psycopg2cffi`` to psycopg2.
+This will map ``psycopg2cffi`` to ``psycopg2``.
 
 To run tests, install ``pytest`` and run them with::
 
