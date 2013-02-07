@@ -64,10 +64,10 @@ class NotifiesTests(unittest.TestCase):
         script = ("""\
 import time
 time.sleep(%(sec)s)
-import psycopg2
-import psycopg2.extensions
-conn = psycopg2.connect(%(dsn)r)
-conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+import psycopg2cffi
+import psycopg2cffi.extensions
+conn = psycopg2cffi.connect(%(dsn)r)
+conn.set_isolation_level(psycopg2cffi.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 print conn.get_backend_pid()
 curs = conn.cursor()
 curs.execute("NOTIFY " %(name)r %(payload)r)
