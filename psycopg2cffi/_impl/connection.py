@@ -552,7 +552,7 @@ class Connection(object):
             # force it to ISO
             datestyle = ffi.string(
                     libpq.PQparameterStatus(self._pgconn, b'DateStyle'))
-            if not datestyle or not datestyle.startswith('ISO'):
+            if not datestyle or not datestyle.startswith(b'ISO'):
                 self.status = consts.STATUS_DATESTYLE
 
                 if libpq.PQsendQuery(self._pgconn, b"SET DATESTYLE TO 'ISO'"):

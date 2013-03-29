@@ -22,14 +22,14 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-# from __future__ import unicode_literals
+from __future__ import unicode_literals
 
 import os
 import sys
 import string
 from six.moves import cStringIO as StringIO
 from itertools import cycle
-from six.moves import zip as izip
+from six.moves import xrange, zip as izip
 
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, decorate_all_tests, skip_if_no_iobase
 import psycopg2cffi as psycopg2
@@ -148,7 +148,8 @@ class CopyTests(unittest.TestCase):
             about = abin.decode('latin1').replace('\\', '\\\\')
 
         else:
-            abin = bytes(range(32, 127) + range(160, 256)).decode('latin1')
+            abin = bytes(list(range(32, 127)) + list(range(160, 256)))\
+                    .decode('latin1')
             about = abin.replace('\\', '\\\\')
 
         curs = self.conn.cursor()
@@ -170,7 +171,8 @@ class CopyTests(unittest.TestCase):
             abin = ''.join(map(chr, range(32, 127) + range(160, 255)))
             about = abin.replace('\\', '\\\\')
         else:
-            abin = bytes(range(32, 127) + range(160, 255)).decode('latin1')
+            abin = bytes(list(range(32, 127)) + list(range(160, 255)))\
+                    .decode('latin1')
             about = abin.replace('\\', '\\\\').encode('latin1')
 
         curs = self.conn.cursor()
@@ -194,7 +196,8 @@ class CopyTests(unittest.TestCase):
             about = abin.replace('\\', '\\\\')
 
         else:
-            abin = bytes(range(32, 127) + range(160, 256)).decode('latin1')
+            abin = bytes(list(range(32, 127)) + list(range(160, 256)))\
+                    .decode('latin1')
             about = abin.replace('\\', '\\\\')
 
         import io

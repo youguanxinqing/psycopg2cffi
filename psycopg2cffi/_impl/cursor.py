@@ -424,10 +424,11 @@ class Cursor(object):
         else:
             columns_str = ''
 
-        query = "COPY %s%s FROM stdin WITH DELIMITER AS %s NULL AS %s" % (
-            table, columns_str,
-            util.quote_string(self._conn, sep),
-            util.quote_string(self._conn, null))
+        query = util.ascii_to_bytes(
+                "COPY %s%s FROM stdin WITH DELIMITER AS " % (
+                    table, columns_str)) + \
+                util.quote_string(self._conn, sep) + b' NULL AS ' + \
+                util.quote_string(self._conn, null)
 
         self._copysize = size
         self._copyfile = file
@@ -453,10 +454,11 @@ class Cursor(object):
         else:
             columns_str = ''
 
-        query = "COPY %s%s TO stdout WITH DELIMITER AS %s NULL AS %s" % (
-            table, columns_str,
-            util.quote_string(self._conn, sep),
-            util.quote_string(self._conn, null))
+        query = util.ascii_to_bytes(
+                "COPY %s%s TO stdout WITH DELIMITER AS " % (
+                    table, columns_str)) + \
+                util.quote_string(self._conn, sep) + b' NULL AS ' + \
+                util.quote_string(self._conn, null)
 
         self._copyfile = file
         try:

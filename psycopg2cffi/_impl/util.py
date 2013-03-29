@@ -4,7 +4,8 @@ import six
 
 from psycopg2cffi._impl import exceptions
 from psycopg2cffi._impl.libpq import libpq
-from psycopg2cffi._impl.adapters import QuotedString
+from psycopg2cffi._impl.adapters import QuotedString, ascii_to_bytes, \
+        bytes_to_ascii
 
 
 def pq_set_non_blocking(pgconn, arg, raise_exception=False):
@@ -140,22 +141,5 @@ def get_exception_for_sqlstate(code):
 
     # Fallback exception
     return exceptions.DatabaseError
-
-
-def ascii_to_bytes(s):
-    ''' Convert ascii string to bytes
-    '''
-    if isinstance(s, six.text_type):
-        return s.encode('ascii')
-    else:
-        assert isinstance(s, six.binary_type)
-        return s
-
-
-def bytes_to_ascii(b):
-    ''' Convert ascii bytestring to string
-    '''
-    assert isinstance(b, six.binary_type)
-    return b.decode('ascii')
 
 

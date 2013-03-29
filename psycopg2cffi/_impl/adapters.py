@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import datetime
 import decimal
 import math
@@ -12,6 +14,25 @@ from psycopg2cffi.tz import LOCAL as TZ_LOCAL
 
 adapters = {}
 
+
+def ascii_to_bytes(s):
+    ''' Convert ascii string to bytes
+    '''
+    if isinstance(s, six.text_type):
+        return s.encode('ascii')
+    else:
+        assert isinstance(s, six.binary_type)
+        return s
+
+
+def bytes_to_ascii(b):
+    ''' Convert ascii bytestring to string
+    '''
+    assert isinstance(b, six.binary_type)
+    return b.decode('ascii')
+
+
+# TODO - return bytes
 
 class _BaseAdapter(object):
     def __init__(self, wrapped_object):
@@ -45,7 +66,7 @@ class Binary(_BaseAdapter):
 
     def getquoted(self):
         if self._wrapped is None:
-            return 'NULL'
+            return b'NULL'
 
         to_length = ffi.new('size_t *')
         _wrapped = ffi.new('unsigned char[]', str(self._wrapped))
@@ -60,14 +81,14 @@ class Binary(_BaseAdapter):
         libpq.PQfreemem(data_pointer)
 
         if self._conn and self._conn._equote:
-            return r"E'%s'::bytea" % data
+            return b''.join([b"E'", data,  "'::bytea"])
 
-        return r"'%s'::bytea" % data
+        return b''.join([b"'", data,  "'::bytea"])
 
 
 class Boolean(_BaseAdapter):
     def getquoted(self):
-        return 'true' if self._wrapped else 'false'
+        return b'true' if self._wrapped else b'false'
 
 
 class DateTime(_BaseAdapter):
@@ -108,27 +129,27 @@ class Decimal(_BaseAdapter):
             # Prepend a space in front of negative numbers
             if value.startswith('-'):
                 value = ' ' + value
-            return value
-        return "'NaN'::numeric"
+            return ascii_to_bytes(value)
+        return b"'NaN'::numeric"
 
 
 class Float(ISQLQuote):
     def getquoted(self):
         n = float(self._wrapped)
         if math.isnan(n):
-            return "'NaN'::float"
+            return b"'NaN'::float"
         elif math.isinf(n):
             if n > 0:
-                return "'Infinity'::float"
+                return b"'Infinity'::float"
             else:
-                return "'-Infinity'::float"
+                return b"'-Infinity'::float"
         else:
             value = repr(self._wrapped)
 
             # Prepend a space in front of negative numbers
             if value.startswith('-'):
                 value = ' ' + value
-            return value
+            return ascii_to_bytes(value)
 
 
 class Int(_BaseAdapter):
@@ -138,7 +159,7 @@ class Int(_BaseAdapter):
         # Prepend a space in front of negative numbers
         if value.startswith('-'):
             value = ' ' + value
-        return value
+        return ascii_to_bytes(value)
 
 
 class List(_BaseAdapter):
@@ -149,13 +170,13 @@ class List(_BaseAdapter):
     def getquoted(self):
         length = len(self._wrapped)
         if length == 0:
-            return "'{}'"
+            return b"'{}'"
 
         quoted = [None] * length
         for i in xrange(length):
             obj = self._wrapped[i]
-            quoted[i] = str(_getquoted(obj, self._conn))
-        return "ARRAY[%s]" % ", ".join(quoted)
+            quoted[i] = _getquoted(obj, self._conn)
+        return b''.join([b'ARRAY[', b', '.join(quoted), b']'])
 
 
 class Long(_BaseAdapter):
@@ -165,7 +186,7 @@ class Long(_BaseAdapter):
         # Prepend a space in front of negative numbers
         if value.startswith('-'):
             value = ' ' + value
-        return value
+        return ascii_to_bytes(value)
 
 
 def Time(hour, minutes, seconds, tzinfo=None):
