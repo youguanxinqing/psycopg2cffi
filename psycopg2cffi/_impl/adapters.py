@@ -281,9 +281,8 @@ except NameError: pass # Python 3
 try: built_in_adapters[unicode] = QuotedString
 except NameError: pass # Python 3
 
-# TODO - think about it - how to handle long in python3?
 try: built_in_adapters[long] = Long
-except NameError: pass # Python 3
+except NameError: pass # Python 3 - Int handles all numbers fine
 
 
 for k, v in built_in_adapters.items():
