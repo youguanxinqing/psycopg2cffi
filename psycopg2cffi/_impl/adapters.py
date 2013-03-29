@@ -261,12 +261,9 @@ def _getquoted(param, conn):
 built_in_adapters = {
     bool: Boolean,
     str: QuotedString,
-    unicode: QuotedString,
     list: List,
     bytearray: Binary,
-    buffer: Binary,
     int: Int,
-    long: Long,
     float: Float,
     datetime.date: DateTime, # DateFromPY
     datetime.datetime: DateTime, # TimestampFromPy
@@ -275,11 +272,19 @@ built_in_adapters = {
     decimal.Decimal: Decimal,
 }
 
-try:
-    built_in_adapters[memoryview] = Binary
-except NameError:
-    # Python 2.6
-    pass
+try: built_in_adapters[memoryview] = Binary
+except NameError: pass # Python 2.6
 
-for k, v in built_in_adapters.iteritems():
+try: built_in_adapters[buffer] = Binary
+except NameError: pass # Python 3
+
+try: built_in_adapters[unicode] = QuotedString
+except NameError: pass # Python 3
+
+# TODO - think about it - how to handle long in python3?
+try: built_in_adapters[long] = Long
+except NameError: pass # Python 3
+
+
+for k, v in built_in_adapters.items():
     adapters[(k, ISQLQuote)] = v

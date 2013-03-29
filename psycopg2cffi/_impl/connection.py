@@ -23,7 +23,7 @@ _isolevels = {
     'default':         -1,
 }
 
-for k, v in _isolevels.items():
+for k, v in list(_isolevels.items()):
     _isolevels[v] = k
 
 del k, v
