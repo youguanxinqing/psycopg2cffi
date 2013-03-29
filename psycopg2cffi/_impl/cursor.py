@@ -861,6 +861,7 @@ class Cursor(object):
 
 def _combine_cmd_params(cmd, params, conn):
     """Combine the command string and params"""
+    # TODO
 
     # Return when no argument binding is required.  Note that this method is
     # not called from .execute() if `params` is None.

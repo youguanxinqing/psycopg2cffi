@@ -67,7 +67,7 @@ def parse_unknown(value, length, cursor):
 
 
 def parse_string(value, length, cursor):
-    return value
+    return value.decode(cursor.connection._py_enc)
 
 
 def parse_longinteger(value, length, cursor):

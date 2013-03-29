@@ -196,7 +196,7 @@ class Connection(object):
 
             if not pgres or libpq.PQresultStatus(pgres) != libpq.PGRES_TUPLES_OK:
                 raise exceptions.OperationalError("can't fetch %s" % name)
-            rv = ffi.string(libpq.PQgetvalue(pgres, 0, 0))
+            rv = util.bytes_to_ascii(ffi.string(libpq.PQgetvalue(pgres, 0, 0)))
             libpq.PQclear(pgres)
             return rv
 
@@ -213,10 +213,10 @@ class Connection(object):
 
         The string 'default' is accepted too.
         """
-        if isinstance(value, basestring) and value.lower() == 'default':
+        if isinstance(value, six.text_type) and value.lower() == 'default':
             value = 'default'
         else:
-            value = value and 'on' or 'off'
+            value = 'on' if value else 'off'
         self._set_guc(name, value)
 
     @property
@@ -252,9 +252,9 @@ class Connection(object):
                 if isolation_level < 1 or isolation_level > 4:
                     raise ValueError('isolation level must be between 1 and 4')
                 isolation_level = _isolevels[isolation_level]
-            elif isinstance(isolation_level, basestring):
+            elif isinstance(isolation_level, six.text_type):
                 if not isolation_level \
-                or isolation_level.lower() not in _isolevels:
+                        or isolation_level.lower() not in _isolevels:
                     raise ValueError("bad value for isolation level: '%s'" %
                         isolation_level)
             else:
@@ -288,7 +288,7 @@ class Connection(object):
         return libpq.PQbackendPID(self._pgconn)
 
     def get_parameter_status(self, parameter):
-        return util.ascii_from_bytes(ffi.string(libpq.PQparameterStatus(
+        return util.bytes_to_ascii(ffi.string(libpq.PQparameterStatus(
             self._pgconn, util.ascii_to_bytes(parameter))))
 
     def get_transaction_status(self):
@@ -591,7 +591,7 @@ class Connection(object):
         with self._lock:
             # If the current datestyle is not compatible (not ISO) then
             # force it to ISO
-            datestyle = util.ascii_from_bytes(ffi.string(
+            datestyle = util.bytes_to_ascii(ffi.string(
                     libpq.PQparameterStatus(self._pgconn, b'DateStyle')))
             if not datestyle or not datestyle.startswith('ISO'):
                 self.status = consts.STATUS_DATESTYLE

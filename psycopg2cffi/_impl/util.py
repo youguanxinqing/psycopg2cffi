@@ -152,7 +152,7 @@ def ascii_to_bytes(s):
         return s
 
 
-def ascii_from_bytes(b):
+def bytes_to_ascii(b):
     ''' Convert ascii bytestring to string
     '''
     assert isinstance(b, six.binary_type)
