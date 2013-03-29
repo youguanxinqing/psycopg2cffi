@@ -25,6 +25,8 @@ and classes untill a better place in the distribution is found.
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
+from __future__ import unicode_literals
+
 import os
 import sys
 import time

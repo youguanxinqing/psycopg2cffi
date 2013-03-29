@@ -1,6 +1,9 @@
+from __future__ import unicode_literals
+
 import threading
 import weakref
 from functools import wraps
+import six
 
 from psycopg2cffi._impl import consts
 from psycopg2cffi._impl import encodings as _enc
@@ -120,7 +123,7 @@ class Connection(object):
             self._connect_async()
 
     def _connect_sync(self):
-        self._pgconn = libpq.PQconnectdb(self.dsn)
+        self._pgconn = libpq.PQconnectdb(util.ascii_to_bytes(self.dsn))
         if not self._pgconn:
             raise exceptions.OperationalError('PQconnectdb() failed')
         elif libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
@@ -189,7 +192,7 @@ class Connection(object):
             if _green_callback:
                 pgres = self._execute_green(query)
             else:
-                pgres = libpq.PQexec(self._pgconn, query)
+                pgres = libpq.PQexec(self._pgconn, util.ascii_to_bytes(query))
 
             if not pgres or libpq.PQresultStatus(pgres) != libpq.PGRES_TUPLES_OK:
                 raise exceptions.OperationalError("can't fetch %s" % name)
@@ -201,7 +204,9 @@ class Connection(object):
         """Set the value of a configuration parameter."""
         if value.lower() != 'default':
             value = util.quote_string(self, value)
-        self._execute_command('SET %s TO %s' % (name, value))
+        else:
+            value = b'default'
+        self._execute_command(util.ascii_to_bytes('SET %s TO ' % name) + value)
 
     def _set_guc_onoff(self, name, value):
         """Set the value of a configuration parameter to a boolean.
@@ -283,8 +288,8 @@ class Connection(object):
         return libpq.PQbackendPID(self._pgconn)
 
     def get_parameter_status(self, parameter):
-        return ffi.string(
-                libpq.PQparameterStatus(self._pgconn, parameter))
+        return util.ascii_from_bytes(ffi.string(libpq.PQparameterStatus(
+            self._pgconn, util.ascii_to_bytes(parameter))))
 
     def get_transaction_status(self):
         return libpq.PQtransactionStatus(self._pgconn)
@@ -546,11 +551,11 @@ class Connection(object):
             # If the current datestyle is not compatible (not ISO) then
             # force it to ISO
             datestyle = ffi.string(
-                    libpq.PQparameterStatus(self._pgconn, 'DateStyle'))
+                    libpq.PQparameterStatus(self._pgconn, b'DateStyle'))
             if not datestyle or not datestyle.startswith('ISO'):
                 self.status = consts.STATUS_DATESTYLE
 
-                if libpq.PQsendQuery(self._pgconn, "SET DATESTYLE TO 'ISO'"):
+                if libpq.PQsendQuery(self._pgconn, b"SET DATESTYLE TO 'ISO'"):
                     self._async_status = consts.ASYNC_WRITE
                     return consts.POLL_WRITE
                 else:
@@ -586,8 +591,8 @@ class Connection(object):
         with self._lock:
             # If the current datestyle is not compatible (not ISO) then
             # force it to ISO
-            datestyle = ffi.string(
-                    libpq.PQparameterStatus(self._pgconn, 'DateStyle'))
+            datestyle = util.ascii_from_bytes(ffi.string(
+                    libpq.PQparameterStatus(self._pgconn, b'DateStyle')))
             if not datestyle or not datestyle.startswith('ISO'):
                 self.status = consts.STATUS_DATESTYLE
                 self._set_guc('datestyle', 'ISO')
@@ -604,7 +609,7 @@ class Connection(object):
             if _green_callback:
                 pgres = self._execute_green(command)
             else:
-                pgres = libpq.PQexec(self._pgconn, command)
+                pgres = libpq.PQexec(self._pgconn, util.ascii_to_bytes(command))
 
             if not pgres:
                 raise self._create_exception()
@@ -616,7 +621,9 @@ class Connection(object):
                 libpq.PQclear(pgres)
 
     def _execute_tpc_command(self, command, xid):
-        cmd = '%s %s' % (command, util.quote_string(self, str(xid)))
+        cmd = b' '.join([
+            util.ascii_to_bytes(command), 
+            util.quote_string(self, str(xid))])
         self._execute_command(cmd)
         self._mark += 1
 
@@ -628,7 +635,7 @@ class Connection(object):
 
         self._async_cursor = True
 
-        if not libpq.PQsendQuery(self._pgconn, query):
+        if not libpq.PQsendQuery(self._pgconn, util.ascii_to_bytes(query)):
             self._async_cursor = None
             return
 
@@ -709,7 +716,7 @@ class Connection(object):
 
     def _get_equote(self):
         ret = libpq.PQparameterStatus(
-            self._pgconn, 'standard_conforming_strings')
+            self._pgconn, b'standard_conforming_strings')
         return ret and ffi.string(ret) == 'off'
 
     def _is_busy(self):
@@ -778,7 +785,7 @@ class Connection(object):
     def _have_wait_callback(self):
         return bool(_green_callback)
 
-
+  
 def _connect(dsn, connection_factory=None, async=False):
     if connection_factory is None:
         connection_factory = Connection

@@ -10,6 +10,9 @@ This module holds all the extensions to the DBAPI-2.0 provided by psycopg.
 
 .. _PEP-246: http://www.python.org/peps/pep-0246.html
 """
+
+from __future__ import unicode_literals
+
 import sys as _sys
 
 from psycopg2cffi._impl import connection as _connection

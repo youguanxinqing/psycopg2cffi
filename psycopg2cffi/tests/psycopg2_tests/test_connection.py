@@ -22,7 +22,7 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-# from __future__ import unicode_literals
+from __future__ import unicode_literals
 
 import os
 import time
@@ -151,7 +151,7 @@ class ConnectionTests(unittest.TestCase):
         cur = self.conn.cursor()
         extensions.register_type(extensions.UNICODE, cur)
         cur.execute("select 'foo'::text;")
-        self.assertEqual(cur.fetchone()[0], u'foo')
+        self.assertEqual(cur.fetchone()[0], 'foo')
 
     def test_connect_nonnormal_envvar(self):
         # We must perform encoding normalization at connection time
@@ -703,7 +703,7 @@ class ConnectionTwoPhaseTests(unittest.TestCase):
 
     def test_xid_unicode(self):
         cnn = self.connect()
-        x1 = cnn.xid(10, u'uni', u'code')
+        x1 = cnn.xid(10, 'uni', 'code')
         cnn.tpc_begin(x1)
         cnn.tpc_prepare()
         cnn.reset()
@@ -717,9 +717,11 @@ class ConnectionTwoPhaseTests(unittest.TestCase):
         # We don't expect people shooting snowmen as transaction ids,
         # so if something explodes in an encode error I don't mind.
         # Let's just check uniconde is accepted as type.
+
+        assert isinstance('a', unicode) # we are using unicode_literals
         cnn = self.connect()
         cnn.set_client_encoding('utf8')
-        cnn.tpc_begin(u"transaction-id")
+        cnn.tpc_begin("transaction-id")
         cnn.tpc_prepare()
         cnn.reset()
 

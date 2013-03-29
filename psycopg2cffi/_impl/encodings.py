@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 encodings = {
     'ABC': 'cp1258',
     'ALT': 'cp866',

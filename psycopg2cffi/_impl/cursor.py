@@ -1,7 +1,11 @@
+from __future__ import unicode_literals
+
 from collections import namedtuple
 from functools import wraps
 from io import TextIOBase
 import weakref
+import six
+from six.moves import xrange
 
 from psycopg2cffi import tz
 from psycopg2cffi._impl import consts
@@ -220,7 +224,7 @@ class Cursor(object):
                 raise ProgrammingError(
                     "can't use a named cursor outside of transactions")
 
-        if isinstance(query, unicode):
+        if isinstance(query, six.text_type):
             query = query.encode(self._conn._py_enc)
 
         if parameters is not None:
@@ -232,10 +236,12 @@ class Cursor(object):
         self._clear_pgres()
 
         if self._name:
-            self._query = 'DECLARE "%s" CURSOR %s HOLD FOR %s' % (
-                self._name,
-                self._withhold and "WITH" or "WITHOUT", # youuuuu
-                self._query)
+            self._query = \
+                util.ascii_to_bytes(
+                        'DECLARE "%s" CURSOR %s HOLD FOR ' % (
+                            self._name,
+                            "WITH" if self._withhold else "WITHOUT")) \
+                + self._query
 
         self._pq_execute(self._query, conn._async)
 

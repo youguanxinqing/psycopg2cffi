@@ -29,6 +29,8 @@ This module contains symbolic names for all PostgreSQL error codes.
 #   http://www.postgresql.org/docs/8.4/static/errcodes-appendix.html
 #
 
+from __future__ import unicode_literals
+
 def lookup(code, _cache={}):
     """Lookup an error code or class code and return its symbolic name.
 

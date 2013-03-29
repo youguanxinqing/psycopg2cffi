@@ -1,6 +1,7 @@
 import datetime
 import decimal
 import math
+import six
 
 from psycopg2cffi._impl.libpq import libpq, ffi
 from psycopg2cffi._impl.encodings import encodings
@@ -200,26 +201,28 @@ class QuotedString(_BaseAdapter):
     def getquoted(self):
 
         obj = self._wrapped
-        if isinstance(self._wrapped, unicode):
+        if isinstance(obj, six.text_type):
             encoding = encodings[self.encoding]
             obj = obj.encode(encoding)
-        string = str(obj)
+        else:
+            assert isinstance(obj, six.binary_type)
+        string = obj
         length = len(string)
 
+        to_length = (length * 2) + 1
+        to = ffi.new('char []', to_length)
+
         if not self._conn:
-            to = ffi.new('char []', ((length * 2) + 1))
             libpq.PQescapeString(to, string, length)
-            return "'%s'" % to[0]
+            return b''.join([b"'", ffi.string(to), b"'"])
 
         if PG_VERSION < 0x090000:
-            to = ffi.new('char []', ((length * 2) + 1))
             err = ffi.new('int *')
             libpq.PQescapeStringConn(
                 self._conn._pgconn, to, string, length, err)
-
             if self._conn and self._conn._equote:
-                return "E'%s'" % ffi.string(to)
-            return "'%s'" % ffi.string(to)
+                return b''.join([b"E'", ffi.string(to), b"'"])
+            return b''.join([b"'", ffi.string(to), b"'"])
 
         data_pointer = libpq.PQescapeLiteral(
             self._conn._pgconn, string, length)
