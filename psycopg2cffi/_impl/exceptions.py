@@ -1,3 +1,9 @@
+try:
+    StandardError = StandardError
+except NameError:
+    StandardError = Exception
+
+
 class OperationError(Exception):
     pass
 
