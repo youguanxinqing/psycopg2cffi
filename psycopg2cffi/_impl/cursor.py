@@ -953,6 +953,8 @@ _s_ord = ord(b's')
 
 def _check_format_char(format_char_ord, pos):
     """Raise an exception when the format_char is unsupported"""
+    if not six.PY3:
+        format_char_ord = ord(format_char_ord)
     if format_char_ord != _s_ord:
         raise ValueError(
             "unsupported format character 0x%x at index %d" %
