@@ -663,7 +663,8 @@ class Cursor(object):
         if not async:
             with self._conn._lock:
                 if not self._conn._have_wait_callback():
-                    self._pgres = libpq.PQexec(pgconn, query)
+                    self._pgres = libpq.PQexec(
+                            pgconn, util.ascii_to_bytes(query))
                 else:
                     self._pgres = self._conn._execute_green(query)
                 if not self._pgres:

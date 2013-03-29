@@ -145,7 +145,7 @@ class Connection(object):
         of self._setup().
 
         """
-        self._pgconn = libpq.PQconnectStart(self.dsn)
+        self._pgconn = libpq.PQconnectStart(util.ascii_to_bytes(self.dsn))
         if not self._pgconn:
             raise exceptions.OperationalError('PQconnectStart() failed')
         elif libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
