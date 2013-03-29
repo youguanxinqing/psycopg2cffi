@@ -4,6 +4,7 @@ import datetime
 import decimal
 import math
 from time import localtime
+import six
 
 from psycopg2cffi._impl.libpq import libpq, ffi
 
@@ -70,8 +71,12 @@ def parse_string(value, length, cursor):
     return value.decode(cursor.connection._py_enc)
 
 
-def parse_longinteger(value, length, cursor):
-    return long(value)
+if six.PY3:
+    def parse_longinteger(value, length, cursor):
+        return int(value)
+else:
+    def parse_longinteger(value, length, cursor):
+        return long(value)
 
 
 def parse_integer(value, length, cursor):
