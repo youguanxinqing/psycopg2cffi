@@ -24,8 +24,8 @@
 
 from testutils import unittest
 
-import psycopg2
-from psycopg2 import extensions
+import psycopg2cffi as psycopg2
+from psycopg2cffi import extensions
 from testconfig import dsn
 from testutils import script_to_py3
 
