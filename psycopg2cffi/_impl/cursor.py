@@ -862,34 +862,34 @@ class Cursor(object):
 
 def _combine_cmd_params(cmd, params, conn):
     """Combine the command string and params"""
-    # TODO
+
+    if isinstance(cmd, six.text_type):
+        cmd = cmd.encode(conn._py_enc)
 
     # Return when no argument binding is required.  Note that this method is
     # not called from .execute() if `params` is None.
-    if '%' not in cmd:
+    if b'%' not in cmd:
         return cmd
 
     idx = 0
+    next_start = 0
     param_num = 0
+    n_arg_values = 0
     arg_values = None
     named_args_format = None
+    parts = []
 
-    def check_format_char(format_char, pos):
-        """Raise an exception when the format_char is unsupported"""
-        if format_char not in 's ':
-            raise ValueError(
-                "unsupported format character '%s' (0x%x) at index %d" %
-                (format_char, ord(format_char), pos))
 
     cmd_length = len(cmd)
     while idx < cmd_length:
 
         # Escape
-        if cmd[idx] == '%' and cmd[idx + 1] == '%':
+        if cmd[idx:idx+2] == b'%%':
+            parts.append(b'%')
             idx += 1
 
         # Named parameters
-        elif cmd[idx] == '%' and cmd[idx + 1] == '(':
+        elif cmd[idx:idx+2] == b'%(':
 
             # Validate that we don't mix formats
             if named_args_format is False:
@@ -898,8 +898,8 @@ def _combine_cmd_params(cmd, params, conn):
                 named_args_format = True
 
             # Check for incomplate placeholder
-            max_lookahead = cmd.find('%', idx + 2)
-            end = cmd.find(')', idx + 2, max_lookahead)
+            max_lookahead = cmd.find(b'%', idx + 2)
+            end = cmd.find(b')', idx + 2, max_lookahead)
             if end < 0:
                 raise ProgrammingError(
                     "incomplete placeholder: '%(' without ')'")
@@ -909,11 +909,15 @@ def _combine_cmd_params(cmd, params, conn):
                 arg_values = {}
             if key not in arg_values:
                 arg_values[key] = _getquoted(params[key], conn)
+            parts.append(cmd[next_start:idx])
+            parts.append(arg_values[key])
+            n_arg_values += 1
+            next_start = end + 2
 
-            check_format_char(cmd[end + 1], idx)
+            _check_format_char(cmd[end + 1], idx)
 
         # Indexed parameters
-        elif cmd[idx] == '%':
+        elif cmd[idx:idx+1] == b'%':
 
             # Validate that we don't mix formats
             if named_args_format is True:
@@ -921,26 +925,36 @@ def _combine_cmd_params(cmd, params, conn):
             elif named_args_format is None:
                 named_args_format = False
 
-            check_format_char(cmd[idx + 1], idx)
-
-            if arg_values is None:
-                arg_values = []
+            _check_format_char(cmd[idx + 1], idx)
 
             value = _getquoted(params[param_num], conn)
-            arg_values.append(value)
+            n_arg_values += 1
+            parts.append(cmd[next_start:idx])
+            parts.append(value)
+            next_start = idx + 2
 
             param_num += 1
             idx += 1
 
         idx += 1
 
+    parts.append(cmd[next_start:cmd_length])
+
     if named_args_format is False:
-        if len(arg_values) != len(params):
+        if n_arg_values != len(params):
             raise TypeError(
                 "not all arguments converted during string formatting")
-        arg_values = tuple(arg_values)
 
-    if not arg_values:
-        return cmd % tuple()  # Required to unescape % chars
-    return cmd % arg_values
+    return b''.join(parts)
+
+
+_s_ord = ord(b's')
+
+def _check_format_char(format_char_ord, pos):
+    """Raise an exception when the format_char is unsupported"""
+    if format_char_ord != _s_ord:
+        raise ValueError(
+            "unsupported format character 0x%x at index %d" %
+            (format_char_ord, pos))
+
 
