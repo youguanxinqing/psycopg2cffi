@@ -22,16 +22,19 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
+from __future__ import unicode_literals
+
 import os
 import sys
 import string
-from testutils import unittest, decorate_all_tests, skip_if_no_iobase
-from cStringIO import StringIO
-from itertools import cycle, izip
+from six.moves import cStringIO as StringIO
+from itertools import cycle
+from six.moves import zip as izip
 
-import psycopg2
-import psycopg2.extensions
-from testconfig import dsn, green
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, decorate_all_tests, skip_if_no_iobase
+import psycopg2cffi as psycopg2
+from psycopg2cffi import extensions
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn, green
 
 def skip_if_green(f):
     def skip_if_green_(self):
@@ -200,8 +203,7 @@ class CopyTests(unittest.TestCase):
         f.seek(0)
 
         curs = self.conn.cursor()
-        psycopg2.extensions.register_type(
-            psycopg2.extensions.UNICODE, curs)
+        extensions.register_type(extensions.UNICODE, curs)
 
         curs.copy_expert('COPY tcopy (data) FROM STDIN', f)
         curs.execute("select data from tcopy;")

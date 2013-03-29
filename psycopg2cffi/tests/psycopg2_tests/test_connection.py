@@ -27,13 +27,14 @@ from __future__ import unicode_literals
 import os
 import time
 import threading
-from testutils import unittest, decorate_all_tests
-from testutils import skip_before_postgres, skip_after_postgres
 from operator import attrgetter
 
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        decorate_all_tests, skip_before_postgres, skip_after_postgres
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extensions
-from testconfig import dsn, dbname
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn, dbname
+
 
 class ConnectionTests(unittest.TestCase):
 
@@ -734,7 +735,7 @@ class ConnectionTwoPhaseTests(unittest.TestCase):
         cnn.tpc_prepare()
         self.assertRaises(psycopg2.ProgrammingError, cnn.cancel)
 
-from testutils import skip_if_tpc_disabled
+from psycopg2cffi.tests.psycopg2_tests.testutils import skip_if_tpc_disabled
 decorate_all_tests(ConnectionTwoPhaseTests, skip_if_tpc_disabled)
 
 
