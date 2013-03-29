@@ -36,7 +36,7 @@ try:
 except:
     logging = None
 
-import psycopg2cffi
+import psycopg2cffi as psycopg2
 from psycopg2cffi import extensions as _ext
 from psycopg2cffi.extensions import cursor as _cursor
 from psycopg2cffi.extensions import connection as _connection
@@ -272,7 +272,7 @@ class NamedTupleCursor(_cursor):
     their elements can be accessed both as regular numeric items as well as
     attributes.
 
-        >>> nt_cur = conn.cursor(cursor_factory=psycopg2cffi.extras.NamedTupleCursor)
+        >>> nt_cur = conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
         >>> rec = nt_cur.fetchone()
         >>> rec
         Record(id=1, num=100, data="abc'def")
@@ -553,7 +553,7 @@ def wait_select(conn):
     """Wait until a connection or cursor has data available.
 
     The function is an example of a wait callback to be registered with
-    `~psycopg2cffi.extensions.set_wait_callback()`. This function uses `!select()`
+    `~psycopg2.extensions.set_wait_callback()`. This function uses `!select()`
     to wait for data available.
     """
     while 1:
@@ -647,7 +647,7 @@ class HstoreAdapter(object):
         start = 0
         for m in self._re_hstore.finditer(s):
             if m is None or m.start() != start:
-                raise psycopg2cffi.InterfaceError(
+                raise psycopg2.InterfaceError(
                     "error parsing hstore pair at char %d" % start)
             k = _bsdec.sub(r'\1', m.group(1))
             v = m.group(2)
@@ -658,7 +658,7 @@ class HstoreAdapter(object):
             start = m.end()
 
         if start < len(s):
-            raise psycopg2cffi.InterfaceError(
+            raise psycopg2.InterfaceError(
                 "error parsing hstore: unparsed data after char %d" % start)
 
         return rv
@@ -739,7 +739,7 @@ def register_hstore(conn_or_curs, globally=False, unicode=False,
 
     The |hstore| contrib module must be already installed in the database
     (executing the ``hstore.sql`` script in your ``contrib`` directory).
-    Raise `~psycopg2cffi.ProgrammingError` if the type is not found.
+    Raise `~psycopg2.ProgrammingError` if the type is not found.
 
     .. versionchanged:: 2.4
         added the *oid* parameter. If not specified, the typecaster is
@@ -753,7 +753,7 @@ def register_hstore(conn_or_curs, globally=False, unicode=False,
     if oid is None:
         oid = HstoreAdapter.get_oids(conn_or_curs)
         if oid is None or not oid[0]:
-            raise psycopg2cffi.ProgrammingError(
+            raise psycopg2.ProgrammingError(
                 "hstore type not found in the database. "
                 "please install it from your 'contrib/hstore.sql' file")
         else:
@@ -840,7 +840,7 @@ class CompositeCaster(object):
 
         tokens = self.tokenize(s)
         if len(tokens) != len(self.atttypes):
-            raise psycopg2cffi.DataError(
+            raise psycopg2.DataError(
                 "expecting %d components for the type %s, %d found instead" %
                 (len(self.atttypes), self.name, len(tokens)))
 
@@ -861,7 +861,7 @@ class CompositeCaster(object):
         rv = []
         for m in self._re_tokenize.finditer(s):
             if m is None:
-                raise psycopg2cffi.InterfaceError("can't parse type: %r", s)
+                raise psycopg2.InterfaceError("can't parse type: %r", s)
             if m.group(1):
                 rv.append(None)
             elif m.group(2):
@@ -926,7 +926,7 @@ ORDER BY attnum;
             conn.rollback()
 
         if not recs:
-            raise psycopg2cffi.ProgrammingError(
+            raise psycopg2.ProgrammingError(
                 "PostgreSQL type '%s' not found" % name)
 
         type_oid = recs[0][0]
