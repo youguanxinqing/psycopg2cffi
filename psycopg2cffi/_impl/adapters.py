@@ -40,12 +40,21 @@ class _BaseAdapter(object):
         self._wrapped = wrapped_object
         self._conn = None
 
-    def __str__(self):
-        return self.getquoted()
+    if six.PY3:
+        def __bytes__(self):
+            return self.getquoted()
+        def __str__(self): # huh?
+            return bytes_to_ascii(self.getquoted())
+    else:
+        def __str__(self):
+            return self.getquoted()
 
     @property
     def adapted(self):
         return self._wrapped
+
+    def getquoted(self):
+        raise NotImplementedError
 
 
 class ISQLQuote(_BaseAdapter):
