@@ -144,7 +144,7 @@ class CopyTests(unittest.TestCase):
         self._create_temp_table()  # the above call closed the xn
 
         if sys.version_info[0] < 3:
-            abin = ''.join(map(chr, range(32, 127) + range(160, 256)))
+            abin = b''.join(map(chr, range(32, 127) + range(160, 256)))
             about = abin.decode('latin1').replace('\\', '\\\\')
 
         else:
@@ -168,12 +168,12 @@ class CopyTests(unittest.TestCase):
         self._create_temp_table()  # the above call closed the xn
 
         if sys.version_info[0] < 3:
-            abin = ''.join(map(chr, range(32, 127) + range(160, 255)))
-            about = abin.replace('\\', '\\\\')
+            abin = b''.join(map(chr, range(32, 127) + range(160, 255)))
+            about = abin.replace(b'\\', b'\\\\')
         else:
             abin = bytes(list(range(32, 127)) + list(range(160, 255)))\
                     .decode('latin1')
-            about = abin.replace('\\', '\\\\').encode('latin1')
+            about = abin.replace(b'\\', b'\\\\').encode('latin1')
 
         curs = self.conn.cursor()
         curs.execute('insert into tcopy values (%s, %s)',
@@ -191,7 +191,7 @@ class CopyTests(unittest.TestCase):
         self._create_temp_table()  # the above call closed the xn
 
         if sys.version_info[0] < 3:
-            abin = ''.join(map(chr, range(32, 127) + range(160, 256)))
+            abin = b''.join(map(chr, range(32, 127) + range(160, 256)))
             abin = abin.decode('latin1')
             about = abin.replace('\\', '\\\\')
 

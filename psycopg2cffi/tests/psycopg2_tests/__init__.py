@@ -43,7 +43,7 @@ from psycopg2cffi.tests.psycopg2_tests import (
         #test_module,
         #test_notify,
         #test_psycopg2_dbapi20,
-        #test_quote,
+        test_quote,
         #test_transaction,
         test_types_basic,
         test_types_extras,
