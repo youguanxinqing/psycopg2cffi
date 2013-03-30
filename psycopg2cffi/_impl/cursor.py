@@ -402,7 +402,7 @@ class Cursor(object):
         This is not part of the dbapi 2 standard, but a psycopg2 extension.
 
         """
-        if isinstance(query, unicode):
+        if isinstance(query, six.text_type):
             query = query.encode(self._conn._py_enc)
 
         return _combine_cmd_params(query, vars, self._conn)

@@ -617,7 +617,7 @@ class HstoreAdapter(object):
 
     getquoted = _getquoted_9
 
-    _re_hstore = regex.compile(r"""
+    _re_hstore = regex.compile(br"""
         # hstore key:
         # a string of normal or escaped chars
         "((?: [^"\\] | \\. )*)"
@@ -848,13 +848,13 @@ class CompositeCaster(object):
             for oid, token in zip(self.atttypes, tokens) ]
         return self._ctor(*attrs)
 
-    _re_tokenize = regex.compile(r"""
+    _re_tokenize = regex.compile(br"""
   \(? ([,\)])                       # an empty token, representing NULL
 | \(? " ((?: [^"] | "")*) " [,)]    # or a quoted string
 | \(? ([^",\)]+) [,\)]              # or an unquoted string
     """, regex.VERBOSE)
 
-    _re_undouble = regex.compile(r'(["\\])\1')
+    _re_undouble = regex.compile(br'(["\\])\1')
 
     @classmethod
     def tokenize(self, s):

@@ -22,13 +22,17 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-import threading
-from testutils import unittest, skip_before_postgres
+from __future__ import unicode_literals
 
-import psycopg2
-from psycopg2.extensions import (
+import threading
+
+import psycopg2cffi as psycopg2
+from psycopg2cffi.extensions import (
     ISOLATION_LEVEL_SERIALIZABLE, STATUS_BEGIN, STATUS_READY)
-from testconfig import dsn
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        skip_before_postgres
+
 
 class TransactionTests(unittest.TestCase):
 
@@ -145,7 +149,7 @@ class DeadlockSerializationTests(unittest.TestCase):
                 step1.set()
                 step2.wait()
                 curs.execute("LOCK table2 IN ACCESS EXCLUSIVE MODE")
-            except psycopg2.DatabaseError, exc:
+            except psycopg2.DatabaseError as exc:
                 self.thread1_error = exc
                 step1.set()
             conn.close()
@@ -157,7 +161,7 @@ class DeadlockSerializationTests(unittest.TestCase):
                 curs.execute("LOCK table2 IN ACCESS EXCLUSIVE MODE")
                 step2.set()
                 curs.execute("LOCK table1 IN ACCESS EXCLUSIVE MODE")
-            except psycopg2.DatabaseError, exc:
+            except psycopg2.DatabaseError as exc:
                 self.thread2_error = exc
                 step2.set()
             conn.close()
@@ -193,7 +197,7 @@ class DeadlockSerializationTests(unittest.TestCase):
                 step2.wait()
                 curs.execute("UPDATE table1 SET name='task1' WHERE id = 1")
                 conn.commit()
-            except psycopg2.DatabaseError, exc:
+            except psycopg2.DatabaseError as exc:
                 self.thread1_error = exc
                 step1.set()
             conn.close()
@@ -204,7 +208,7 @@ class DeadlockSerializationTests(unittest.TestCase):
                 step1.wait()
                 curs.execute("UPDATE table1 SET name='task2' WHERE id = 1")
                 conn.commit()
-            except psycopg2.DatabaseError, exc:
+            except psycopg2.DatabaseError as exc:
                 self.thread2_error = exc
             step2.set()
             conn.close()
