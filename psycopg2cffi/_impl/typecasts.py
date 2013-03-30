@@ -94,12 +94,12 @@ def parse_decimal(value, length, cursor):
 def parse_binary(value, length, cursor):
     to_length = ffi.new('size_t *')
     s = libpq.PQunescapeBytea(
-            ffi.new('unsigned char[]', str(value)), to_length)
+            ffi.new('unsigned char[]', value), to_length)
     try:
-        res = buffer(ffi.buffer(s, to_length[0])[:])
+        res = ffi.buffer(s, to_length[0])[:]
     finally:
         libpq.PQfreemem(s)
-    return res
+    return memoryview(res) if six.PY3 else buffer(res)
 
 
 def parse_boolean(value, length, cursor):
@@ -131,23 +131,24 @@ class parse_array(object):
 
     def __call__(self, value, length, cursor):
         s = value
-        assert s[0] == "{" and s[-1] == "}"
+        assert s[0] == ord(b"{") and s[-1] == ord(b"}")
         i = 1
         array = []
         stack = [array]
         value_length = len(s) - 1
         while i < value_length:
-            if s[i] == '{':
+            si = s[i:i+1]
+            if si == b'{':
                 sub_array = []
                 array.append(sub_array)
                 stack.append(sub_array)
                 array = sub_array
                 i += 1
-            elif s[i] == '}':
+            elif si == b'}':
                 stack.pop()
                 array = stack[-1]
                 i += 1
-            elif s[i] in ', ':
+            elif si in b', ':
                 i += 1
             else:
                 # Number of quotes, this will always be 0 or 2 (int vs str)
@@ -158,23 +159,24 @@ class parse_array(object):
 
                 buf = []
                 while i < value_length:
+                    si = s[i:i+1]
                     if not escape_char:
-                        if s[i] == '"':
+                        if si == b'"':
                             quotes += 1
-                        elif s[i] == '\\':
+                        elif si == b'\\':
                             escape_char = True
-                        elif quotes % 2 == 0 and (s[i] == '}' or s[i] == ','):
+                        elif quotes % 2 == 0 and (si == b'}' or si == b','):
                             break
                         else:
-                            buf.append(s[i])
+                            buf.append(si)
                     else:
                         escape_char = False
-                        buf.append(s[i])
+                        buf.append(si)
 
                     i += 1
 
-                str_buf = ''.join(buf)
-                if len(str_buf) == 4 and str_buf.lower() == 'null':
+                str_buf = b''.join(buf)
+                if len(str_buf) == 4 and str_buf.lower() == b'null':
                     val = typecast(self._caster, None, 0, cursor)
                 else:
                     val = typecast(self._caster, str_buf, len(str_buf), cursor)

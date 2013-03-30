@@ -4,6 +4,7 @@ import datetime
 import decimal
 import math
 import six
+from six.moves import xrange
 
 from psycopg2cffi._impl.libpq import libpq, ffi
 from psycopg2cffi._impl.encodings import encodings
@@ -54,7 +55,7 @@ class ISQLQuote(_BaseAdapter):
 
 class AsIs(_BaseAdapter):
     def getquoted(self):
-        return str(self._wrapped)
+        return ascii_to_bytes(self._wrapped)
 
 
 class Binary(_BaseAdapter):
@@ -69,7 +70,7 @@ class Binary(_BaseAdapter):
             return b'NULL'
 
         to_length = ffi.new('size_t *')
-        _wrapped = ffi.new('unsigned char[]', str(self._wrapped))
+        _wrapped = ffi.new('unsigned char[]', self._wrapped)
         if self._conn:
             data_pointer = libpq.PQescapeByteaConn(
                 self._conn._pgconn, _wrapped, len(self._wrapped), to_length)
@@ -81,9 +82,9 @@ class Binary(_BaseAdapter):
         libpq.PQfreemem(data_pointer)
 
         if self._conn and self._conn._equote:
-            return b''.join([b"E'", data,  "'::bytea"])
+            return b''.join([b"E'", data,  b"'::bytea"])
 
-        return b''.join([b"'", data,  "'::bytea"])
+        return b''.join([b"'", data,  b"'::bytea"])
 
 
 class Boolean(_BaseAdapter):
@@ -307,6 +308,9 @@ except NameError: pass # Python 3
 
 try: built_in_adapters[long] = Long
 except NameError: pass # Python 3 - Int handles all numbers fine
+
+if six.PY3:
+    built_in_adapters[bytes] = Binary
 
 
 for k, v in built_in_adapters.items():
