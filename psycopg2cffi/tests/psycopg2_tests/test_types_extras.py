@@ -29,7 +29,6 @@ from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
 
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extras
-from psycopg2cffi.extensions import b
 
 from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 
@@ -38,7 +37,7 @@ def filter_scs(conn, s):
     if conn.get_parameter_status("standard_conforming_strings") == 'off':
         return s
     else:
-        return s.replace(b("E'"), b("'"))
+        return s.replace(b"E'", b"'")
 
 class TypesExtrasTests(unittest.TestCase):
     """Test that all type conversions are working."""
@@ -98,7 +97,7 @@ class TypesExtrasTests(unittest.TestCase):
         a = psycopg2.extensions.adapt(i)
         a.prepare(self.conn)
         self.assertEqual(
-            filter_scs(self.conn, b("E'192.168.1.0/24'::inet")),
+            filter_scs(self.conn, b"E'192.168.1.0/24'::inet"),
             a.getquoted())
 
         # adapts ok with unicode too
@@ -106,7 +105,7 @@ class TypesExtrasTests(unittest.TestCase):
         a = psycopg2.extensions.adapt(i)
         a.prepare(self.conn)
         self.assertEqual(
-            filter_scs(self.conn, b("E'192.168.1.0/24'::inet")),
+            filter_scs(self.conn, b"E'192.168.1.0/24'::inet"),
             a.getquoted())
 
     def test_adapt_fail(self):
@@ -150,17 +149,18 @@ class HstoreTestCase(unittest.TestCase):
         a.prepare(self.conn)
         q = a.getquoted()
 
-        self.assert_(q.startswith(b("((")), q)
-        ii = q[1:-1].split(b("||"))
+        self.assert_(q.startswith(b"(("), q)
+        ii = q[1:-1].split(b"||")
         ii.sort()
 
         self.assertEqual(len(ii), len(o))
-        self.assertEqual(ii[0], filter_scs(self.conn, b("(E'a' => E'1')")))
-        self.assertEqual(ii[1], filter_scs(self.conn, b("(E'b' => E'''')")))
-        self.assertEqual(ii[2], filter_scs(self.conn, b("(E'c' => NULL)")))
+        self.assertEqual(ii[0], filter_scs(self.conn, b"(E'a' => E'1')"))
+        self.assertEqual(ii[1], filter_scs(self.conn, b"(E'b' => E'''')"))
+        self.assertEqual(ii[2], filter_scs(self.conn, b"(E'c' => NULL)"))
         if 'd' in o:
             encc = '\xe0'.encode(psycopg2.extensions.encodings[self.conn.encoding])
-            self.assertEqual(ii[3], filter_scs(self.conn, b("(E'd' => E'") + encc + b("')")))
+            self.assertEqual(ii[3], 
+                    filter_scs(self.conn, b"(E'd' => E'" + encc + b"')"))
 
     def test_adapt_9(self):
         if self.conn.server_version < 90000:
@@ -170,17 +170,17 @@ class HstoreTestCase(unittest.TestCase):
 
         o = {'a': '1', 'b': "'", 'c': None}
         if self.conn.encoding == 'UTF8':
-            o['d'] = '\xe0'
+            o['d'] = b'\xe0'
 
         a = HstoreAdapter(o)
         a.prepare(self.conn)
         q = a.getquoted()
 
-        m = re.match(b(r'hstore\(ARRAY\[([^\]]+)\], ARRAY\[([^\]]+)\]\)'), q)
+        m = re.match(br'hstore\(ARRAY\[([^\]]+)\], ARRAY\[([^\]]+)\]\)', q)
         self.assert_(m, repr(q))
 
-        kk = m.group(1).split(b(", "))
-        vv = m.group(2).split(b(", "))
+        kk = m.group(1).split(b", ")
+        vv = m.group(2).split(b", ")
         ii = zip(kk, vv)
         ii.sort()
 
@@ -188,12 +188,12 @@ class HstoreTestCase(unittest.TestCase):
             return tuple([filter_scs(self.conn, s) for s in args])
 
         self.assertEqual(len(ii), len(o))
-        self.assertEqual(ii[0], f(b("E'a'"), b("E'1'")))
-        self.assertEqual(ii[1], f(b("E'b'"), b("E''''")))
-        self.assertEqual(ii[2], f(b("E'c'"), b("NULL")))
+        self.assertEqual(ii[0], f(b"E'a'", b"E'1'"))
+        self.assertEqual(ii[1], f(b"E'b'", b"E''''"))
+        self.assertEqual(ii[2], f(b"E'c'", b"NULL"))
         if 'd' in o:
             encc = '\xe0'.encode(psycopg2.extensions.encodings[self.conn.encoding])
-            self.assertEqual(ii[3], f(b("E'd'"), b("E'") + encc + b("'")))
+            self.assertEqual(ii[3], f(b"E'd'", b"E'" + encc + b"'"))
 
     def test_parse(self):
         from psycopg2cffi.extras import HstoreAdapter
@@ -441,7 +441,7 @@ class AdaptTypeTestCase(unittest.TestCase):
     def test_none_in_record(self):
         curs = self.conn.cursor()
         s = curs.mogrify("SELECT %s;", [(42, None)])
-        self.assertEqual(b("SELECT (42, NULL);"), s)
+        self.assertEqual(b"SELECT (42, NULL);", s)
         curs.execute("SELECT %s;", [(42, None)])
         d = curs.fetchone()[0]
         self.assertEqual("(42,)", d)
@@ -462,7 +462,7 @@ class AdaptTypeTestCase(unittest.TestCase):
             self.assertEqual(ext.adapt(None).getquoted(), "NOPE!")
 
             s = curs.mogrify("SELECT %s;", (None,))
-            self.assertEqual(b("SELECT NULL;"), s)
+            self.assertEqual(b"SELECT NULL;", s)
 
         finally:
             ext.register_adapter(type(None), orig_adapter)
@@ -481,7 +481,7 @@ class AdaptTypeTestCase(unittest.TestCase):
         ok('(10,"(20,""(30,40)"")")', ['10', '(20,"(30,40)")'])
         ok('(10,"(20,""(30,""""(40,50)"""")"")")', ['10', '(20,"(30,""(40,50)"")")'])
         ok('(,"(,""(a\nb\tc)"")")', [None, '(,"(a\nb\tc)")'])
-        ok('(\x01,\x02,\x03,\x04,\x05,\x06,\x07,\x08,"\t","\n","\x0b",'
+        ok(b'(\x01,\x02,\x03,\x04,\x05,\x06,\x07,\x08,"\t","\n","\x0b",'
            '"\x0c","\r",\x0e,\x0f,\x10,\x11,\x12,\x13,\x14,\x15,\x16,'
            '\x17,\x18,\x19,\x1a,\x1b,\x1c,\x1d,\x1e,\x1f," ",!,"""",#,'
            '$,%,&,\',"(",")",*,+,",",-,.,/,0,1,2,3,4,5,6,7,8,9,:,;,<,=,>,?,'
@@ -489,7 +489,7 @@ class AdaptTypeTestCase(unittest.TestCase):
            '^,_,`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,{,|,},'
            '~,\x7f)',
            list(map(chr, range(1, 128))))
-        ok('(,"\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
+        ok(b'(,"\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
            '\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !'
            '""#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\\\]'
            '^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f")',

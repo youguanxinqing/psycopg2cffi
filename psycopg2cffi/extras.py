@@ -43,7 +43,6 @@ from psycopg2cffi import extensions as _ext
 from psycopg2cffi.extensions import cursor as _cursor
 from psycopg2cffi.extensions import connection as _connection
 from psycopg2cffi.extensions import adapt as _A
-from psycopg2cffi.extensions import b
 
 
 class DictCursorBase(_cursor):
@@ -518,7 +517,7 @@ class Inet(object):
         obj = _A(self.addr)
         if hasattr(obj, 'prepare'):
             obj.prepare(self._conn)
-        return obj.getquoted() + b("::inet")
+        return obj.getquoted() + b"::inet"
 
     def __conform__(self, foo):
         if foo is _ext.ISQLQuote:
@@ -585,7 +584,7 @@ class HstoreAdapter(object):
     def _getquoted_8(self):
         """Use the operators available in PG pre-9.0."""
         if not self.wrapped:
-            return b("''::hstore")
+            return b"''::hstore"
 
         adapt = _ext.adapt
         rv = []
@@ -599,23 +598,22 @@ class HstoreAdapter(object):
                 v.prepare(self.conn)
                 v = v.getquoted()
             else:
-                v = b('NULL')
+                v = b'NULL'
 
-            # XXX this b'ing is painfully inefficient!
-            rv.append(b("(") + k + b(" => ") + v + b(")"))
+            rv.append(b"(" + k + b" => " + v + b")")
 
-        return b("(") + b('||').join(rv) + b(")")
+        return b"(" + b'||'.join(rv) + b")"
 
     def _getquoted_9(self):
         """Use the hstore(text[], text[]) function."""
         if not self.wrapped:
-            return b("''::hstore")
+            return b"''::hstore"
 
         k = _ext.adapt(self.wrapped.keys())
         k.prepare(self.conn)
         v = _ext.adapt(self.wrapped.values())
         v.prepare(self.conn)
-        return b("hstore(") + k.getquoted() + b(", ") + v.getquoted() + b(")")
+        return b"hstore(" + k.getquoted() + b", " + v.getquoted() + b")"
 
     getquoted = _getquoted_9
 

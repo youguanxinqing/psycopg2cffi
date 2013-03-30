@@ -32,7 +32,6 @@ from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extensions
-from psycopg2cffi.extensions import b
 
 
 class QuotingTestCase(unittest.TestCase):
@@ -88,7 +87,7 @@ class QuotingTestCase(unittest.TestCase):
         else:
             res = curs.fetchone()[0].tobytes()
 
-        if res[0] in (b('x'), ord(b('x'))) and self.conn.server_version >= 90000:
+        if res[0] in (b'x', ord(b'x')) and self.conn.server_version >= 90000:
             return self.skipTest(
                 "bytea broken with server >= 9.0, libpq < 9")
 
