@@ -123,7 +123,7 @@ class TypesBasicTests(unittest.TestCase):
 
     def testBinary(self):
         if sys.version_info[0] < 3:
-            s = ''.join([chr(x) for x in range(256)])
+            s = b''.join([chr(x) for x in range(256)])
             b = psycopg2.Binary(s)
             buf = self.execute("SELECT %s::bytea AS foo", (b,))
             self.assertEqual(s, str(buf))
@@ -151,7 +151,7 @@ class TypesBasicTests(unittest.TestCase):
         # test to make sure buffers returned by psycopg2 are
         # understood by execute:
         if sys.version_info[0] < 3:
-            s = ''.join([chr(x) for x in range(256)])
+            s = b''.join([chr(x) for x in range(256)])
             buf = self.execute("SELECT %s::bytea AS foo", (psycopg2.Binary(s),))
             buf2 = self.execute("SELECT %s::bytea AS foo", (buf,))
             self.assertEqual(s, str(buf2))
@@ -207,7 +207,7 @@ class TypesBasicTests(unittest.TestCase):
 
     @testutils.skip_from_python(3)
     def testTypeRoundtripBuffer(self):
-        o1 = buffer("".join(map(chr, range(256))))
+        o1 = buffer(b"".join(map(chr, range(256))))
         o2 = self.execute("select %s;", (o1,))
         self.assertEqual(type(o1), type(o2))
 
@@ -219,7 +219,7 @@ class TypesBasicTests(unittest.TestCase):
 
     @testutils.skip_from_python(3)
     def testTypeRoundtripBufferArray(self):
-        o1 = buffer("".join(map(chr, range(256))))
+        o1 = buffer(b"".join(map(chr, range(256))))
         o1 = [o1]
         o2 = self.execute("select %s;", (o1,))
         self.assertEqual(type(o1[0]), type(o2[0]))

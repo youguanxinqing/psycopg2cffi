@@ -131,7 +131,7 @@ class parse_array(object):
 
     def __call__(self, value, length, cursor):
         s = value
-        assert s[0] == ord(b"{") and s[-1] == ord(b"}")
+        assert s[:1] == b"{" and s[-1:] == b"}"
         i = 1
         array = []
         stack = [array]

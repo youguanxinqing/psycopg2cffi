@@ -70,7 +70,15 @@ class Binary(_BaseAdapter):
             return b'NULL'
 
         to_length = ffi.new('size_t *')
-        _wrapped = ffi.new('unsigned char[]', self._wrapped)
+        _wrapped = self._wrapped
+        if isinstance(_wrapped, six.text_type):
+            _wrapped = ascii_to_bytes(_wrapped)
+        elif isinstance(_wrapped, (bytearray, memoryview)):
+            _wrapped = six.binary_type(_wrapped)
+        elif not six.PY3 and isinstance(_wrapped, buffer):
+            _wrapped = bytes(_wrapped)
+        _wrapped = ffi.new('unsigned char[]', _wrapped)
+
         if self._conn:
             data_pointer = libpq.PQescapeByteaConn(
                 self._conn._pgconn, _wrapped, len(self._wrapped), to_length)
@@ -214,7 +222,7 @@ def TimestampFromTicks(ticks):
 class QuotedString(_BaseAdapter):
     def __init__(self, obj):
         super(QuotedString, self).__init__(obj)
-        self.encoding = "latin-1"
+        self.encoding = "LATIN1"
 
     def prepare(self, conn):
         self._conn = conn
