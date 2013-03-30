@@ -14,6 +14,8 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
+from __future__ import unicode_literals
+
 try:
     import decimal
 except:
@@ -22,13 +24,14 @@ import re
 import sys
 from datetime import date
 
-from testutils import unittest, skip_if_no_uuid, skip_before_postgres
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        skip_if_no_uuid, skip_before_postgres
 
-import psycopg2
-import psycopg2.extras
-from psycopg2.extensions import b
+import psycopg2cffi as psycopg2
+from psycopg2cffi import extras
+from psycopg2cffi.extensions import b
 
-from testconfig import dsn
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 
 
 def filter_scs(conn, s):
@@ -54,7 +57,7 @@ class TypesExtrasTests(unittest.TestCase):
     @skip_if_no_uuid
     def testUUID(self):
         import uuid
-        psycopg2.extras.register_uuid()
+        extras.register_uuid()
         u = uuid.UUID('9c6d5a77-7256-457e-9461-347b4358e350')
         s = self.execute("SELECT %s AS foo", (u,))
         self.failUnless(u == s)
@@ -65,7 +68,7 @@ class TypesExtrasTests(unittest.TestCase):
     @skip_if_no_uuid
     def testUUIDARRAY(self):
         import uuid
-        psycopg2.extras.register_uuid()
+        extras.register_uuid()
         u = [uuid.UUID('9c6d5a77-7256-457e-9461-347b4358e350'), uuid.UUID('9c6d5a77-7256-457e-9461-347b4358e352')]
         s = self.execute("SELECT %s AS foo", (u,))
         self.failUnless(u == s)
@@ -81,7 +84,7 @@ class TypesExtrasTests(unittest.TestCase):
         self.failUnless(type(s) == list and len(s) == 0)
 
     def testINET(self):
-        psycopg2.extras.register_inet()
+        extras.register_inet()
         i = "192.168.1.0/24";
         s = self.execute("SELECT %s AS foo", (i,))
         self.failUnless(i == s)
@@ -90,8 +93,8 @@ class TypesExtrasTests(unittest.TestCase):
         self.failUnless(s is None)
 
     def test_inet_conform(self):
-        from psycopg2.extras import Inet
-        i = Inet("192.168.1.0/24")
+        from psycopg2cffi.extras import Inet
+        i = Inet(b"192.168.1.0/24")
         a = psycopg2.extensions.adapt(i)
         a.prepare(self.conn)
         self.assertEqual(
@@ -99,7 +102,7 @@ class TypesExtrasTests(unittest.TestCase):
             a.getquoted())
 
         # adapts ok with unicode too
-        i = Inet(u"192.168.1.0/24")
+        i = Inet("192.168.1.0/24")
         a = psycopg2.extensions.adapt(i)
         a.prepare(self.conn)
         self.assertEqual(
@@ -112,13 +115,13 @@ class TypesExtrasTests(unittest.TestCase):
             psycopg2.extensions.adapt, Foo(), psycopg2.extensions.ISQLQuote, None)
         try:
             psycopg2.extensions.adapt(Foo(), psycopg2.extensions.ISQLQuote, None)
-        except psycopg2.ProgrammingError, err:
+        except psycopg2.ProgrammingError as err:
             self.failUnless(str(err) == "can't adapt type 'Foo'")
 
 
 def skip_if_no_hstore(f):
     def skip_if_no_hstore_(self):
-        from psycopg2.extras import HstoreAdapter
+        from psycopg2cffi.extras import HstoreAdapter
         oids = HstoreAdapter.get_oids(self.conn)
         if oids is None or not oids[0]:
             return self.skipTest("hstore not available in test database")
@@ -137,11 +140,11 @@ class HstoreTestCase(unittest.TestCase):
         if self.conn.server_version >= 90000:
             return self.skipTest("skipping dict adaptation with PG pre-9 syntax")
 
-        from psycopg2.extras import HstoreAdapter
+        from psycopg2cffi.extras import HstoreAdapter
 
         o = {'a': '1', 'b': "'", 'c': None}
         if self.conn.encoding == 'UTF8':
-            o['d'] = u'\xe0'
+            o['d'] = '\xe0'
 
         a = HstoreAdapter(o)
         a.prepare(self.conn)
@@ -156,18 +159,18 @@ class HstoreTestCase(unittest.TestCase):
         self.assertEqual(ii[1], filter_scs(self.conn, b("(E'b' => E'''')")))
         self.assertEqual(ii[2], filter_scs(self.conn, b("(E'c' => NULL)")))
         if 'd' in o:
-            encc = u'\xe0'.encode(psycopg2.extensions.encodings[self.conn.encoding])
+            encc = '\xe0'.encode(psycopg2.extensions.encodings[self.conn.encoding])
             self.assertEqual(ii[3], filter_scs(self.conn, b("(E'd' => E'") + encc + b("')")))
 
     def test_adapt_9(self):
         if self.conn.server_version < 90000:
             return self.skipTest("skipping dict adaptation with PG 9 syntax")
 
-        from psycopg2.extras import HstoreAdapter
+        from psycopg2cffi.extras import HstoreAdapter
 
         o = {'a': '1', 'b': "'", 'c': None}
         if self.conn.encoding == 'UTF8':
-            o['d'] = u'\xe0'
+            o['d'] = '\xe0'
 
         a = HstoreAdapter(o)
         a.prepare(self.conn)
@@ -189,11 +192,11 @@ class HstoreTestCase(unittest.TestCase):
         self.assertEqual(ii[1], f(b("E'b'"), b("E''''")))
         self.assertEqual(ii[2], f(b("E'c'"), b("NULL")))
         if 'd' in o:
-            encc = u'\xe0'.encode(psycopg2.extensions.encodings[self.conn.encoding])
+            encc = '\xe0'.encode(psycopg2.extensions.encodings[self.conn.encoding])
             self.assertEqual(ii[3], f(b("E'd'"), b("E'") + encc + b("'")))
 
     def test_parse(self):
-        from psycopg2.extras import HstoreAdapter
+        from psycopg2cffi.extras import HstoreAdapter
 
         def ok(s, d):
             self.assertEqual(HstoreAdapter.parse(s, None), d)
@@ -224,7 +227,7 @@ class HstoreTestCase(unittest.TestCase):
 
     @skip_if_no_hstore
     def test_register_conn(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
 
         register_hstore(self.conn)
         cur = self.conn.cursor()
@@ -236,7 +239,7 @@ class HstoreTestCase(unittest.TestCase):
 
     @skip_if_no_hstore
     def test_register_curs(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
 
         cur = self.conn.cursor()
         register_hstore(cur)
@@ -248,7 +251,7 @@ class HstoreTestCase(unittest.TestCase):
 
     @skip_if_no_hstore
     def test_register_unicode(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
 
         register_hstore(self.conn, unicode=True)
         cur = self.conn.cursor()
@@ -256,13 +259,13 @@ class HstoreTestCase(unittest.TestCase):
         t = cur.fetchone()
         self.assert_(t[0] is None)
         self.assertEqual(t[1], {})
-        self.assertEqual(t[2], {u'a': u'b'})
+        self.assertEqual(t[2], {'a': 'b'})
         self.assert_(isinstance(t[2].keys()[0], unicode))
         self.assert_(isinstance(t[2].values()[0], unicode))
 
     @skip_if_no_hstore
     def test_register_globally(self):
-        from psycopg2.extras import register_hstore, HstoreAdapter
+        from psycopg2cffi.extras import register_hstore, HstoreAdapter
 
         oids = HstoreAdapter.get_oids(self.conn)
         try:
@@ -286,7 +289,7 @@ class HstoreTestCase(unittest.TestCase):
 
     @skip_if_no_hstore
     def test_roundtrip(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(self.conn)
         cur = self.conn.cursor()
 
@@ -316,7 +319,7 @@ class HstoreTestCase(unittest.TestCase):
 
     @skip_if_no_hstore
     def test_roundtrip_unicode(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(self.conn, unicode=True)
         cur = self.conn.cursor()
 
@@ -331,10 +334,10 @@ class HstoreTestCase(unittest.TestCase):
                 self.assert_(v is None or isinstance(v, unicode))
 
         ok({})
-        ok({'a': 'b', 'c': None, 'd': u'\u20ac', u'\u2603': 'e'})
+        ok({'a': 'b', 'c': None, 'd': '\u20ac', '\u2603': 'e'})
 
         ab = map(unichr, range(1, 1024))
-        ok({u''.join(ab): u''.join(ab)})
+        ok({''.join(ab): ''.join(ab)})
         ok(dict(zip(ab, ab)))
 
     @skip_if_no_hstore
@@ -345,7 +348,7 @@ class HstoreTestCase(unittest.TestCase):
 
         # Note: None as conn_or_cursor is just for testing: not public
         # interface and it may break in future.
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(None, globally=True, oid=oid)
         try:
             cur.execute("select null::hstore, ''::hstore, 'a => b'::hstore")
@@ -360,7 +363,7 @@ class HstoreTestCase(unittest.TestCase):
     @skip_if_no_hstore
     @skip_before_postgres(8, 3)
     def test_roundtrip_array(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(self.conn)
 
         ds = []
@@ -388,7 +391,7 @@ class HstoreTestCase(unittest.TestCase):
     @skip_if_no_hstore
     @skip_before_postgres(8, 3)
     def test_array_cast(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(self.conn)
         cur = self.conn.cursor()
         cur.execute("select array['a=>1'::hstore, 'b=>2'::hstore];")
@@ -401,7 +404,7 @@ class HstoreTestCase(unittest.TestCase):
         cur.execute("select 'hstore'::regtype::oid, 'hstore[]'::regtype::oid")
         oid, aoid = cur.fetchone()
 
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(None, globally=True, oid=oid, array_oid=aoid)
         try:
             cur.execute("select null::hstore, ''::hstore, 'a => b'::hstore, '{a=>b}'::hstore[]")
@@ -465,7 +468,7 @@ class AdaptTypeTestCase(unittest.TestCase):
             ext.register_adapter(type(None), orig_adapter)
 
     def test_tokenization(self):
-        from psycopg2.extras import CompositeCaster
+        from psycopg2cffi.extras import CompositeCaster
         def ok(s, v):
             self.assertEqual(CompositeCaster.tokenize(s), v)
 
@@ -485,7 +488,7 @@ class AdaptTypeTestCase(unittest.TestCase):
            '@,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,[,"\\\\",],'
            '^,_,`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,{,|,},'
            '~,\x7f)',
-           map(chr, range(1, 128)))
+           list(map(chr, range(1, 128))))
         ok('(,"\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
            '\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !'
            '""#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\\\]'
@@ -497,7 +500,7 @@ class AdaptTypeTestCase(unittest.TestCase):
         oid = self._create_type("type_isd",
             [('anint', 'integer'), ('astring', 'text'), ('adate', 'date')])
 
-        t = psycopg2.extras.register_composite("type_isd", self.conn)
+        t = extras.register_composite("type_isd", self.conn)
         self.assertEqual(t.name, 'type_isd')
         self.assertEqual(t.oid, oid)
         self.assert_(issubclass(t.type, tuple))
@@ -532,9 +535,9 @@ class AdaptTypeTestCase(unittest.TestCase):
         self._create_type("type_r_ft",
             [("afloat", "float8"), ("anotherpair", "type_r_dt")])
 
-        psycopg2.extras.register_composite("type_is", self.conn)
-        psycopg2.extras.register_composite("type_r_dt", self.conn)
-        psycopg2.extras.register_composite("type_r_ft", self.conn)
+        extras.register_composite("type_is", self.conn)
+        extras.register_composite("type_r_dt", self.conn)
+        extras.register_composite("type_r_ft", self.conn)
 
         curs = self.conn.cursor()
         r = (0.25, (date(2011,1,2), (42, "hello")))
@@ -556,7 +559,7 @@ class AdaptTypeTestCase(unittest.TestCase):
 
         curs1 = self.conn.cursor()
         curs2 = self.conn.cursor()
-        psycopg2.extras.register_composite("type_ii", curs1)
+        extras.register_composite("type_ii", curs1)
         curs1.execute("select (1,2)::type_ii")
         self.assertEqual(curs1.fetchone()[0], (1,2))
         curs2.execute("select (1,2)::type_ii")
@@ -569,7 +572,7 @@ class AdaptTypeTestCase(unittest.TestCase):
         conn1 = psycopg2.connect(dsn)
         conn2 = psycopg2.connect(dsn)
         try:
-            psycopg2.extras.register_composite("type_ii", conn1)
+            extras.register_composite("type_ii", conn1)
             curs1 = conn1.cursor()
             curs2 = conn2.cursor()
             curs1.execute("select (1,2)::type_ii")
@@ -587,7 +590,7 @@ class AdaptTypeTestCase(unittest.TestCase):
         conn1 = psycopg2.connect(dsn)
         conn2 = psycopg2.connect(dsn)
         try:
-            t = psycopg2.extras.register_composite("type_ii", conn1, globally=True)
+            t = extras.register_composite("type_ii", conn1, globally=True)
             try:
                 curs1 = conn1.cursor()
                 curs2 = conn2.cursor()
@@ -620,7 +623,7 @@ class AdaptTypeTestCase(unittest.TestCase):
 
         self._create_type("typens.typens_ii",
             [("a", "integer"), ("b", "integer")])
-        t = psycopg2.extras.register_composite(
+        t = extras.register_composite(
             "typens.typens_ii", self.conn)
         curs.execute("select (4,8)::typens.typens_ii")
         self.assertEqual(curs.fetchone()[0], (4,8))
@@ -631,7 +634,7 @@ class AdaptTypeTestCase(unittest.TestCase):
         oid = self._create_type("type_isd",
             [('anint', 'integer'), ('astring', 'text'), ('adate', 'date')])
 
-        t = psycopg2.extras.register_composite("type_isd", self.conn)
+        t = extras.register_composite("type_isd", self.conn)
 
         curs = self.conn.cursor()
         r1 = (10, 'hello', date(2011,1,2))
@@ -651,7 +654,7 @@ class AdaptTypeTestCase(unittest.TestCase):
     @skip_if_no_composite
     def test_wrong_schema(self):
         oid = self._create_type("type_ii", [("a", "integer"), ("b", "integer")])
-        from psycopg2.extras import CompositeCaster
+        from psycopg2cffi.extras import CompositeCaster
         c = CompositeCaster('type_ii', oid, [('a', 23), ('b', 23), ('c', 23)])
         curs = self.conn.cursor()
         psycopg2.extensions.register_type(c.typecaster, curs)
@@ -685,8 +688,8 @@ class AdaptTypeTestCase(unittest.TestCase):
                 ('testc', 2),
                 ('testd', 2);""")
 
-        psycopg2.extras.register_composite("ctest1", curs)
-        psycopg2.extras.register_composite("ctest2", curs)
+        extras.register_composite("ctest1", curs)
+        extras.register_composite("ctest2", curs)
 
         curs.execute("""
             select ctest1, array_agg(ctest2) as test2s

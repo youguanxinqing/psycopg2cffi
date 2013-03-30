@@ -28,7 +28,6 @@ import sys
 from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest
 
-"""
 from psycopg2cffi.tests.psycopg2_tests import (
         test_async,
         test_bugX000,
@@ -36,21 +35,19 @@ from psycopg2cffi.tests.psycopg2_tests import (
         test_cancel,
         test_connection,
         test_copy,
-        test_cursor,
-        test_dates,
-        test_extras_dictcursor,
-        test_green,
-        test_lobject,
-        test_module,
-        test_notify,
-        test_psycopg2_dbapi20,
-        test_quote,
-        test_transaction,
+        #test_cursor,
+        #test_dates,
+        #test_extras_dictcursor,
+        #test_green,
+        #test_lobject,
+        #test_module,
+        #test_notify,
+        #test_psycopg2_dbapi20,
+        #test_quote,
+        #test_transaction,
         test_types_basic,
         test_types_extras,
         )
-"""
-from psycopg2cffi.tests.psycopg2_tests import test_connection
 
 def test_suite():
     # If connection to test db fails, bail out early.

@@ -22,17 +22,21 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
+from __future__ import unicode_literals
+
 try:
     import decimal
 except:
     pass
 import sys
-import testutils
-from testutils import unittest, decorate_all_tests
-from testconfig import dsn
+from psycopg2cffi.tests.psycopg2_tests import testutils
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        decorate_all_tests
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 
-import psycopg2
-from psycopg2.extensions import b
+import psycopg2cffi as psycopg2
+from psycopg2cffi import extensions
+from psycopg2cffi.extensions import b
 
 
 class TypesBasicTests(unittest.TestCase):
@@ -50,20 +54,21 @@ class TypesBasicTests(unittest.TestCase):
         return curs.fetchone()[0]
 
     def testQuoting(self):
-        s = "Quote'this\\! ''ok?''"
+        s = b"Quote'this\\! ''ok?''"
         self.failUnless(self.execute("SELECT %s AS foo", (s,)) == s,
                         "wrong quoting: " + s)
 
     def testUnicode(self):
-        s = u"Quote'this\\! ''ok?''"
+        s = "Quote'this\\! ''ok?''"
         self.failUnless(self.execute("SELECT %s AS foo", (s,)) == s,
                         "wrong unicode quoting: " + s)
 
     def testNumber(self):
         s = self.execute("SELECT %s AS foo", (1971,))
         self.failUnless(s == 1971, "wrong integer quoting: " + str(s))
-        s = self.execute("SELECT %s AS foo", (1971L,))
-        self.failUnless(s == 1971L, "wrong integer quoting: " + str(s))
+        if sys.version_info[0] < 3:
+            s = self.execute("SELECT %s AS foo", (long(1971),))
+            self.failUnless(s == long(1971), "wrong integer quoting: " + str(s))
         if sys.version_info[0:2] < (2, 4):
             s = self.execute("SELECT %s AS foo", (19.10,))
             self.failUnless(abs(s - 19.10) < 0.001,
@@ -293,8 +298,9 @@ class TypesBasicTests(unittest.TestCase):
         self.assertEqual(1, f1)
         i1 = self.execute("select -%s;", (-1,))
         self.assertEqual(1, i1)
-        l1 = self.execute("select -%s;", (-1L,))
-        self.assertEqual(1, l1)
+        if sys.version_info[0] < 3:
+            l1 = self.execute("select -%s;", (long(-1),))
+            self.assertEqual(1, l1)
 
     def testGenericArray(self):
         a = self.execute("select '{1,2,3}'::int4[]")
@@ -307,10 +313,10 @@ class TypesBasicTests(unittest.TestCase):
         def caster(s, cur):
             if s is None: return "nada"
             return int(s) * 2
-        base = psycopg2.extensions.new_type((23,), "INT4", caster)
-        array = psycopg2.extensions.new_array_type((1007,), "INT4ARRAY", base)
+        base = extensions.new_type((23,), "INT4", caster)
+        array = extensions.new_array_type((1007,), "INT4ARRAY", base)
 
-        psycopg2.extensions.register_type(array, self.conn)
+        extensions.register_type(array, self.conn)
         a = self.execute("select '{1,2,3}'::int4[]")
         self.assertEqual(a, [2,4,6])
         a = self.execute("select '{1,2,NULL}'::int4[]")
@@ -319,14 +325,14 @@ class TypesBasicTests(unittest.TestCase):
 
 class AdaptSubclassTest(unittest.TestCase):
     def test_adapt_subtype(self):
-        from psycopg2.extensions import adapt
+        from psycopg2cffi.extensions import adapt
         class Sub(str): pass
         s1 = "hel'lo"
         s2 = Sub(s1)
         self.assertEqual(adapt(s1).getquoted(), adapt(s2).getquoted())
 
     def test_adapt_most_specific(self):
-        from psycopg2.extensions import adapt, register_adapter, AsIs
+        from psycopg2cffi.extensions import adapt, register_adapter, AsIs
 
         class A(object): pass
         class B(A): pass
@@ -337,12 +343,12 @@ class AdaptSubclassTest(unittest.TestCase):
         try:
             self.assertEqual(b('b'), adapt(C()).getquoted())
         finally:
-           del psycopg2.extensions.adapters[A, psycopg2.extensions.ISQLQuote]
-           del psycopg2.extensions.adapters[B, psycopg2.extensions.ISQLQuote]
+           del extensions.adapters[A, extensions.ISQLQuote]
+           del extensions.adapters[B, extensions.ISQLQuote]
 
     @testutils.skip_from_python(3)
     def test_no_mro_no_joy(self):
-        from psycopg2.extensions import adapt, register_adapter, AsIs
+        from psycopg2cffi.extensions import adapt, register_adapter, AsIs
 
         class A: pass
         class B(A): pass
@@ -351,12 +357,12 @@ class AdaptSubclassTest(unittest.TestCase):
         try:
             self.assertRaises(psycopg2.ProgrammingError, adapt, B())
         finally:
-           del psycopg2.extensions.adapters[A, psycopg2.extensions.ISQLQuote]
+           del extensions.adapters[A, extensions.ISQLQuote]
 
 
     @testutils.skip_before_python(3)
     def test_adapt_subtype_3(self):
-        from psycopg2.extensions import adapt, register_adapter, AsIs
+        from psycopg2cffi.extensions import adapt, register_adapter, AsIs
 
         class A: pass
         class B(A): pass
@@ -365,7 +371,7 @@ class AdaptSubclassTest(unittest.TestCase):
         try:
             self.assertEqual(b("a"), adapt(B()).getquoted())
         finally:
-           del psycopg2.extensions.adapters[A, psycopg2.extensions.ISQLQuote]
+           del extensions.adapters[A, extensions.ISQLQuote]
 
 
 class ByteaParserTest(unittest.TestCase):
@@ -373,7 +379,7 @@ class ByteaParserTest(unittest.TestCase):
     def setUp(self):
         try:
             self._cast = self._import_cast()
-        except Exception, e:
+        except Exception as e:
             self._cast = None
             self._exc = e
 
