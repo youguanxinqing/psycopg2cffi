@@ -7,6 +7,7 @@ from time import localtime
 import six
 
 from psycopg2cffi._impl.libpq import libpq, ffi
+from psycopg2cffi._impl.adapters import bytes_to_ascii
 
 
 string_types = {}
@@ -88,6 +89,8 @@ def parse_float(value, length, cursor):
 
 
 def parse_decimal(value, length, cursor):
+    if isinstance(value, six.binary_type):
+        value = bytes_to_ascii(value)
     return decimal.Decimal(value)
 
 
