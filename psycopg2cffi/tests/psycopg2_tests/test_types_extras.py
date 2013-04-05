@@ -14,8 +14,6 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-from __future__ import unicode_literals
-
 try:
     import decimal
 except:
@@ -25,7 +23,7 @@ import sys
 from datetime import date
 
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
-        skip_if_no_uuid, skip_before_postgres
+        skip_if_no_uuid, skip_before_postgres, _u
 
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extras
@@ -101,7 +99,7 @@ class TypesExtrasTests(unittest.TestCase):
             a.getquoted())
 
         # adapts ok with unicode too
-        i = Inet("192.168.1.0/24")
+        i = Inet(_u(b"192.168.1.0/24"))
         a = psycopg2.extensions.adapt(i)
         a.prepare(self.conn)
         self.assertEqual(
@@ -143,7 +141,7 @@ class HstoreTestCase(unittest.TestCase):
 
         o = {'a': '1', 'b': "'", 'c': None}
         if self.conn.encoding == 'UTF8':
-            o['d'] = '\xe0'
+            o['d'] = _u(b'\xc3\xa0')
 
         a = HstoreAdapter(o)
         a.prepare(self.conn)
@@ -158,7 +156,7 @@ class HstoreTestCase(unittest.TestCase):
         self.assertEqual(ii[1], filter_scs(self.conn, b"(E'b' => E'''')"))
         self.assertEqual(ii[2], filter_scs(self.conn, b"(E'c' => NULL)"))
         if 'd' in o:
-            encc = '\xe0'.encode(psycopg2.extensions.encodings[self.conn.encoding])
+            encc = _u(b'\xc3\xa0').encode(psycopg2.extensions.encodings[self.conn.encoding])
             self.assertEqual(ii[3], 
                     filter_scs(self.conn, b"(E'd' => E'" + encc + b"')"))
 
@@ -170,7 +168,7 @@ class HstoreTestCase(unittest.TestCase):
 
         o = {'a': '1', 'b': "'", 'c': None}
         if self.conn.encoding == 'UTF8':
-            o['d'] = b'\xe0'
+            o['d'] = _u(b'\xc3\xa0')
 
         a = HstoreAdapter(o)
         a.prepare(self.conn)
@@ -192,7 +190,7 @@ class HstoreTestCase(unittest.TestCase):
         self.assertEqual(ii[1], f(b"E'b'", b"E''''"))
         self.assertEqual(ii[2], f(b"E'c'", b"NULL"))
         if 'd' in o:
-            encc = '\xe0'.encode(psycopg2.extensions.encodings[self.conn.encoding])
+            encc = _u(b'\xc3\xa0').encode(psycopg2.extensions.encodings[self.conn.encoding])
             self.assertEqual(ii[3], f(b"E'd'", b"E'" + encc + b"'"))
 
     def test_parse(self):
@@ -259,7 +257,7 @@ class HstoreTestCase(unittest.TestCase):
         t = cur.fetchone()
         self.assert_(t[0] is None)
         self.assertEqual(t[1], {})
-        self.assertEqual(t[2], {'a': 'b'})
+        self.assertEqual(t[2], {_u(b'a'): _u(b'b')})
         self.assert_(isinstance(t[2].keys()[0], unicode))
         self.assert_(isinstance(t[2].values()[0], unicode))
 
@@ -334,10 +332,10 @@ class HstoreTestCase(unittest.TestCase):
                 self.assert_(v is None or isinstance(v, unicode))
 
         ok({})
-        ok({'a': 'b', 'c': None, 'd': '\u20ac', '\u2603': 'e'})
+        ok({'a': 'b', 'c': None, 'd': _u(b'\xe2\x82\xac'), _u(b'\xe2\x98\x83'): 'e'})
 
         ab = map(unichr, range(1, 1024))
-        ok({''.join(ab): ''.join(ab)})
+        ok({_u(b'').join(ab): _u(b'').join(ab)})
         ok(dict(zip(ab, ab)))
 
     @skip_if_no_hstore

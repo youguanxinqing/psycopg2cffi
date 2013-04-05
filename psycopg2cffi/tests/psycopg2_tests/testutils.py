@@ -26,6 +26,7 @@
 
 import os
 import sys
+import six
 
 try:
     import unittest2
@@ -235,3 +236,7 @@ def script_to_py3(script):
         f2.close()
         os.remove(filename)
 
+
+def _u(s):
+    assert isinstance(s, six.binary_type)
+    return s.decode('utf-8')

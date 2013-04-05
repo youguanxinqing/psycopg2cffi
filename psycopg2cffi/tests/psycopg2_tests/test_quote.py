@@ -22,12 +22,10 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-from __future__ import unicode_literals
-
 import sys
 import six
 
-from psycopg2cffi.tests.psycopg2_tests.testutils import unittest
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, _u
 from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 
 import psycopg2cffi as psycopg2
@@ -76,7 +74,7 @@ class QuotingTestCase(unittest.TestCase):
         stuff into, 'quotes' and \\ a backslash too.
         """
         if sys.version_info[0] < 3:
-            data += b"".join(map(chr, range(256)))
+            data += "".join(map(chr, range(256)))
         else:
             data += bytes(range(256))
 
@@ -103,11 +101,11 @@ class QuotingTestCase(unittest.TestCase):
                 "Unicode test skipped since server encoding is %s"
                     % server_encoding)
 
-        data = """some data with \t chars
-        to escape into, 'quotes', \u20ac euro sign and \\ a backslash too.
-        """
+        data = _u(b"""some data with \t chars
+        to escape into, 'quotes', \xe2\x82\xac euro sign and \\ a backslash too.
+        """)
         _unichr = chr if six.PY3 else unichr
-        data += "".join(map(_unichr, [ u for u in range(1,65536)
+        data += _u(b"").join(map(_unichr, [ u for u in range(1,65536)
             if not 0xD800 <= u <= 0xDFFF ]))    # surrogate area
         self.conn.set_client_encoding('UNICODE')
 
@@ -122,17 +120,15 @@ class QuotingTestCase(unittest.TestCase):
         self.conn.set_client_encoding('LATIN1')
         curs = self.conn.cursor()
         if sys.version_info[0] < 3:
-            data = b''.join(map(chr, range(32, 127) + range(160, 256)))
-            expected = data.decode('latin1')
+            data = ''.join(map(chr, range(32, 127) + range(160, 256)))
         else:
             data = bytes(list(range(32, 127)) + list(range(160, 256)))\
                     .decode('latin1')
-            expected = data
 
         # as string
         curs.execute("SELECT %s::text;", (data,))
         res = curs.fetchone()[0]
-        self.assertEqual(res, expected)
+        self.assertEqual(res, data)
         self.assert_(not self.conn.notices)
 
         # as unicode
@@ -149,17 +145,15 @@ class QuotingTestCase(unittest.TestCase):
         self.conn.set_client_encoding('KOI8')
         curs = self.conn.cursor()
         if sys.version_info[0] < 3:
-            data = b''.join(map(chr, range(32, 127) + range(128, 256)))
-            expected = data.decode('koi8_r')
+            data = ''.join(map(chr, range(32, 127) + range(128, 256)))
         else:
             data = bytes(list(range(32, 127)) + list(range(128, 256)))\
                     .decode('koi8_r')
-            expected = data
 
         # as string
         curs.execute("SELECT %s::text;", (data,))
         res = curs.fetchone()[0]
-        self.assertEqual(res, expected)
+        self.assertEqual(res, data)
         self.assert_(not self.conn.notices)
 
         # as unicode

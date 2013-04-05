@@ -23,8 +23,6 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-# from __future__ import unicode_literals
-
 import time
 import threading
 

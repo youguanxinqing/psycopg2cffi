@@ -22,8 +22,6 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-from __future__ import unicode_literals
-
 import os
 import sys
 import string
@@ -31,7 +29,8 @@ from six.moves import cStringIO as StringIO
 from itertools import cycle
 from six.moves import xrange, zip as izip
 
-from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, decorate_all_tests, skip_if_no_iobase
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        decorate_all_tests, skip_if_no_iobase
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extensions
 from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn, green
@@ -144,7 +143,7 @@ class CopyTests(unittest.TestCase):
         self._create_temp_table()  # the above call closed the xn
 
         if sys.version_info[0] < 3:
-            abin = b''.join(map(chr, range(32, 127) + range(160, 256)))
+            abin = ''.join(map(chr, range(32, 127) + range(160, 256)))
             about = abin.decode('latin1').replace('\\', '\\\\')
 
         else:

@@ -22,15 +22,13 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-from __future__ import unicode_literals
-
 import os
 import time
 import threading
 from operator import attrgetter
 
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
-        decorate_all_tests, skip_before_postgres, skip_after_postgres
+        decorate_all_tests, skip_before_postgres, skip_after_postgres, _u
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extensions
 from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn, dbname
@@ -703,7 +701,7 @@ class ConnectionTwoPhaseTests(unittest.TestCase):
 
     def test_xid_unicode(self):
         cnn = self.connect()
-        x1 = cnn.xid(10, 'uni', 'code')
+        x1 = cnn.xid(10, _u(b'uni'), _u(b'code'))
         cnn.tpc_begin(x1)
         cnn.tpc_prepare()
         cnn.reset()
@@ -718,10 +716,9 @@ class ConnectionTwoPhaseTests(unittest.TestCase):
         # so if something explodes in an encode error I don't mind.
         # Let's just check uniconde is accepted as type.
 
-        assert isinstance('a', unicode) # we are using unicode_literals
         cnn = self.connect()
         cnn.set_client_encoding('utf8')
-        cnn.tpc_begin("transaction-id")
+        cnn.tpc_begin(_u(b"transaction-id"))
         cnn.tpc_prepare()
         cnn.reset()
 

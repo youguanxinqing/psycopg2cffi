@@ -1,7 +1,5 @@
 # Configure the test suite from the env variables.
 
-from __future__ import unicode_literals
-
 import os
 
 dbname = os.environ.get('PSYCOPG2_TESTDB', 'psycopg2_test')
