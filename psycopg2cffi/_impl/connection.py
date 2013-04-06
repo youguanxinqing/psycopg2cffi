@@ -545,7 +545,7 @@ class Connection(object):
 
             # If the current datestyle is not compatible (not ISO) then
             # force it to ISO
-            if not self._iso_compatible_datastyle():
+            if not self._iso_compatible_datestyle():
                 self.status = consts.STATUS_DATESTYLE
 
                 if libpq.PQsendQuery(self._pgconn, "SET DATESTYLE TO 'ISO'"):
@@ -584,7 +584,7 @@ class Connection(object):
         with self._lock:
             # If the current datestyle is not compatible (not ISO) then
             # force it to ISO
-            if not self._iso_compatible_datastyle():
+            if not self._iso_compatible_datestyle():
                 self.status = consts.STATUS_DATESTYLE
                 self._set_guc('datestyle', 'ISO')
 
@@ -774,7 +774,7 @@ class Connection(object):
     def _have_wait_callback(self):
         return bool(_green_callback)
 
-    def _iso_compatible_datastyle(self):
+    def _iso_compatible_datestyle(self):
         ''' Return whether connection DateStyle is ISO-compatible
         '''
         datestyle = libpq.PQparameterStatus(self._pgconn, 'DateStyle')
