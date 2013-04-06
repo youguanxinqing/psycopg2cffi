@@ -91,7 +91,7 @@ class TypesExtrasTests(unittest.TestCase):
 
     def test_inet_conform(self):
         from psycopg2cffi.extras import Inet
-        i = Inet(b"192.168.1.0/24")
+        i = Inet("192.168.1.0/24")
         a = psycopg2.extensions.adapt(i)
         a.prepare(self.conn)
         self.assertEqual(
