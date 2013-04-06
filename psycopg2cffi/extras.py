@@ -881,17 +881,19 @@ class CompositeCaster(object):
 
     @classmethod
     def tokenize(self, s):
+        ''' Gets bytestring, returns list of bytestrings
+        '''
         rv = []
         for m in self._re_tokenize.finditer(s):
             if m is None:
                 raise psycopg2.InterfaceError("can't parse type: %r", s)
             if m.group(1):
-                rv.append(None)
+                v = None
             elif m.group(2):
-                rv.append(self._re_undouble.sub(r"\1", m.group(2)))
+                v = self._re_undouble.sub(br"\1", m.group(2))
             else:
-                rv.append(m.group(3))
-
+                v = m.group(3)
+            rv.append(v)
         return rv
 
     def _create_type(self, name, attnames):

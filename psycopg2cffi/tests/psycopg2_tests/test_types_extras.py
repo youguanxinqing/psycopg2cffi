@@ -470,28 +470,29 @@ class AdaptTypeTestCase(unittest.TestCase):
         def ok(s, v):
             self.assertEqual(CompositeCaster.tokenize(s), v)
 
-        ok("(,)", [None, None])
-        ok('(hello,,10.234,2010-11-11)', ['hello', None, '10.234', '2010-11-11'])
-        ok('(10,"""")', ['10', '"'])
-        ok('(10,",")', ['10', ','])
-        ok(r'(10,"\\")', ['10', '\\'])
-        ok(r'''(10,"\\',""")''', ['10', '''\\',"'''])
-        ok('(10,"(20,""(30,40)"")")', ['10', '(20,"(30,40)")'])
-        ok('(10,"(20,""(30,""""(40,50)"""")"")")', ['10', '(20,"(30,""(40,50)"")")'])
-        ok('(,"(,""(a\nb\tc)"")")', [None, '(,"(a\nb\tc)")'])
-        ok('(\x01,\x02,\x03,\x04,\x05,\x06,\x07,\x08,"\t","\n","\x0b",'
-           '"\x0c","\r",\x0e,\x0f,\x10,\x11,\x12,\x13,\x14,\x15,\x16,'
-           '\x17,\x18,\x19,\x1a,\x1b,\x1c,\x1d,\x1e,\x1f," ",!,"""",#,'
-           '$,%,&,\',"(",")",*,+,",",-,.,/,0,1,2,3,4,5,6,7,8,9,:,;,<,=,>,?,'
-           '@,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,[,"\\\\",],'
-           '^,_,`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,{,|,},'
-           '~,\x7f)',
-           list(map(chr, range(1, 128))))
-        ok('(,"\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
-           '\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !'
-           '""#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\\\]'
-           '^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f")',
-           [None, ''.join(map(chr, range(1, 128)))])
+        ok(b"(,)", [None, None])
+        ok(b'(hello,,10.234,2010-11-11)', [b'hello', None, b'10.234', b'2010-11-11'])
+        ok(b'(10,"""")', [b'10', b'"'])
+        ok(b'(10,",")', [b'10', b','])
+        ok(br'(10,"\\")', [b'10', b'\\'])
+        ok(br'''(10,"\\',""")''', [b'10', b'''\\',"'''])
+        ok(b'(10,"(20,""(30,40)"")")', [b'10', b'(20,"(30,40)")'])
+        ok(b'(10,"(20,""(30,""""(40,50)"""")"")")', [b'10', b'(20,"(30,""(40,50)"")")'])
+        ok(b'(,"(,""(a\nb\tc)"")")', [None, b'(,"(a\nb\tc)")'])
+        bytelist = [bytes(chr(i), 'ascii') for i in range(1, 128)]
+        ok(b'(\x01,\x02,\x03,\x04,\x05,\x06,\x07,\x08,"\t","\n","\x0b",'
+           b'"\x0c","\r",\x0e,\x0f,\x10,\x11,\x12,\x13,\x14,\x15,\x16,'
+           b'\x17,\x18,\x19,\x1a,\x1b,\x1c,\x1d,\x1e,\x1f," ",!,"""",#,'
+           b'$,%,&,\',"(",")",*,+,",",-,.,/,0,1,2,3,4,5,6,7,8,9,:,;,<,=,>,?,'
+           b'@,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,[,"\\\\",],'
+           b'^,_,`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,{,|,},'
+           b'~,\x7f)',
+           bytelist) 
+        ok(b'(,"\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
+           b'\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !'
+           b'""#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\\\]'
+           b'^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f")',
+           [None, b''.join(bytelist)])
 
     @skip_if_no_composite
     def test_cast_composite(self):
