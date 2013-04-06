@@ -643,7 +643,7 @@ class HstoreAdapter(object):
     """, regex.VERBOSE)
 
     @classmethod
-    def parse(self, s, cur, _bsdec=regex.compile(r"\\(.)")):
+    def parse(self, s, cur, _bsdec=regex.compile(br"\\(.)")):
         """Parse an hstore representation in a Python string.
 
         The hstore is represented as something like::
@@ -661,11 +661,14 @@ class HstoreAdapter(object):
             if m is None or m.start() != start:
                 raise psycopg2.InterfaceError(
                     "error parsing hstore pair at char %d" % start)
-            k = _bsdec.sub(r'\1', m.group(1))
+            k = _bsdec.sub(br'\1', m.group(1))
             v = m.group(2)
             if v is not None:
-                v = _bsdec.sub(r'\1', v)
+                v = _bsdec.sub(br'\1', v)
 
+            if six.PY3:
+                k = self._to_unicode(k, cur)
+                v = self._to_unicode(v, cur)
             rv[k] = v
             start = m.end()
 
@@ -674,6 +677,14 @@ class HstoreAdapter(object):
                 "error parsing hstore: unparsed data after char %d" % start)
 
         return rv
+
+    @classmethod
+    def _to_unicode(self, s, cur):
+        if s is None:
+            return None
+        else:
+            return s.decode(_ext.encodings[cur.connection.encoding]) \
+                    if cur else bytes_to_ascii(s)
 
     @classmethod
     def parse_unicode(self, s, cur):

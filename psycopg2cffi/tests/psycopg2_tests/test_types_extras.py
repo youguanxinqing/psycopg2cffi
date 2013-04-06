@@ -200,28 +200,28 @@ class HstoreTestCase(unittest.TestCase):
             self.assertEqual(HstoreAdapter.parse(s, None), d)
 
         ok(None, None)
-        ok('', {})
-        ok('"a"=>"1", "b"=>"2"', {'a': '1', 'b': '2'})
-        ok('"a"  => "1" ,"b"  =>  "2"', {'a': '1', 'b': '2'})
-        ok('"a"=>NULL, "b"=>"2"', {'a': None, 'b': '2'})
-        ok(r'"a"=>"\"", "\""=>"2"', {'a': '"', '"': '2'})
-        ok('"a"=>"\'", "\'"=>"2"', {'a': "'", "'": '2'})
-        ok('"a"=>"1", "b"=>NULL', {'a': '1', 'b': None})
-        ok(r'"a\\"=>"1"', {'a\\': '1'})
-        ok(r'"a\""=>"1"', {'a"': '1'})
-        ok(r'"a\\\""=>"1"', {r'a\"': '1'})
-        ok(r'"a\\\\\""=>"1"', {r'a\\"': '1'})
+        ok(b'', {})
+        ok(b'"a"=>"1", "b"=>"2"', {'a': '1', 'b': '2'})
+        ok(b'"a"  => "1" ,"b"  =>  "2"', {'a': '1', 'b': '2'})
+        ok(b'"a"=>NULL, "b"=>"2"', {'a': None, 'b': '2'})
+        ok(br'"a"=>"\"", "\""=>"2"', {'a': '"', '"': '2'})
+        ok(b'"a"=>"\'", "\'"=>"2"', {'a': "'", "'": '2'})
+        ok(b'"a"=>"1", "b"=>NULL', {'a': '1', 'b': None})
+        ok(br'"a\\"=>"1"', {'a\\': '1'})
+        ok(br'"a\""=>"1"', {'a"': '1'})
+        ok(br'"a\\\""=>"1"', {r'a\"': '1'})
+        ok(br'"a\\\\\""=>"1"', {r'a\\"': '1'})
 
         def ko(s):
             self.assertRaises(psycopg2.InterfaceError,
                 HstoreAdapter.parse, s, None)
 
-        ko('a')
-        ko('"a"')
-        ko(r'"a\\""=>"1"')
-        ko(r'"a\\\\""=>"1"')
-        ko('"a=>"1"')
-        ko('"a"=>"1", "b"=>NUL')
+        ko(b'a')
+        ko(b'"a"')
+        ko(br'"a\\""=>"1"')
+        ko(br'"a\\\\""=>"1"')
+        ko(b'"a=>"1"')
+        ko(b'"a"=>"1", "b"=>NUL')
 
     @skip_if_no_hstore
     def test_register_conn(self):
