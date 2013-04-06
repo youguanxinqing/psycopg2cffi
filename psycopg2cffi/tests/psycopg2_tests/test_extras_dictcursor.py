@@ -16,10 +16,11 @@
 
 import time
 from datetime import timedelta
-import psycopg2
-import psycopg2.extras
-from testutils import unittest, skip_before_postgres, skip_if_no_namedtuple
-from testconfig import dsn
+import psycopg2cffi as psycopg2
+from psycopg2cffi import extras
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        skip_before_postgres, skip_if_no_namedtuple
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 
 
 class ExtrasDictCursorTests(unittest.TestCase):
@@ -83,7 +84,7 @@ class ExtrasDictCursorTests(unittest.TestCase):
 
     @skip_before_postgres(8, 2)
     def testDictCursorWithNamedCursorNotGreedy(self):
-        curs = self.conn.cursor('tmp', cursor_factory=psycopg2.extras.DictCursor)
+        curs = self.conn.cursor('tmp', cursor_factory=extras.DictCursor)
         self._testNamedCursorNotGreedy(curs)
 
 
@@ -104,12 +105,12 @@ class ExtrasDictCursorTests(unittest.TestCase):
 
     @skip_before_postgres(8, 2)
     def testDictCursorRealWithNamedCursorNotGreedy(self):
-        curs = self.conn.cursor('tmp', cursor_factory=psycopg2.extras.RealDictCursor)
+        curs = self.conn.cursor('tmp', cursor_factory=extras.RealDictCursor)
         self._testNamedCursorNotGreedy(curs)
 
 
     def _testWithPlainCursor(self, getter):
-        curs = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        curs = self.conn.cursor(cursor_factory=extras.DictCursor)
         curs.execute("SELECT * FROM ExtrasDictCursorTests")
         row = getter(curs)
         self.failUnless(row['foo'] == 'bar')
@@ -117,20 +118,20 @@ class ExtrasDictCursorTests(unittest.TestCase):
         return row
 
     def _testWithNamedCursor(self, getter):
-        curs = self.conn.cursor('aname', cursor_factory=psycopg2.extras.DictCursor)
+        curs = self.conn.cursor('aname', cursor_factory=extras.DictCursor)
         curs.execute("SELECT * FROM ExtrasDictCursorTests")
         row = getter(curs)
         self.failUnless(row['foo'] == 'bar')
         self.failUnless(row[0] == 'bar')
 
     def _testWithPlainCursorReal(self, getter):
-        curs = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        curs = self.conn.cursor(cursor_factory=extras.RealDictCursor)
         curs.execute("SELECT * FROM ExtrasDictCursorTests")
         row = getter(curs)
         self.failUnless(row['foo'] == 'bar')
 
     def _testWithNamedCursorReal(self, getter):
-        curs = self.conn.cursor('aname', cursor_factory=psycopg2.extras.RealDictCursor)
+        curs = self.conn.cursor('aname', cursor_factory=extras.RealDictCursor)
         curs.execute("SELECT * FROM ExtrasDictCursorTests")
         row = getter(curs)
         self.failUnless(row['foo'] == 'bar')
@@ -156,7 +157,7 @@ class ExtrasDictCursorTests(unittest.TestCase):
 
 class NamedTupleCursorTest(unittest.TestCase):
     def setUp(self):
-        from psycopg2.extras import NamedTupleConnection
+        from psycopg2cffi.extras import NamedTupleConnection
 
         try:
             from collections import namedtuple
@@ -243,7 +244,7 @@ class NamedTupleCursorTest(unittest.TestCase):
             from collections import namedtuple
         except ImportError:
             # an import error somewhere
-            from psycopg2.extras import NamedTupleConnection
+            from psycopg2cffi.extras import NamedTupleConnection
             try:
                 if self.conn is not None:
                     self.conn.close()
@@ -284,7 +285,7 @@ class NamedTupleCursorTest(unittest.TestCase):
     @skip_if_no_namedtuple
     def test_minimal_generation(self):
         # Instrument the class to verify it gets called the minimum number of times.
-        from psycopg2.extras import NamedTupleCursor
+        from psycopg2cffi.extras import NamedTupleCursor
         f_orig = NamedTupleCursor._make_nt
         calls = [0]
         def f_patched(self_):
