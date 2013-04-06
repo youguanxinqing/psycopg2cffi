@@ -32,6 +32,7 @@ import sys
 import time
 import warnings
 import re as regex
+import six
 
 try:
     import logging
@@ -43,6 +44,7 @@ from psycopg2cffi import extensions as _ext
 from psycopg2cffi.extensions import cursor as _cursor
 from psycopg2cffi.extensions import connection as _connection
 from psycopg2cffi.extensions import adapt as _A
+from psycopg2cffi._impl.adapters import ascii_to_bytes, bytes_to_ascii
 
 
 class DictCursorBase(_cursor):
@@ -456,9 +458,17 @@ class UUID_adapter(object):
         pass
 
     def getquoted(self):
-        return "'"+str(self._uuid)+"'::uuid"
+        return b''.join([b"'", ascii_to_bytes(str(self._uuid)), b"'::uuid"])
 
-    __str__ = getquoted
+    if six.PY3:
+        def __bytes__(self):
+            return self.getquoted()
+        def __str__(self): # huh?
+            return bytes_to_ascii(self.getquoted())
+    else:
+        def __str__(self):
+            return self.getquoted()
+
 
 def register_uuid(oids=None, conn_or_curs=None):
     """Create the UUID type and an uuid.UUID adapter."""
@@ -477,11 +487,12 @@ def register_uuid(oids=None, conn_or_curs=None):
     def parseUUIDARRAY(data, cursor):
         if data is None:
             return None
-        elif data == '{}':
+        elif data == b'{}':
             return []
         else:
-            return [((len(x) > 0 and x != 'NULL') and uuid.UUID(x) or None)
-                    for x in data[1:-1].split(',')]
+            return [((len(x) > 0 and x != b'NULL') and 
+                uuid.UUID(bytes_to_ascii(x)) or None)
+                for x in data[1:-1].split(b',')]
 
     _ext.UUID = _ext.new_type((oid1, ), "UUID",
             lambda data, cursor: data and uuid.UUID(data) or None)
