@@ -24,9 +24,9 @@
 
 import math
 import unittest
-import psycopg2
-from psycopg2.tz import FixedOffsetTimezone
-from testconfig import dsn
+import psycopg2cffi as psycopg2
+from psycopg2cffi.tz import FixedOffsetTimezone
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 
 class CommonDatetimeTestsMixin:
 

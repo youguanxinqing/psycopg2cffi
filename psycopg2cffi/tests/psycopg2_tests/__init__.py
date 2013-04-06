@@ -37,7 +37,7 @@ from psycopg2cffi.tests.psycopg2_tests import (
         test_connection,
         test_copy,
         test_cursor,
-        #test_dates,
+        test_dates,
         #test_extras_dictcursor,
         #test_green,
         #test_lobject,
