@@ -54,6 +54,7 @@ def get_exception_for_sqlstate(code):
     http://www.postgresql.org/docs/current/static/errcodes-appendix.html
 
     """
+    code = bytes_to_ascii(code)
     if code[0] == '0':
         # Class 0A - Feature Not Supported
         if code[1] == 'A':
