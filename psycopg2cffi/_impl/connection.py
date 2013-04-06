@@ -10,6 +10,7 @@ from psycopg2cffi._impl import encodings as _enc
 from psycopg2cffi._impl import exceptions
 from psycopg2cffi._impl.libpq import libpq, ffi
 from psycopg2cffi._impl import util
+from psycopg2cffi._impl.adapters import bytes_to_ascii, ascii_to_bytes
 from psycopg2cffi._impl.cursor import Cursor
 from psycopg2cffi._impl.lobject import LargeObject
 from psycopg2cffi._impl.notify import Notify
@@ -115,7 +116,7 @@ class Connection(object):
         self._notice_callback = ffi.callback(
             'void(void *, const char *)',
             lambda arg, message: self_ref()._process_notice(
-                arg, util.bytes_to_ascii(ffi.string(message))))
+                arg, bytes_to_ascii(ffi.string(message))))
 
         if not self._async:
             self._connect_sync()
@@ -123,7 +124,7 @@ class Connection(object):
             self._connect_async()
 
     def _connect_sync(self):
-        self._pgconn = libpq.PQconnectdb(util.ascii_to_bytes(self.dsn))
+        self._pgconn = libpq.PQconnectdb(ascii_to_bytes(self.dsn))
         if not self._pgconn:
             raise exceptions.OperationalError('PQconnectdb() failed')
         elif libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
@@ -145,7 +146,7 @@ class Connection(object):
         of self._setup().
 
         """
-        self._pgconn = libpq.PQconnectStart(util.ascii_to_bytes(self.dsn))
+        self._pgconn = libpq.PQconnectStart(ascii_to_bytes(self.dsn))
         if not self._pgconn:
             raise exceptions.OperationalError('PQconnectStart() failed')
         elif libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
@@ -192,11 +193,11 @@ class Connection(object):
             if _green_callback:
                 pgres = self._execute_green(query)
             else:
-                pgres = libpq.PQexec(self._pgconn, util.ascii_to_bytes(query))
+                pgres = libpq.PQexec(self._pgconn, ascii_to_bytes(query))
 
             if not pgres or libpq.PQresultStatus(pgres) != libpq.PGRES_TUPLES_OK:
                 raise exceptions.OperationalError("can't fetch %s" % name)
-            rv = util.bytes_to_ascii(ffi.string(libpq.PQgetvalue(pgres, 0, 0)))
+            rv = bytes_to_ascii(ffi.string(libpq.PQgetvalue(pgres, 0, 0)))
             libpq.PQclear(pgres)
             return rv
 
@@ -206,7 +207,7 @@ class Connection(object):
             value = util.quote_string(self, value)
         else:
             value = b'default'
-        self._execute_command(util.ascii_to_bytes('SET %s TO ' % name) + value)
+        self._execute_command(ascii_to_bytes('SET %s TO ' % name) + value)
 
     def _set_guc_onoff(self, name, value):
         """Set the value of a configuration parameter to a boolean.
@@ -288,8 +289,8 @@ class Connection(object):
         return libpq.PQbackendPID(self._pgconn)
 
     def get_parameter_status(self, parameter):
-        return util.bytes_to_ascii(ffi.string(libpq.PQparameterStatus(
-            self._pgconn, util.ascii_to_bytes(parameter))))
+        return bytes_to_ascii(ffi.string(libpq.PQparameterStatus(
+            self._pgconn, ascii_to_bytes(parameter))))
 
     def get_transaction_status(self):
         return libpq.PQtransactionStatus(self._pgconn)
@@ -605,7 +606,7 @@ class Connection(object):
             if _green_callback:
                 pgres = self._execute_green(command)
             else:
-                pgres = libpq.PQexec(self._pgconn, util.ascii_to_bytes(command))
+                pgres = libpq.PQexec(self._pgconn, ascii_to_bytes(command))
 
             if not pgres:
                 raise self._create_exception()
@@ -618,7 +619,7 @@ class Connection(object):
 
     def _execute_tpc_command(self, command, xid):
         cmd = b' '.join([
-            util.ascii_to_bytes(command), 
+            ascii_to_bytes(command), 
             util.quote_string(self, str(xid))])
         self._execute_command(cmd)
         self._mark += 1
@@ -631,7 +632,7 @@ class Connection(object):
 
         self._async_cursor = True
 
-        if not libpq.PQsendQuery(self._pgconn, util.ascii_to_bytes(query)):
+        if not libpq.PQsendQuery(self._pgconn, ascii_to_bytes(query)):
             self._async_cursor = None
             return
 
