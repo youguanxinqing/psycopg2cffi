@@ -26,10 +26,6 @@ from a ``psycopg2.py`` file in site-packages of your virtual env)::
 
 This will map ``psycopg2cffi`` to ``psycopg2``.
 
-To run tests, install ``pytest`` and run them with::
-
-    py.test psycopg2cffi
-
 Submit issues to https://github.com/chtd/psycopg2cffi/issues 
 
 If you notice that ``psycopg2cffi`` under PyPy is noticably slower than 
@@ -44,4 +40,21 @@ python + ctypes) to cffi.
 
 The main motivation for a port was speed - the writeup with benchmarks
 is here: http://chtd.ru/blog/bystraya-rabota-s-postgres-pod-pypy/?lang=en
+
+Development
+-----------
+
+To run tests, install ``pytest`` and run them with::
+
+    py.test psycopg2cffi
+
+You can also run Django tests. You need to checkout django source, add
+psycopg2 compat as described above, and, from the root of the django checkout::
+
+    PYTHONPATH=`pwd` ./tests/runtests.py \
+        --settings=psycopg2cffi.tests.psycopg2_tests.testconfig
+
+In case of problems with django tests, see official django docs 
+https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/#running-the-unit-tests
+
 
