@@ -487,16 +487,14 @@ def register_uuid(oids=None, conn_or_curs=None):
     def parseUUIDARRAY(data, cursor):
         if data is None:
             return None
-        elif data == b'{}':
+        elif data == '{}':
             return []
         else:
-            return [((len(x) > 0 and x != b'NULL') and 
-                uuid.UUID(bytes_to_ascii(x)) or None)
-                for x in data[1:-1].split(b',')]
+            return [((len(x) > 0 and x != 'NULL') and 
+                uuid.UUID(x) or None) for x in data[1:-1].split(',')]
 
     _ext.UUID = _ext.new_type((oid1, ), "UUID",
-            lambda data, cursor: data and 
-            uuid.UUID(bytes_to_ascii(data)) or None)
+            lambda data, cursor: data and uuid.UUID(data) or None)
     _ext.UUIDARRAY = _ext.new_type((oid2,), "UUID[]", parseUUIDARRAY)
 
     _ext.register_type(_ext.UUID, conn_or_curs)
@@ -629,7 +627,7 @@ class HstoreAdapter(object):
 
     getquoted = _getquoted_9
 
-    _re_hstore = regex.compile(br"""
+    _re_hstore = regex.compile(r"""
         # hstore key:
         # a string of normal or escaped chars
         "((?: [^"\\] | \\. )*)"
@@ -643,7 +641,7 @@ class HstoreAdapter(object):
     """, regex.VERBOSE)
 
     @classmethod
-    def parse(self, s, cur, _bsdec=regex.compile(br"\\(.)")):
+    def parse(self, s, cur, _bsdec=regex.compile(r"\\(.)")):
         """Parse an hstore representation in a Python string.
 
         The hstore is represented as something like::
@@ -661,14 +659,11 @@ class HstoreAdapter(object):
             if m is None or m.start() != start:
                 raise psycopg2.InterfaceError(
                     "error parsing hstore pair at char %d" % start)
-            k = _bsdec.sub(br'\1', m.group(1))
+            k = _bsdec.sub(r'\1', m.group(1))
             v = m.group(2)
             if v is not None:
-                v = _bsdec.sub(br'\1', v)
+                v = _bsdec.sub(r'\1', v)
 
-            if six.PY3:
-                k = self._to_unicode(k, cur)
-                v = self._to_unicode(v, cur)
             rv[k] = v
             start = m.end()
 
@@ -871,13 +866,13 @@ class CompositeCaster(object):
             for oid, token in zip(self.atttypes, tokens) ]
         return self._ctor(*attrs)
 
-    _re_tokenize = regex.compile(br"""
+    _re_tokenize = regex.compile(r"""
   \(? ([,\)])                       # an empty token, representing NULL
 | \(? " ((?: [^"] | "")*) " [,)]    # or a quoted string
 | \(? ([^",\)]+) [,\)]              # or an unquoted string
     """, regex.VERBOSE)
 
-    _re_undouble = regex.compile(br'(["\\])\1')
+    _re_undouble = regex.compile(r'(["\\])\1')
 
     @classmethod
     def tokenize(self, s):
@@ -890,7 +885,7 @@ class CompositeCaster(object):
             if m.group(1):
                 v = None
             elif m.group(2):
-                v = self._re_undouble.sub(br"\1", m.group(2))
+                v = self._re_undouble.sub(r"\1", m.group(2))
             else:
                 v = m.group(3)
             rv.append(v)
