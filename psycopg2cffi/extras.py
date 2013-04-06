@@ -495,7 +495,8 @@ def register_uuid(oids=None, conn_or_curs=None):
                 for x in data[1:-1].split(b',')]
 
     _ext.UUID = _ext.new_type((oid1, ), "UUID",
-            lambda data, cursor: data and uuid.UUID(data) or None)
+            lambda data, cursor: data and 
+            uuid.UUID(bytes_to_ascii(data)) or None)
     _ext.UUIDARRAY = _ext.new_type((oid2,), "UUID[]", parseUUIDARRAY)
 
     _ext.register_type(_ext.UUID, conn_or_curs)
