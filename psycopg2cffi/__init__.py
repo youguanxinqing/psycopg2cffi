@@ -96,7 +96,7 @@ def connect(dsn=None,
             items.append(('port', port))
 
         items.extend(
-            [(k, v) for (k, v) in kwargs.iteritems() if v is not None])
+            [(k, v) for (k, v) in kwargs.items() if v is not None])
         dsn = " ".join(["%s=%s" % (k, _param_escape(str(v)))
             for (k, v) in items])
 
