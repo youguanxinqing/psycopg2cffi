@@ -394,6 +394,8 @@ class Cursor(object):
 
         """
         cast = self._get_cast(oid)
+        if isinstance(s, six.text_type):
+            s = s.encode(self._conn._py_enc)
         return cast.cast(s, self, None)
 
     def mogrify(self, query, vars=None):
@@ -882,7 +884,6 @@ def _combine_cmd_params(cmd, params, conn):
     named_args_format = None
     parts = []
 
-
     cmd_length = len(cmd)
     while idx < cmd_length:
 
@@ -907,7 +908,7 @@ def _combine_cmd_params(cmd, params, conn):
                 raise ProgrammingError(
                     "incomplete placeholder: '%(' without ')'")
 
-            key = cmd[idx + 2:end]
+            key = cmd[idx + 2:end].decode(conn._py_enc)
             if arg_values is None:
                 arg_values = {}
             if key not in arg_values:
