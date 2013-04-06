@@ -203,7 +203,7 @@ def parse_unicode(value, length, cursor):
 
 
 def _parse_date(value):
-    return datetime.date(*[int(x) for x in value.split('-')])
+    return datetime.date(*[int(x) for x in value.split(b'-')])
 
 
 def _parse_time(value, cursor):

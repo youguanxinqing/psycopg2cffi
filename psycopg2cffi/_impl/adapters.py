@@ -18,8 +18,6 @@ adapters = {}
 # Adapters assept python objects and always return bytes, as described in 
 # http://initd.org/psycopg/articles/2011/01/24/psycopg2-porting-python-3-report/
 
-# TODO - really return bytes
-
 
 class _BaseAdapter(object):
     def __init__(self, wrapped_object):
@@ -100,19 +98,21 @@ class DateTime(_BaseAdapter):
         obj = self._wrapped
         if isinstance(obj, datetime.timedelta):
             # TODO: microseconds
-            return "'%d days %d.0 seconds'::interval" % (
-                int(obj.days), int(obj.seconds))
+            return b''.join([b"'", 
+                ascii_to_bytes(str(int(obj.days))), b" days ",
+                ascii_to_bytes(str(int(obj.seconds))), b".0 seconds'::interval"
+                ])
         else:
             iso = obj.isoformat()
             if isinstance(obj, datetime.datetime):
-                format = 'timestamp'
+                _format = b'timestamp'
                 if getattr(obj, 'tzinfo', None):
-                    format = 'timestamptz'
+                    _format = b'timestamptz'
             elif isinstance(obj, datetime.time):
-                format = 'time'
+                _format = b'time'
             else:
-                format = 'date'
-            return "'%s'::%s" % (str(iso), format)
+                _format = b'date'
+            return b''.join([b"'", ascii_to_bytes(iso), b"'::", _format])
 
 
 def Date(year, month, day):
