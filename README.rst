@@ -14,7 +14,7 @@ have ``libpq`` headers, ``pg_config`` somewhere on your ``$PATH``.
 Installation was tested on Ubuntu 12.04 and CentOS (RHEL 5.0).
 It should be possible to make it work on Windows, but I did not even test it.
 
-This module is only tested with python 2.6+ and PyPy 2.0 (and will 
+This module is only tested with python 2.6+, python 3.2+ and PyPy 2.0 (and will 
 definityly not work on PyPy 1.9).
 
 To use this package with Django or SQLAlchemy invoke a compatability
