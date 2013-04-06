@@ -479,7 +479,7 @@ class AdaptTypeTestCase(unittest.TestCase):
         ok(b'(10,"(20,""(30,40)"")")', [b'10', b'(20,"(30,40)")'])
         ok(b'(10,"(20,""(30,""""(40,50)"""")"")")', [b'10', b'(20,"(30,""(40,50)"")")'])
         ok(b'(,"(,""(a\nb\tc)"")")', [None, b'(,"(a\nb\tc)")'])
-        bytelist = [bytes(chr(i), 'ascii') for i in range(1, 128)]
+        bytelist = [chr(i).encode('ascii') for i in range(1, 128)]
         ok(b'(\x01,\x02,\x03,\x04,\x05,\x06,\x07,\x08,"\t","\n","\x0b",'
            b'"\x0c","\r",\x0e,\x0f,\x10,\x11,\x12,\x13,\x14,\x15,\x16,'
            b'\x17,\x18,\x19,\x1a,\x1b,\x1c,\x1d,\x1e,\x1f," ",!,"""",#,'
