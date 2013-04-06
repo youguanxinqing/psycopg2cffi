@@ -32,6 +32,8 @@ from psycopg2cffi.extensions import b
 from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
         skip_before_postgres, skip_if_no_namedtuple, skipIf, _u
+from psycopg2cffi._impl.cursor import _combine_cmd_params
+
 
 class CursorTests(unittest.TestCase):
 
@@ -88,6 +90,11 @@ class CursorTests(unittest.TestCase):
         self.assertEqual(snowman.encode("utf-8"), b(cur.fetchone()[0]))
         self.assertEqual(("SELECT '%s';" % snowman).encode('utf8'),
             cur.mogrify(_u(b"SELECT %s;"), (snowman,)).replace(b("E'"), b("'")))
+
+    def test_combine_cmd_params(self):
+        self.assertEqual(
+                _combine_cmd_params(b"SELECT '%%', %s", (b'%d',), None),
+                b"SELECT '%%', '%d'")
 
     def test_mogrify_decimal_explodes(self):
         # issue #7: explodes on windows with python 2.5 and psycopg 2.2.2

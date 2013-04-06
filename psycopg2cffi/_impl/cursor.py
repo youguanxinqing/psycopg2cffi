@@ -245,7 +245,6 @@ class Cursor(object):
 
         self._pq_execute(self._query, conn._async)
 
-
     @check_closed
     @check_async
     def executemany(self, query, paramlist):
