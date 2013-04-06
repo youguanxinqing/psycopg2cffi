@@ -586,9 +586,9 @@ class Connection(object):
         with self._lock:
             # If the current datestyle is not compatible (not ISO) then
             # force it to ISO
-            datestyle = ffi.string(
-                    libpq.PQparameterStatus(self._pgconn, 'DateStyle'))
-            if not datestyle or not datestyle.startswith('ISO'):
+            datestyle = libpq.PQparameterStatus(self._pgconn, 'DateStyle')
+            if datestyle == ffi.NULL or \
+                    not ffi.string(datestyle).startswith('ISO'):
                 self.status = consts.STATUS_DATESTYLE
                 self._set_guc('datestyle', 'ISO')
 
