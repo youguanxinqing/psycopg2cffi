@@ -15,25 +15,10 @@ from psycopg2cffi.tz import LOCAL as TZ_LOCAL
 
 adapters = {}
 
+# Adapters always return bytes
 
-def ascii_to_bytes(s):
-    ''' Convert ascii string to bytes
-    '''
-    if isinstance(s, six.text_type):
-        return s.encode('ascii')
-    else:
-        assert isinstance(s, six.binary_type)
-        return s
+# TODO - really return bytes
 
-
-def bytes_to_ascii(b):
-    ''' Convert ascii bytestring to string
-    '''
-    assert isinstance(b, six.binary_type)
-    return b.decode('ascii')
-
-
-# TODO - return bytes
 
 class _BaseAdapter(object):
     def __init__(self, wrapped_object):
@@ -298,6 +283,23 @@ def _getquoted(param, conn):
     except AttributeError:
         pass
     return adapter.getquoted()
+
+
+def ascii_to_bytes(s):
+    ''' Convert ascii string to bytes
+    '''
+    if isinstance(s, six.text_type):
+        return s.encode('ascii')
+    else:
+        assert isinstance(s, six.binary_type)
+        return s
+
+
+def bytes_to_ascii(b):
+    ''' Convert ascii bytestring to string
+    '''
+    assert isinstance(b, six.binary_type)
+    return b.decode('ascii')
 
 
 built_in_adapters = {
