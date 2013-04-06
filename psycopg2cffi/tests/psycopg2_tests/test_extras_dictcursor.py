@@ -16,6 +16,8 @@
 
 import time
 from datetime import timedelta
+import six
+
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extras
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
@@ -228,16 +230,16 @@ class NamedTupleCursorTest(unittest.TestCase):
         curs = self.conn.cursor()
         curs.execute("select * from nttest order by 1")
         i = iter(curs)
-        t = i.next()
+        t = six.next(i)
         self.assertEqual(t.i, 1)
         self.assertEqual(t.s, 'foo')
-        t = i.next()
+        t = six.next(i)
         self.assertEqual(t.i, 2)
         self.assertEqual(t.s, 'bar')
-        t = i.next()
+        t = six.next(i)
         self.assertEqual(t.i, 3)
         self.assertEqual(t.s, 'baz')
-        self.assertRaises(StopIteration, i.next)
+        self.assertRaises(StopIteration, six.next, i)
 
     def test_error_message(self):
         try:
@@ -324,7 +326,7 @@ class NamedTupleCursorTest(unittest.TestCase):
         recs.extend(curs.fetchmany(5))
         recs.append(curs.fetchone())
         recs.extend(curs.fetchall())
-        self.assertEqual(range(10), [t.i for t in recs])
+        self.assertEqual(list(range(10)), [t.i for t in recs])
 
     @skip_if_no_namedtuple
     def test_named_fetchone(self):
