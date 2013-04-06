@@ -121,7 +121,7 @@ def parse_boolean(value, length, cursor):
     Postgres returns the boolean as a string with 'true' or 'false'
 
     """
-    return value[0] == "t"
+    return value[:1] == b"t"
 
 
 class parse_array(object):
