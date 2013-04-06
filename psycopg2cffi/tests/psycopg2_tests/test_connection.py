@@ -149,7 +149,7 @@ class ConnectionTests(unittest.TestCase):
         cur = self.conn.cursor()
         extensions.register_type(extensions.UNICODE, cur)
         cur.execute("select 'foo'::text;")
-        self.assertEqual(cur.fetchone()[0], 'foo')
+        self.assertEqual(cur.fetchone()[0], _u(b'foo'))
 
     def test_connect_nonnormal_envvar(self):
         # We must perform encoding normalization at connection time
