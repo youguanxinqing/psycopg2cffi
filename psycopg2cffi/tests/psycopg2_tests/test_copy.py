@@ -172,7 +172,7 @@ class CopyTests(unittest.TestCase):
         else:
             abin = bytes(list(range(32, 127)) + list(range(160, 255)))\
                     .decode('latin1')
-            about = abin.replace(b'\\', b'\\\\').encode('latin1')
+            about = abin.replace('\\', '\\\\').encode('latin1')
 
         curs = self.conn.cursor()
         curs.execute('insert into tcopy values (%s, %s)',
