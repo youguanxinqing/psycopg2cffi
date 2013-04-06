@@ -253,7 +253,9 @@ class Connection(object):
                 if isolation_level < 1 or isolation_level > 4:
                     raise ValueError('isolation level must be between 1 and 4')
                 isolation_level = _isolevels[isolation_level]
-            elif isinstance(isolation_level, six.text_type):
+            elif isinstance(isolation_level, six.string_types):
+                if isinstance(isolation_level, six.binary_type):
+                    isolation_level = bytes_to_ascii(isolation_level)
                 if not isolation_level \
                         or isolation_level.lower() not in _isolevels:
                     raise ValueError("bad value for isolation level: '%s'" %
