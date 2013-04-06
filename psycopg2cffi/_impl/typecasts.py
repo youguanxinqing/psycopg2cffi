@@ -65,7 +65,7 @@ def typecast(caster, value, length, cursor):
 
 
 def parse_unknown(value, length, cursor):
-    if value != '{}':
+    if value != b'{}':
         # FIXME hmm not sure
         if six.PY3 and isinstance(value, six.binary_type):
             return parse_unicode(value, length, cursor)
