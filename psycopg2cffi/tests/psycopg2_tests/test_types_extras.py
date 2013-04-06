@@ -179,7 +179,7 @@ class HstoreTestCase(unittest.TestCase):
 
         kk = m.group(1).split(b", ")
         vv = m.group(2).split(b", ")
-        ii = zip(kk, vv)
+        ii = list(zip(kk, vv))
         ii.sort()
 
         def f(*args):
