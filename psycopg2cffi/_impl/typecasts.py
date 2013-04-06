@@ -222,20 +222,20 @@ def _parse_time_to_args(value, cursor):
 
     """
     microsecond = 0
-    hour, minute, second = value.split(':', 2)
+    hour, minute, second = value.split(b':', 2)
 
     sign = 0
     tzinfo = None
     timezone = None
-    if '-' in second:
+    if b'-' in second:
         sign = -1
-        second, timezone = second.split('-')
-    elif '+' in second:
+        second, timezone = second.split(b'-')
+    elif b'+' in second:
         sign = 1
-        second, timezone = second.split('+')
+        second, timezone = second.split(b'+')
 
     if not cursor.tzinfo_factory is None and sign:
-        parts = timezone.split(':')
+        parts = timezone.split(b':')
         tz_min = sign * 60 * int(parts[0])
         if len(parts) > 1:
             tz_min += int(parts[1])
@@ -243,16 +243,16 @@ def _parse_time_to_args(value, cursor):
             tz_min += int(int(parts[2]) / 60.0)
         tzinfo = cursor.tzinfo_factory(tz_min)
 
-    if '.' in second:
-        second, microsecond = second.split('.')
+    if b'.' in second:
+        second, microsecond = second.split(b'.')
         microsecond = int(microsecond) * int(math.pow(10.0, 6.0 - len(microsecond)))
 
     return int(hour), int(minute), int(second), microsecond, tzinfo
 
 
 def parse_datetime(value, length, cursor):
-    date, time = value.split(' ')
-    date_args = date.split('-')
+    date, time = value.split(b' ')
+    date_args = date.split(b'-')
     return datetime.datetime(
             int(date_args[0]), 
             int(date_args[1]), 
