@@ -120,7 +120,7 @@ class QuotingTestCase(unittest.TestCase):
         self.conn.set_client_encoding('LATIN1')
         curs = self.conn.cursor()
         if sys.version_info[0] < 3:
-            data = ''.join(map(chr, range(32, 127) + range(160, 256)))
+            data = b''.join(map(chr, range(32, 127) + range(160, 256)))
         else:
             data = bytes(list(range(32, 127)) + list(range(160, 256)))\
                     .decode('latin1')
@@ -145,7 +145,7 @@ class QuotingTestCase(unittest.TestCase):
         self.conn.set_client_encoding('KOI8')
         curs = self.conn.cursor()
         if sys.version_info[0] < 3:
-            data = ''.join(map(chr, range(32, 127) + range(128, 256)))
+            data = b''.join(map(chr, range(32, 127) + range(128, 256)))
         else:
             data = bytes(list(range(32, 127)) + list(range(128, 256)))\
                     .decode('koi8_r')

@@ -15,7 +15,8 @@ from psycopg2cffi.tz import LOCAL as TZ_LOCAL
 
 adapters = {}
 
-# Adapters always return bytes
+# Adapters assept python objects and always return bytes, as described in 
+# http://initd.org/psycopg/articles/2011/01/24/psycopg2-porting-python-3-report/
 
 # TODO - really return bytes
 

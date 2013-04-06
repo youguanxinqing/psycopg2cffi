@@ -10,6 +10,9 @@ from psycopg2cffi._impl.libpq import libpq, ffi
 from psycopg2cffi._impl.adapters import bytes_to_ascii
 
 
+# Typecasters accept bytes and return python objects
+
+
 string_types = {}
 
 binary_types = {}
@@ -63,13 +66,20 @@ def typecast(caster, value, length, cursor):
 
 def parse_unknown(value, length, cursor):
     if value != '{}':
+        # FIXME hmm not sure
+        if six.PY3 and isinstance(value, six.binary_type):
+            return parse_unicode(value, length, cursor)
         return value
     else:
         return []
 
 
-def parse_string(value, length, cursor):
-    return value.decode(cursor.connection._py_enc)
+if six.PY3:
+    def parse_string(value, length, cursor):
+        return value.decode(cursor.connection._py_enc)
+else:
+    def parse_string(value, length, cursor):
+        return value
 
 
 if six.PY3:
