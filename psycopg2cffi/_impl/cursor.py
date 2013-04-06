@@ -762,7 +762,8 @@ class Cursor(object):
 
                 casts.append(self._get_cast(ftype))
                 description.append(Column(
-                    name=ffi.string(libpq.PQfname(self._pgres, i)),
+                    name=ffi.string(libpq.PQfname(self._pgres, i))\
+                            .decode(self._conn._py_enc),
                     type_code=ftype,
                     display_size=None,
                     internal_size=isize,
