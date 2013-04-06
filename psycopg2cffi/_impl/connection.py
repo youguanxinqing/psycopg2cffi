@@ -214,7 +214,8 @@ class Connection(object):
 
         The string 'default' is accepted too.
         """
-        if isinstance(value, six.text_type) and value.lower() == 'default':
+        if isinstance(value, six.string_types) and \
+                value.lower() in (b'default', 'default'):
             value = 'default'
         else:
             value = 'on' if value else 'off'
