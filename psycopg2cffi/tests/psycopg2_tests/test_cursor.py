@@ -94,6 +94,9 @@ class CursorTests(unittest.TestCase):
     def test_combine_cmd_params(self):
         self.assertEqual(
                 _combine_cmd_params(b"SELECT '%%', %s", (b'%d',), None),
+                b"SELECT '%', '%d'")
+        self.assertEqual(
+                _combine_cmd_params(b"SELECT '%%%%', %s", (b'%d',), None),
                 b"SELECT '%%', '%d'")
 
     def test_mogrify_decimal_explodes(self):

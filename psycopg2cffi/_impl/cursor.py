@@ -889,8 +889,10 @@ def _combine_cmd_params(cmd, params, conn):
 
         # Escape
         if cmd[idx:idx+2] == b'%%':
+            parts.append(cmd[next_start:idx])
             parts.append(b'%')
             idx += 1
+            next_start = idx + 1
 
         # Named parameters
         elif cmd[idx:idx+2] == b'%(':
