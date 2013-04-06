@@ -748,8 +748,8 @@ class Connection(object):
 
             notify = Notify(
                 pg_notify.be_pid,
-                ffi.string(pg_notify.relname),
-                ffi.string(pg_notify.extra))
+                ffi.string(pg_notify.relname).decode(self._py_enc),
+                ffi.string(pg_notify.extra).decode(self._py_enc))
             self._notifies.append(notify)
 
             libpq.PQfreemem(pg_notify)
