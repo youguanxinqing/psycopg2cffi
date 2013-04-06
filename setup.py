@@ -273,6 +273,8 @@ setup(
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.2',
+        'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Programming Language :: SQL',
@@ -286,6 +288,7 @@ setup(
     long_description=''.join(README),
     packages=['psycopg2cffi', 'psycopg2cffi._impl', 'psycopg2cffi.tests'],
     install_requires=[
+        'six',
         'cffi ==0.4, ==0.5',
         ],
     ext_package='psycopg2cffi',
