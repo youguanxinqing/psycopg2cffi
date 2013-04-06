@@ -32,6 +32,7 @@ from psycopg2cffi.tests.psycopg2_tests import (
         test_async,
         test_bugX000,
         test_bug_gc,
+        test_bug_inf_fetch_loop,
         test_cancel,
         test_connection,
         test_copy,
