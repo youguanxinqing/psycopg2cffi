@@ -10,7 +10,9 @@ from psycopg2cffi._impl.libpq import libpq, ffi
 from psycopg2cffi._impl.adapters import bytes_to_ascii
 
 
-# Typecasters accept bytes and return python objects
+# Typecasters accept bytes and return python objects.
+# This only applies to our internal typecasers - user-defined ones
+# accept unicode, to mimic psycopg2 behaviour
 
 
 string_types = {}
@@ -30,6 +32,9 @@ class Type(object):
 
     def cast(self, value, cursor, length=None):
         if self.py_caster is not None:
+            # py_caster-s are part of external api and so accept unicode
+            if isinstance(value, six.binary_type):
+                value = value.decode(cursor._conn._py_enc)
             return self.py_caster(value, cursor)
         return self.caster(value, length, cursor)
 
