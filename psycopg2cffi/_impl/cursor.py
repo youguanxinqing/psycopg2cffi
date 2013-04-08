@@ -105,6 +105,12 @@ class Cursor(object):
             libpq.PQclear(self._pgres)
             self._pgres = ffi.NULL
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, name, tb):
+        self.close()
+
     @property
     def closed(self):
         return self._closed or self._conn.closed

@@ -155,6 +155,16 @@ class Connection(object):
         self._close()
 
     @check_closed
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, name, tb):
+        if type is None:
+            self.commit()
+        else:
+            self.rollback()
+
+    @check_closed
     def close(self):
         return self._close()
 
