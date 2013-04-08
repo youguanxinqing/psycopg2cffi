@@ -18,28 +18,39 @@ import time
 from datetime import timedelta
 import psycopg2
 import psycopg2.extras
-from testutils import unittest, skip_before_postgres, skip_if_no_namedtuple
-from testconfig import dsn
+from testutils import unittest, ConnectingTestCase, skip_before_postgres
+from testutils import skip_if_no_namedtuple
 
 
-class ExtrasDictCursorTests(unittest.TestCase):
+class ExtrasDictCursorTests(ConnectingTestCase):
     """Test if DictCursor extension class works."""
 
     def setUp(self):
-        self.conn = psycopg2.connect(dsn)
+        ConnectingTestCase.setUp(self)
         curs = self.conn.cursor()
         curs.execute("CREATE TEMPORARY TABLE ExtrasDictCursorTests (foo text)")
         curs.execute("INSERT INTO ExtrasDictCursorTests VALUES ('bar')")
         self.conn.commit()
 
-    def tearDown(self):
+    def testDictConnCursorArgs(self):
         self.conn.close()
+        self.conn = self.connect(connection_factory=psycopg2.extras.DictConnection)
+        cur = self.conn.cursor()
+        self.assert_(isinstance(cur, psycopg2.extras.DictCursor))
+        self.assertEqual(cur.name, None)
+        # overridable
+        cur = self.conn.cursor('foo', cursor_factory=psycopg2.extras.NamedTupleCursor)
+        self.assertEqual(cur.name, 'foo')
+        self.assert_(isinstance(cur, psycopg2.extras.NamedTupleCursor))
 
     def testDictCursorWithPlainCursorFetchOne(self):
         self._testWithPlainCursor(lambda curs: curs.fetchone())
 
     def testDictCursorWithPlainCursorFetchMany(self):
         self._testWithPlainCursor(lambda curs: curs.fetchmany(100)[0])
+
+    def testDictCursorWithPlainCursorFetchManyNoarg(self):
+        self._testWithPlainCursor(lambda curs: curs.fetchmany()[0])
 
     def testDictCursorWithPlainCursorFetchAll(self):
         self._testWithPlainCursor(lambda curs: curs.fetchall()[0])
@@ -50,11 +61,34 @@ class ExtrasDictCursorTests(unittest.TestCase):
                 return row
         self._testWithPlainCursor(getter)
 
+    def testUpdateRow(self):
+        row = self._testWithPlainCursor(lambda curs: curs.fetchone())
+        row['foo'] = 'qux'
+        self.failUnless(row['foo'] == 'qux')
+        self.failUnless(row[0] == 'qux')
+
+    @skip_before_postgres(8, 0)
+    def testDictCursorWithPlainCursorIterRowNumber(self):
+        curs = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        self._testIterRowNumber(curs)
+
+    def _testWithPlainCursor(self, getter):
+        curs = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        curs.execute("SELECT * FROM ExtrasDictCursorTests")
+        row = getter(curs)
+        self.failUnless(row['foo'] == 'bar')
+        self.failUnless(row[0] == 'bar')
+        return row
+
+
     def testDictCursorWithPlainCursorRealFetchOne(self):
         self._testWithPlainCursorReal(lambda curs: curs.fetchone())
 
     def testDictCursorWithPlainCursorRealFetchMany(self):
         self._testWithPlainCursorReal(lambda curs: curs.fetchmany(100)[0])
+
+    def testDictCursorWithPlainCursorRealFetchManyNoarg(self):
+        self._testWithPlainCursorReal(lambda curs: curs.fetchmany()[0])
 
     def testDictCursorWithPlainCursorRealFetchAll(self):
         self._testWithPlainCursorReal(lambda curs: curs.fetchall()[0])
@@ -65,12 +99,26 @@ class ExtrasDictCursorTests(unittest.TestCase):
                 return row
         self._testWithPlainCursorReal(getter)
 
+    @skip_before_postgres(8, 0)
+    def testDictCursorWithPlainCursorRealIterRowNumber(self):
+        curs = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        self._testIterRowNumber(curs)
+
+    def _testWithPlainCursorReal(self, getter):
+        curs = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        curs.execute("SELECT * FROM ExtrasDictCursorTests")
+        row = getter(curs)
+        self.failUnless(row['foo'] == 'bar')
+
 
     def testDictCursorWithNamedCursorFetchOne(self):
         self._testWithNamedCursor(lambda curs: curs.fetchone())
 
     def testDictCursorWithNamedCursorFetchMany(self):
         self._testWithNamedCursor(lambda curs: curs.fetchmany(100)[0])
+
+    def testDictCursorWithNamedCursorFetchManyNoarg(self):
+        self._testWithNamedCursor(lambda curs: curs.fetchmany()[0])
 
     def testDictCursorWithNamedCursorFetchAll(self):
         self._testWithNamedCursor(lambda curs: curs.fetchall()[0])
@@ -86,12 +134,27 @@ class ExtrasDictCursorTests(unittest.TestCase):
         curs = self.conn.cursor('tmp', cursor_factory=psycopg2.extras.DictCursor)
         self._testNamedCursorNotGreedy(curs)
 
+    @skip_before_postgres(8, 0)
+    def testDictCursorWithNamedCursorIterRowNumber(self):
+        curs = self.conn.cursor('tmp', cursor_factory=psycopg2.extras.DictCursor)
+        self._testIterRowNumber(curs)
+
+    def _testWithNamedCursor(self, getter):
+        curs = self.conn.cursor('aname', cursor_factory=psycopg2.extras.DictCursor)
+        curs.execute("SELECT * FROM ExtrasDictCursorTests")
+        row = getter(curs)
+        self.failUnless(row['foo'] == 'bar')
+        self.failUnless(row[0] == 'bar')
+
 
     def testDictCursorRealWithNamedCursorFetchOne(self):
         self._testWithNamedCursorReal(lambda curs: curs.fetchone())
 
     def testDictCursorRealWithNamedCursorFetchMany(self):
         self._testWithNamedCursorReal(lambda curs: curs.fetchmany(100)[0])
+
+    def testDictCursorRealWithNamedCursorFetchManyNoarg(self):
+        self._testWithNamedCursorReal(lambda curs: curs.fetchmany()[0])
 
     def testDictCursorRealWithNamedCursorFetchAll(self):
         self._testWithNamedCursorReal(lambda curs: curs.fetchall()[0])
@@ -107,27 +170,10 @@ class ExtrasDictCursorTests(unittest.TestCase):
         curs = self.conn.cursor('tmp', cursor_factory=psycopg2.extras.RealDictCursor)
         self._testNamedCursorNotGreedy(curs)
 
-
-    def _testWithPlainCursor(self, getter):
-        curs = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        curs.execute("SELECT * FROM ExtrasDictCursorTests")
-        row = getter(curs)
-        self.failUnless(row['foo'] == 'bar')
-        self.failUnless(row[0] == 'bar')
-        return row
-
-    def _testWithNamedCursor(self, getter):
-        curs = self.conn.cursor('aname', cursor_factory=psycopg2.extras.DictCursor)
-        curs.execute("SELECT * FROM ExtrasDictCursorTests")
-        row = getter(curs)
-        self.failUnless(row['foo'] == 'bar')
-        self.failUnless(row[0] == 'bar')
-
-    def _testWithPlainCursorReal(self, getter):
-        curs = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        curs.execute("SELECT * FROM ExtrasDictCursorTests")
-        row = getter(curs)
-        self.failUnless(row['foo'] == 'bar')
+    @skip_before_postgres(8, 0)
+    def testDictCursorRealWithNamedCursorIterRowNumber(self):
+        curs = self.conn.cursor('tmp', cursor_factory=psycopg2.extras.RealDictCursor)
+        self._testIterRowNumber(curs)
 
     def _testWithNamedCursorReal(self, getter):
         curs = self.conn.cursor('aname', cursor_factory=psycopg2.extras.RealDictCursor)
@@ -135,11 +181,6 @@ class ExtrasDictCursorTests(unittest.TestCase):
         row = getter(curs)
         self.failUnless(row['foo'] == 'bar')
 
-    def testUpdateRow(self):
-        row = self._testWithPlainCursor(lambda curs: curs.fetchone())
-        row['foo'] = 'qux'
-        self.failUnless(row['foo'] == 'qux')
-        self.failUnless(row[0] == 'qux')
 
     def _testNamedCursorNotGreedy(self, curs):
         curs.itersize = 2
@@ -153,19 +194,52 @@ class ExtrasDictCursorTests(unittest.TestCase):
         self.assert_(recs[1]['ts'] - recs[0]['ts'] < timedelta(seconds=0.005))
         self.assert_(recs[2]['ts'] - recs[1]['ts'] > timedelta(seconds=0.0099))
 
+    def _testIterRowNumber(self, curs):
+        # Only checking for dataset < itersize:
+        # see CursorTests.test_iter_named_cursor_rownumber
+        curs.itersize = 20
+        curs.execute("""select * from generate_series(1,10)""")
+        for i, r in enumerate(curs):
+            self.assertEqual(i + 1, curs.rownumber)
 
-class NamedTupleCursorTest(unittest.TestCase):
+    def testPickleDictRow(self):
+        import pickle
+        curs = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        curs.execute("select 10 as a, 20 as b")
+        r = curs.fetchone()
+        d = pickle.dumps(r)
+        r1 = pickle.loads(d)
+        self.assertEqual(r, r1)
+        self.assertEqual(r[0], r1[0])
+        self.assertEqual(r[1], r1[1])
+        self.assertEqual(r['a'], r1['a'])
+        self.assertEqual(r['b'], r1['b'])
+        self.assertEqual(r._index, r1._index)
+
+    def testPickleRealDictRow(self):
+        import pickle
+        curs = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        curs.execute("select 10 as a, 20 as b")
+        r = curs.fetchone()
+        d = pickle.dumps(r)
+        r1 = pickle.loads(d)
+        self.assertEqual(r, r1)
+        self.assertEqual(r['a'], r1['a'])
+        self.assertEqual(r['b'], r1['b'])
+        self.assertEqual(r._column_mapping, r1._column_mapping)
+
+
+class NamedTupleCursorTest(ConnectingTestCase):
     def setUp(self):
+        ConnectingTestCase.setUp(self)
         from psycopg2.extras import NamedTupleConnection
 
         try:
             from collections import namedtuple
         except ImportError:
-            self.conn = None
             return
 
-        self.conn = psycopg2.connect(dsn,
-            connection_factory=NamedTupleConnection)
+        self.conn = self.connect(connection_factory=NamedTupleConnection)
         curs = self.conn.cursor()
         curs.execute("CREATE TEMPORARY TABLE nttest (i int, s text)")
         curs.execute("INSERT INTO nttest VALUES (1, 'foo')")
@@ -173,19 +247,37 @@ class NamedTupleCursorTest(unittest.TestCase):
         curs.execute("INSERT INTO nttest VALUES (3, 'baz')")
         self.conn.commit()
 
-    def tearDown(self):
-        if self.conn is not None:
-            self.conn.close()
+    @skip_if_no_namedtuple
+    def test_cursor_args(self):
+        cur = self.conn.cursor('foo', cursor_factory=psycopg2.extras.DictCursor)
+        self.assertEqual(cur.name, 'foo')
+        self.assert_(isinstance(cur, psycopg2.extras.DictCursor))
 
     @skip_if_no_namedtuple
     def test_fetchone(self):
         curs = self.conn.cursor()
-        curs.execute("select * from nttest where i = 1")
+        curs.execute("select * from nttest order by 1")
         t = curs.fetchone()
         self.assertEqual(t[0], 1)
         self.assertEqual(t.i, 1)
         self.assertEqual(t[1], 'foo')
         self.assertEqual(t.s, 'foo')
+        self.assertEqual(curs.rownumber, 1)
+        self.assertEqual(curs.rowcount, 3)
+
+    @skip_if_no_namedtuple
+    def test_fetchmany_noarg(self):
+        curs = self.conn.cursor()
+        curs.arraysize = 2
+        curs.execute("select * from nttest order by 1")
+        res = curs.fetchmany()
+        self.assertEqual(2, len(res))
+        self.assertEqual(res[0].i, 1)
+        self.assertEqual(res[0].s, 'foo')
+        self.assertEqual(res[1].i, 2)
+        self.assertEqual(res[1].s, 'bar')
+        self.assertEqual(curs.rownumber, 2)
+        self.assertEqual(curs.rowcount, 3)
 
     @skip_if_no_namedtuple
     def test_fetchmany(self):
@@ -197,6 +289,8 @@ class NamedTupleCursorTest(unittest.TestCase):
         self.assertEqual(res[0].s, 'foo')
         self.assertEqual(res[1].i, 2)
         self.assertEqual(res[1].s, 'bar')
+        self.assertEqual(curs.rownumber, 2)
+        self.assertEqual(curs.rowcount, 3)
 
     @skip_if_no_namedtuple
     def test_fetchall(self):
@@ -210,6 +304,8 @@ class NamedTupleCursorTest(unittest.TestCase):
         self.assertEqual(res[1].s, 'bar')
         self.assertEqual(res[2].i, 3)
         self.assertEqual(res[2].s, 'baz')
+        self.assertEqual(curs.rownumber, 3)
+        self.assertEqual(curs.rowcount, 3)
 
     @skip_if_no_namedtuple
     def test_executemany(self):
@@ -227,16 +323,26 @@ class NamedTupleCursorTest(unittest.TestCase):
         curs = self.conn.cursor()
         curs.execute("select * from nttest order by 1")
         i = iter(curs)
+        self.assertEqual(curs.rownumber, 0)
+
         t = i.next()
         self.assertEqual(t.i, 1)
         self.assertEqual(t.s, 'foo')
+        self.assertEqual(curs.rownumber, 1)
+        self.assertEqual(curs.rowcount, 3)
+
         t = i.next()
         self.assertEqual(t.i, 2)
         self.assertEqual(t.s, 'bar')
+        self.assertEqual(curs.rownumber, 2)
+        self.assertEqual(curs.rowcount, 3)
+
         t = i.next()
         self.assertEqual(t.i, 3)
         self.assertEqual(t.s, 'baz')
         self.assertRaises(StopIteration, i.next)
+        self.assertEqual(curs.rownumber, 3)
+        self.assertEqual(curs.rowcount, 3)
 
     def test_error_message(self):
         try:
@@ -245,9 +351,7 @@ class NamedTupleCursorTest(unittest.TestCase):
             # an import error somewhere
             from psycopg2.extras import NamedTupleConnection
             try:
-                if self.conn is not None:
-                    self.conn.close()
-                self.conn = psycopg2.connect(dsn,
+                self.conn = self.connect(
                     connection_factory=NamedTupleConnection)
                 curs = self.conn.cursor()
                 curs.execute("select 1")
@@ -257,8 +361,7 @@ class NamedTupleCursorTest(unittest.TestCase):
             else:
                 self.fail("expecting ImportError")
         else:
-            # skip the test
-            pass
+            return self.skipTest("namedtuple available")
 
     @skip_if_no_namedtuple
     def test_record_updated(self):
@@ -360,6 +463,17 @@ class NamedTupleCursorTest(unittest.TestCase):
         # check that the dataset was not fetched in a single gulp
         self.assert_(recs[1].ts - recs[0].ts < timedelta(seconds=0.005))
         self.assert_(recs[2].ts - recs[1].ts > timedelta(seconds=0.0099))
+
+    @skip_if_no_namedtuple
+    @skip_before_postgres(8, 0)
+    def test_named_rownumber(self):
+        curs = self.conn.cursor('tmp')
+        # Only checking for dataset < itersize:
+        # see CursorTests.test_iter_named_cursor_rownumber
+        curs.itersize = 4
+        curs.execute("""select * from generate_series(1,3)""")
+        for i, t in enumerate(curs):
+            self.assertEqual(i + 1, curs.rownumber)
 
 
 def test_suite():

@@ -23,10 +23,9 @@
 # License for more details.
 
 import math
-import unittest
 import psycopg2
-from psycopg2.tz import FixedOffsetTimezone
-from testconfig import dsn
+from psycopg2.tz import FixedOffsetTimezone, ZERO
+from testutils import unittest, ConnectingTestCase
 
 class CommonDatetimeTestsMixin:
 
@@ -78,7 +77,7 @@ class CommonDatetimeTestsMixin:
         value = self.DATETIME(None, self.curs)
         self.assertEqual(value, None)
 
-    def test_parse_incomplete_time(self):
+    def test_parse_incomplete_datetime(self):
         self.assertRaises(psycopg2.DataError,
                           self.DATETIME, '2007', self.curs)
         self.assertRaises(psycopg2.DataError,
@@ -93,19 +92,16 @@ class CommonDatetimeTestsMixin:
         self.assertEqual(value, None)
 
 
-class DatetimeTests(unittest.TestCase, CommonDatetimeTestsMixin):
+class DatetimeTests(ConnectingTestCase, CommonDatetimeTestsMixin):
     """Tests for the datetime based date handling in psycopg2."""
 
     def setUp(self):
-        self.conn = psycopg2.connect(dsn)
+        ConnectingTestCase.setUp(self)
         self.curs = self.conn.cursor()
         self.DATE = psycopg2.extensions.PYDATE
         self.TIME = psycopg2.extensions.PYTIME
         self.DATETIME = psycopg2.extensions.PYDATETIME
         self.INTERVAL = psycopg2.extensions.PYINTERVAL
-
-    def tearDown(self):
-        self.conn.close()
 
     def test_parse_bc_date(self):
         # datetime does not support BC dates
@@ -311,11 +307,11 @@ if not hasattr(psycopg2.extensions, 'PYDATETIME'):
     del DatetimeTests
 
 
-class mxDateTimeTests(unittest.TestCase, CommonDatetimeTestsMixin):
+class mxDateTimeTests(ConnectingTestCase, CommonDatetimeTestsMixin):
     """Tests for the mx.DateTime based date handling in psycopg2."""
 
     def setUp(self):
-        self.conn = psycopg2.connect(dsn)
+        ConnectingTestCase.setUp(self)
         self.curs = self.conn.cursor()
         self.DATE = psycopg2._psycopg.MXDATE
         self.TIME = psycopg2._psycopg.MXTIME
@@ -511,6 +507,51 @@ class FromTicksTestCase(unittest.TestCase):
         s = psycopg2.TimeFromTicks(1273173119.99992)
         self.assertEqual(s.adapted.replace(hour=0),
             time(0, 11, 59, 999920))
+
+
+class FixedOffsetTimezoneTests(unittest.TestCase):
+
+    def test_init_with_no_args(self):
+        tzinfo = FixedOffsetTimezone()
+        self.assert_(tzinfo._offset is ZERO)
+        self.assert_(tzinfo._name is None)
+
+    def test_repr_with_positive_offset(self):
+        tzinfo = FixedOffsetTimezone(5 * 60)
+        self.assertEqual(repr(tzinfo), "psycopg2.tz.FixedOffsetTimezone(offset=300, name=None)")
+
+    def test_repr_with_negative_offset(self):
+        tzinfo = FixedOffsetTimezone(-5 * 60)
+        self.assertEqual(repr(tzinfo), "psycopg2.tz.FixedOffsetTimezone(offset=-300, name=None)")
+
+    def test_repr_with_name(self):
+        tzinfo = FixedOffsetTimezone(name="FOO")
+        self.assertEqual(repr(tzinfo), "psycopg2.tz.FixedOffsetTimezone(offset=0, name='FOO')")
+
+    def test_instance_caching(self):
+        self.assert_(FixedOffsetTimezone(name="FOO") is FixedOffsetTimezone(name="FOO"))
+        self.assert_(FixedOffsetTimezone(7 * 60) is FixedOffsetTimezone(7 * 60))
+        self.assert_(FixedOffsetTimezone(-9 * 60, 'FOO') is FixedOffsetTimezone(-9 * 60, 'FOO'))
+        self.assert_(FixedOffsetTimezone(9 * 60) is not FixedOffsetTimezone(9 * 60, 'FOO'))
+        self.assert_(FixedOffsetTimezone(name='FOO') is not FixedOffsetTimezone(9 * 60, 'FOO'))
+
+    def test_pickle(self):
+        # ticket #135
+        import pickle
+
+        tz11 = FixedOffsetTimezone(60)
+        tz12 = FixedOffsetTimezone(120)
+        for proto in [-1, 0, 1, 2]:
+            tz21, tz22 = pickle.loads(pickle.dumps([tz11, tz12], proto))
+            self.assertEqual(tz11, tz21)
+            self.assertEqual(tz12, tz22)
+
+        tz11 = FixedOffsetTimezone(60, name='foo')
+        tz12 = FixedOffsetTimezone(120, name='bar')
+        for proto in [-1, 0, 1, 2]:
+            tz21, tz22 = pickle.loads(pickle.dumps([tz11, tz12], proto))
+            self.assertEqual(tz11, tz21)
+            self.assertEqual(tz12, tz22)
 
 
 def test_suite():
