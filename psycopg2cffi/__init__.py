@@ -46,7 +46,7 @@ del re
 
 def connect(dsn=None,
         database=None, user=None, password=None, host=None, port=None,
-        connection_factory=None, async=False, **kwargs):
+        connection_factory=None, cursor_factory=None, async=False, **kwargs):
     """
     Create a new database connection.
 
@@ -71,40 +71,43 @@ def connect(dsn=None,
     factory can be specified. It should be a callable object taking a dsn
     argument.
 
+    Using the *cursor_factory* parameter, a new default cursor factory will be
+    used by cursor().
+
     Using *async*=True an asynchronous connection will be created.
 
     Any other keyword parameter will be passed to the underlying client
-    library: the list of supported parameter depends on the library version.
+    library: the list of supported parameters depends on the library version.
 
     """
+    items = []
+    if database is not None:
+        items.append(('dbname', database))
+    if user is not None:
+        items.append(('user', user))
+    if password is not None:
+        items.append(('password', password))
+    if host is not None:
+        items.append(('host', host))
+    if port is not None:
+        items.append(('port', port))
+
+    items.extend([(k, v) for (k, v) in kwargs.iteritems() if v is not None])
+
+    if dsn is not None and items:
+        raise TypeError(
+            "'%s' is an invalid keyword argument when the dsn is specified"
+                % items[0][0])
+
     if dsn is None:
-        # Note: reproducing the behaviour of the previous C implementation:
-        # keyword are silently swallowed if a DSN is specified. I would have
-        # raised an exception. File under "histerical raisins".
-        items = []
-        if database is not None:
-            items.append(('dbname', database))
-        if user is not None:
-            items.append(('user', user))
-        if password is not None:
-            items.append(('password', password))
-        if host is not None:
-            items.append(('host', host))
-        # Reproducing the previous C implementation behaviour: swallow a
-        # negative port. The libpq would raise an exception for it.
-        if port is not None and int(port) > 0:
-            items.append(('port', port))
+        if not items:
+            raise TypeError('missing dsn and no parameters')
+        else:
+            dsn = " ".join(["%s=%s" % (k, _param_escape(str(v)))
+                for (k, v) in items])
 
-        items.extend(
-            [(k, v) for (k, v) in kwargs.iteritems() if v is not None])
-        dsn = " ".join(["%s=%s" % (k, _param_escape(str(v)))
-            for (k, v) in items])
+    conn = _connect(dsn, connection_factory=connection_factory, async=async)
+    if cursor_factory is not None:
+        conn.cursor_factory = cursor_factory
 
-        if not dsn:
-            raise InterfaceError('missing dsn and no parameters')
-
-    return _connect(dsn,
-        connection_factory=connection_factory, async=async)
-
-
-__all__ = filter(lambda k: not k.startswith('_'), locals().keys())
+    return conn

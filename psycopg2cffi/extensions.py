@@ -10,6 +10,27 @@ This module holds all the extensions to the DBAPI-2.0 provided by psycopg.
 
 .. _PEP-246: http://www.python.org/peps/pep-0246.html
 """
+# psycopg/extensions.py - DBAPI-2.0 extensions specific to psycopg
+#
+# Copyright (C) 2003-2010 Federico Di Gregorio  <fog@debian.org>
+#
+# psycopg2 is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders give
+# permission to link this program with the OpenSSL library (or with
+# modified versions of OpenSSL that use the same license as OpenSSL),
+# and distribute linked combinations including the two.
+#
+# You must obey the GNU Lesser General Public License in all respects for
+# all of the code used other than OpenSSL.
+#
+# psycopg2 is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+# License for more details.
 import sys as _sys
 
 from psycopg2cffi._impl import connection as _connection
@@ -42,7 +63,6 @@ else:
     def b(s):
         return s.encode('utf8')
 
-
 def register_adapter(typ, callable):
     """Register 'callable' as an ISQLQuote adapter for type 'typ'."""
     adapters[(typ, ISQLQuote)] = callable
@@ -51,9 +71,9 @@ def register_adapter(typ, callable):
 # The SQL_IN class is the official adapter for tuples starting from 2.0.6.
 class SQL_IN(object):
     """Adapt any iterable to an SQL quotable object."""
-
     def __init__(self, seq):
         self._seq = seq
+        self._conn = None
 
     def prepare(self, conn):
         self._conn = conn
@@ -62,9 +82,10 @@ class SQL_IN(object):
         # this is the important line: note how every object in the
         # list is adapted and then how getquoted() is called on it
         pobjs = [adapt(o) for o in self._seq]
-        for obj in pobjs:
-            if hasattr(obj, 'prepare'):
-                obj.prepare(self._conn)
+        if self._conn is not None:
+            for obj in pobjs:
+                if hasattr(obj, 'prepare'):
+                    obj.prepare(self._conn)
         qobjs = [o.getquoted() for o in pobjs]
         return b('(') + b(', ').join(qobjs) + b(')')
 
@@ -85,12 +106,24 @@ class NoneAdapter(object):
         return _null
 
 
+# Create default json typecasters for PostgreSQL 9.2 oids
+from psycopg2._json import register_default_json
+
+try:
+    JSON, JSONARRAY = register_default_json()
+except ImportError:
+    pass
+
+del register_default_json
+
+
+# Create default Range typecasters
+from psycopg2. _range import Range
+del Range
+
 def set_wait_callback(f):
     _connection._green_callback = f
 
 
 def get_wait_callback():
     return _connection._green_callback
-
-
-__all__ = filter(lambda k: not k.startswith('_'), locals().keys())
