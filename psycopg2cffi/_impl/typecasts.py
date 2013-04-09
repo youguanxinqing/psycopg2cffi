@@ -26,6 +26,9 @@ class Type(object):
             return self.py_caster(value, cursor)
         return self.caster(value, length, cursor)
 
+    def __call__(self, value, cursor=None):
+        return self.cast(value, cursor)
+
 
 def register_type(type_obj, scope=None):
     typecasts = string_types
