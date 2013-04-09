@@ -173,7 +173,6 @@ class Cursor(object):
         self.execute(sql, parameters)
         return parameters
 
-    @check_closed
     def close(self):
         """Close the cursor now (rather than whenever __del__ is called).
 
@@ -182,6 +181,9 @@ class Cursor(object):
         with the cursor.
 
         """
+        if self._closed:
+            return
+
         if self._name is not None:
             self._pq_execute('CLOSE "%s"' % self._name)
 
