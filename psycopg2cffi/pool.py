@@ -24,8 +24,8 @@ This module implements thread-safe (and not) connection pools.
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-import psycopg2
-import psycopg2.extensions as _ext
+import psycopg2cffi as psycopg2
+import psycopg2cffi.extensions as _ext
 
 
 class PoolError(psycopg2.Error):
