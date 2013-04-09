@@ -768,24 +768,29 @@ class Connection(object):
         # If no custom message is passed then get the message from postgres.
         # If pgres is available then we first try to get the message for the
         # last command, and then the error message for the connection
-        if msg is None:
-            if pgres:
-                msg = libpq.PQresultErrorMessage(pgres)
-            if msg is None or msg == ffi.NULL:
-                msg = libpq.PQerrorMessage(self._pgconn)
-            msg = ffi.string(msg) if msg != ffi.NULL else None
-
-        # Get the correct exception class based on the error code
         if pgres:
+            pgmsg = libpq.PQresultErrorMessage(pgres)
+            if pgmsg is None or pgmsg == ffi.NULL:
+                pgmsg = libpq.PQerrorMessage(self._pgconn)
+            pgmsg = ffi.string(pgmsg) if pgmsg != ffi.NULL else None
+
+            # Get the correct exception class based on the error code
             code = libpq.PQresultErrorField(pgres, libpq.PG_DIAG_SQLSTATE)
             if code != ffi.NULL:
-                exc_type = util.get_exception_for_sqlstate(
-                        ffi.string(code))
+                code = ffi.string(code)
+                exc_type = util.get_exception_for_sqlstate(code)
+
+        if msg is None:
+            msg = pgmsg # FIXME: we should clear some noise from it
 
         # Clear the connection if the status is CONNECTION_BAD (fatal error)
         if self._pgconn and libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
             self._close()
-        return exc_type(msg)
+
+        exc = exc_type(msg)
+        exc.pgcode = code
+        exc.pgerror = pgmsg
+        return exc
 
     def _have_wait_callback(self):
         return bool(_green_callback)
