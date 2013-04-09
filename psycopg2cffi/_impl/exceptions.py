@@ -7,7 +7,8 @@ class Warning(StandardError):
 
 
 class Error(StandardError):
-    pass
+    pgerror = None
+    pgcode = None
 
 
 class InterfaceError(Error):
