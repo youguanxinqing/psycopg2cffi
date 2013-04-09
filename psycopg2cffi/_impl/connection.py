@@ -759,7 +759,7 @@ class Connection(object):
 
             libpq.PQfreemem(pg_notify)
 
-    def _create_exception(self, pgres=None, msg=None):
+    def _create_exception(self, pgres=None, msg=None, cursor=None):
         """Return the appropriate exception instance for the current status.
 
         """
@@ -795,6 +795,7 @@ class Connection(object):
         exc = exc_type(msg)
         exc.pgcode = code
         exc.pgerror = pgmsg
+        exc.cursor = cursor
         return exc
 
     def _have_wait_callback(self):

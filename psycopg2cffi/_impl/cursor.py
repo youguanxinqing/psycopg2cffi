@@ -747,7 +747,7 @@ class Cursor(object):
             raise ProgrammingError("can't execute an empty query")
 
         else:
-            raise self._conn._create_exception(pgres=self._pgres)
+            raise self._conn._create_exception(pgres=self._pgres, cursor=self)
 
     def _pq_fetch_tuples(self):
         with self._conn._lock:
