@@ -779,7 +779,7 @@ class Connection(object):
             cursor._pgres = ffi.NULL
 
         exc_type = exceptions.OperationalError
-        pgmsg = None
+        code = pgmsg = None
 
         # If no custom message is passed then get the message from postgres.
         # If pgres is available then we first try to get the message for the
