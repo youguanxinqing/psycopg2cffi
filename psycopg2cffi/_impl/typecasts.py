@@ -4,6 +4,7 @@ import math
 from time import localtime
 
 from psycopg2cffi._impl.libpq import libpq, ffi
+from psycopg2cffi._impl.exceptions import DataError
 
 
 string_types = {}
@@ -127,7 +128,9 @@ class parse_array(object):
 
     def __call__(self, value, length, cursor):
         s = value
-        assert s[0] == "{" and s[-1] == "}"
+        if not (len(s) >= 2 and  s[0] == "{" and s[-1] == "}"):
+            raise DataError("malformed array")
+
         i = 1
         array = []
         stack = [array]
@@ -137,10 +140,15 @@ class parse_array(object):
                 sub_array = []
                 array.append(sub_array)
                 stack.append(sub_array)
+                if len(stack) > 16:
+                    raise DataError("excessive array dimensions")
+
                 array = sub_array
                 i += 1
             elif s[i] == '}':
                 stack.pop()
+                if not stack:
+                    raise DataError("unbalanced braces in array")
                 array = stack[-1]
                 i += 1
             elif s[i] in ', ':
