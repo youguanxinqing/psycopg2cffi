@@ -107,7 +107,7 @@ class NoneAdapter(object):
 
 
 # Create default json typecasters for PostgreSQL 9.2 oids
-from psycopg2._json import register_default_json
+from psycopg2cffi._json import register_default_json
 
 try:
     JSON, JSONARRAY = register_default_json()
@@ -118,7 +118,7 @@ del register_default_json
 
 
 # Create default Range typecasters
-from psycopg2. _range import Range
+from psycopg2cffi._range import Range
 del Range
 
 def set_wait_callback(f):

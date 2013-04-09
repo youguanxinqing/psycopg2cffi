@@ -29,8 +29,8 @@ extensions importing register_json from extras.
 
 import sys
 
-from psycopg2._psycopg import ISQLQuote, QuotedString
-from psycopg2._psycopg import new_type, new_array_type, register_type
+from psycopg2cffi._impl.adapters import ISQLQuote, QuotedString
+from psycopg2cffi._impl.typecasts import new_type, new_array_type, register_type
 
 
 # import the best json implementation available

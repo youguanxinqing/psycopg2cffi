@@ -26,9 +26,9 @@
 
 import re
 
-from psycopg2._psycopg import ProgrammingError, InterfaceError
-from psycopg2.extensions import ISQLQuote, adapt, register_adapter, b
-from psycopg2.extensions import new_type, new_array_type, register_type
+from psycopg2cffi._impl.exceptions import ProgrammingError, InterfaceError
+from psycopg2cffi.extensions import ISQLQuote, adapt, register_adapter, b
+from psycopg2cffi.extensions import new_type, new_array_type, register_type
 
 class Range(object):
     """Python representation for a PostgreSQL |range|_ type.

@@ -36,11 +36,11 @@ except:
     _logging = None
 
 import psycopg2
-from psycopg2 import extensions as _ext
-from psycopg2.extensions import cursor as _cursor
-from psycopg2.extensions import connection as _connection
-from psycopg2.extensions import adapt as _A
-from psycopg2.extensions import b
+from psycopg2cffi import extensions as _ext
+from psycopg2cffi.extensions import cursor as _cursor
+from psycopg2cffi.extensions import connection as _connection
+from psycopg2cffi.extensions import adapt as _A
+from psycopg2cffi.extensions import b
 
 
 class DictCursorBase(_cursor):
