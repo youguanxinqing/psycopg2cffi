@@ -100,6 +100,7 @@ class Connection(object):
         self._equote = False
         self._lock = threading.RLock()
         self.notices = []
+        self.cursor_factory = None
 
         # The number of commits/rollbacks done so far
         self._mark = 0
@@ -299,8 +300,11 @@ class Connection(object):
     def get_transaction_status(self):
         return libpq.PQtransactionStatus(self._pgconn)
 
-    def cursor(self, name=None, cursor_factory=Cursor,
+    def cursor(self, name=None, cursor_factory=None,
             withhold=False, scrollable=None):
+        if cursor_factory is None:
+            cursor_factory = self.cursor_factory or Cursor
+
         cur = cursor_factory(self, name)
 
         if not isinstance(cur, Cursor):
