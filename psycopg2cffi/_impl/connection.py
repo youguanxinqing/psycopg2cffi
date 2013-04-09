@@ -299,7 +299,8 @@ class Connection(object):
     def get_transaction_status(self):
         return libpq.PQtransactionStatus(self._pgconn)
 
-    def cursor(self, name=None, cursor_factory=Cursor, withhold=False):
+    def cursor(self, name=None, cursor_factory=Cursor,
+            withhold=False, scrollable=None):
         cur = cursor_factory(self, name)
 
         if not isinstance(cur, Cursor):
@@ -308,11 +309,10 @@ class Connection(object):
                 '.'.join([Cursor.__module__, Cursor.__name__]))
 
         if withhold:
-            if name:
-                cur.withhold = True
-            else:
-                raise exceptions.ProgrammingError(
-                    "withhold=True can be specified only for named cursors")
+            cur.withhold = withhold
+
+        if scrollable is not None:
+            cur.scrollable = scrollable
 
         if name and self._async:
             raise exceptions.ProgrammingError(

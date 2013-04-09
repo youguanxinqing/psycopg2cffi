@@ -90,6 +90,7 @@ class Cursor(object):
         self._lastrowid = 0
         self._name = name.replace('"', '""') if name is not None else name
         self._withhold = False
+        self._scrollable = None
         self._no_tuples = True
         self._rowcount = -1
         self._rownumber = 0
@@ -236,12 +237,17 @@ class Cursor(object):
         else:
             self._query = query
 
+        scroll = ""
+        if self._scrollable is not None:
+            scroll = self._scrollable and "SCROLL " or "NO SCROLL "
+
         conn._begin_transaction()
         self._clear_pgres()
 
         if self._name:
-            self._query = 'DECLARE "%s" CURSOR %s HOLD FOR %s' % (
+            self._query = 'DECLARE "%s" %sCURSOR %s HOLD FOR %s' % (
                 self._name,
+                scroll,
                 self._withhold and "WITH" or "WITHOUT", # youuuuu
                 self._query)
 
@@ -617,6 +623,18 @@ class Cursor(object):
 
         self._withhold = bool(value)
 
+    @property
+    def scrollable(self):
+        return self._scrollable
+
+    @scrollable.setter
+    def scrollable(self, value):
+        if not self._name:
+            raise ProgrammingError(
+                "trying to set .scrollable on unnamed cursor")
+
+        self._scrollable = bool(value) if value is not None else None
+
     @check_closed
     def scroll(self, value, mode='relative'):
         if not self._name:
@@ -647,7 +665,6 @@ class Cursor(object):
             else:
                 cmd = 'MOVE %d FROM "%s"' % (value, self._name)
             self._pq_execute(cmd)
-            self._pq_fetch()  # XXX: should be prefetch?
 
     def _clear_pgres(self):
         if self._pgres:
@@ -699,7 +716,10 @@ class Cursor(object):
 
     def _pq_fetch(self):
         pgstatus = libpq.PQresultStatus(self._pgres)
-        self._statusmessage = ffi.string(libpq.PQcmdStatus(self._pgres))
+        if pgstatus != libpq.PGRES_FATAL_ERROR:
+            self._statusmessage = ffi.string(libpq.PQcmdStatus(self._pgres))
+        else:
+            self._statusmessage = None
 
         self._no_tuples = True
         self._rownumber = 0
