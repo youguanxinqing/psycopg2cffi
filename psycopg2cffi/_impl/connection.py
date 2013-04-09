@@ -165,7 +165,6 @@ class Connection(object):
         else:
             self.rollback()
 
-    @check_closed
     def close(self):
         return self._close()
 
@@ -683,7 +682,8 @@ class Connection(object):
             self._tpc_xid = None
 
     def _close(self):
-        self._closed = True
+        if self._closed:
+            return
 
         if self._cancel:
             libpq.PQfreeCancel(self._cancel)
@@ -692,6 +692,8 @@ class Connection(object):
         if self._pgconn:
             libpq.PQfinish(self._pgconn)
             self._pgconn = None
+
+        self._closed = True
 
     def _commit(self):
         if self._autocommit or self.status != consts.STATUS_BEGIN:
