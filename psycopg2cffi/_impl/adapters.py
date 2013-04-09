@@ -3,7 +3,6 @@ import decimal
 import math
 
 from psycopg2cffi._impl.libpq import libpq, ffi
-from psycopg2cffi._impl.encodings import encodings
 from psycopg2cffi._impl.exceptions import ProgrammingError
 from psycopg2cffi._config import PG_VERSION
 from psycopg2cffi.tz import LOCAL as TZ_LOCAL
@@ -191,18 +190,22 @@ def TimestampFromTicks(ticks):
 class QuotedString(_BaseAdapter):
     def __init__(self, obj):
         super(QuotedString, self).__init__(obj)
-        self.encoding = "latin-1"
+        self._default_encoding = "latin1"
 
     def prepare(self, conn):
         self._conn = conn
-        self.encoding = conn.encoding
+
+    @property
+    def encoding(self):
+        if self._conn:
+            return self._conn._py_enc
+        else:
+            return self._default_encoding
 
     def getquoted(self):
-
         obj = self._wrapped
         if isinstance(self._wrapped, unicode):
-            encoding = encodings[self.encoding]
-            obj = obj.encode(encoding)
+            obj = obj.encode(self.encoding)
         string = str(obj)
         length = len(string)
 
