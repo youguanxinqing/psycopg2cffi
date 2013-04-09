@@ -764,15 +764,16 @@ class Connection(object):
 
         """
         exc_type = exceptions.OperationalError
+        pgmsg = None
 
         # If no custom message is passed then get the message from postgres.
         # If pgres is available then we first try to get the message for the
         # last command, and then the error message for the connection
         if pgres:
             pgmsg = libpq.PQresultErrorMessage(pgres)
-            if pgmsg is None or pgmsg == ffi.NULL:
+            if pgmsg:
                 pgmsg = libpq.PQerrorMessage(self._pgconn)
-            pgmsg = ffi.string(pgmsg) if pgmsg != ffi.NULL else None
+            pgmsg = ffi.string(pgmsg) if pgmsg else None
 
             # Get the correct exception class based on the error code
             code = libpq.PQresultErrorField(pgres, libpq.PG_DIAG_SQLSTATE)
@@ -780,8 +781,12 @@ class Connection(object):
                 code = ffi.string(code)
                 exc_type = util.get_exception_for_sqlstate(code)
 
-        if msg is None:
-            msg = pgmsg # FIXME: we should clear some noise from it
+        if msg is None and pgmsg:
+            msg = pgmsg
+            for prefix in ("ERROR:  ", "FATAL:  ", "PANIC:  "):
+                if msg.startswith(prefix):
+                    msg = msg[len(prefix):]
+                    break
 
         # Clear the connection if the status is CONNECTION_BAD (fatal error)
         if self._pgconn and libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
