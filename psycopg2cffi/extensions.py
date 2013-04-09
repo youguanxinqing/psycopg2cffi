@@ -44,6 +44,7 @@ from psycopg2cffi._impl.encodings import encodings
 from psycopg2cffi._impl.exceptions import QueryCanceledError
 from psycopg2cffi._impl.exceptions import TransactionRollbackError
 from psycopg2cffi._impl.exceptions import Diagnostics
+from psycopg2cffi._impl.lobject import LargeObject as lobject
 from psycopg2cffi._impl.notify import Notify
 from psycopg2cffi._impl.typecasts import (
     UNICODE, INTEGER, LONGINTEGER, BOOLEAN, FLOAT, TIME, DATE, INTERVAL,
