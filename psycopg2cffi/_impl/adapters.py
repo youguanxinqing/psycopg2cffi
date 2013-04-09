@@ -212,7 +212,7 @@ class QuotedString(_BaseAdapter):
         if not self._conn:
             to = ffi.new('char []', ((length * 2) + 1))
             libpq.PQescapeString(to, string, length)
-            return "'%s'" % to[0]
+            return "'%s'" % ffi.string(to)
 
         if PG_VERSION < 0x090000:
             to = ffi.new('char []', ((length * 2) + 1))
