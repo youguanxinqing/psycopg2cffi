@@ -620,9 +620,12 @@ class Connection(object):
             try:
                 pgstatus = libpq.PQresultStatus(pgres)
                 if pgstatus != libpq.PGRES_COMMAND_OK:
-                    raise self._create_exception(pgres=pgres)
+                    exc = self._create_exception(pgres=pgres)
+                    pgres = None    # ownership transferred to exc
+                    raise exc
             finally:
-                libpq.PQclear(pgres)
+                if pgres:
+                    libpq.PQclear(pgres)
 
     def _execute_tpc_command(self, command, xid):
         cmd = '%s %s' % (command, util.quote_string(self, str(xid)))
@@ -762,7 +765,19 @@ class Connection(object):
     def _create_exception(self, pgres=None, msg=None, cursor=None):
         """Return the appropriate exception instance for the current status.
 
+        IMPORTANT: the new exception takes ownership of pgres: if pgres is
+        passed as parameter, the callee must delete its pointer (e.g. it may
+        be set to null). If there is a pgres in the cursor it is "stolen": the
+        cursor will have it set to Null.
+
         """
+        assert pgres is None or cursor is None, \
+            "cannot specify pgres and cursor together"
+
+        if cursor and cursor._pgres:
+            pgres = cursor._pgres
+            cursor._pgres = ffi.NULL
+
         exc_type = exceptions.OperationalError
         pgmsg = None
 
@@ -796,6 +811,8 @@ class Connection(object):
         exc.pgcode = code
         exc.pgerror = pgmsg
         exc.cursor = cursor
+        exc._pgres = pgres
+
         return exc
 
     def _have_wait_callback(self):

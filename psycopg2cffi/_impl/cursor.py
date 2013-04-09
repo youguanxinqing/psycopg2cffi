@@ -677,7 +677,7 @@ class Cursor(object):
 
         # Check the status of the connection
         if libpq.PQstatus(pgconn) != libpq.CONNECTION_OK:
-            raise self._conn._create_exception()
+            raise self._conn._create_exception(cursor=self)
 
         if not async:
             with self._conn._lock:
@@ -686,7 +686,7 @@ class Cursor(object):
                 else:
                     self._pgres = self._conn._execute_green(query)
                 if not self._pgres:
-                    raise self._conn._create_exception(pgres=self._pgres)
+                    raise self._conn._create_exception(cursor=self)
                 self._conn._process_notifies()
             self._pq_fetch()
 
@@ -701,7 +701,7 @@ class Cursor(object):
                         raise ProgrammingError(
                             'cannot be used while an asynchronous query is underway')
 
-                    raise self._conn._create_exception()
+                    raise self._conn._create_exception(cursor=self)
 
                 ret = libpq.PQflush(pgconn)
                 if ret == 0:
@@ -744,10 +744,11 @@ class Cursor(object):
             return self._pq_fetch_copy_out()
 
         elif pgstatus == libpq.PGRES_EMPTY_QUERY:
+            self._clear_pgres()
             raise ProgrammingError("can't execute an empty query")
 
         else:
-            raise self._conn._create_exception(pgres=self._pgres, cursor=self)
+            raise self._conn._create_exception(cursor=self)
 
     def _pq_fetch_tuples(self):
         with self._conn._lock:
@@ -831,7 +832,7 @@ class Cursor(object):
 
                 self._copyfile.write(value)
             elif length == -2:
-                raise self._conn._create_exception()
+                raise self._conn._create_exception(cursor=self)
             else:
                 break
 
