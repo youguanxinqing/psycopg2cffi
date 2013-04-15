@@ -90,7 +90,7 @@ class Connection(object):
         self.status = consts.STATUS_SETUP
         self._encoding = None
 
-        self._closed = False
+        self._closed = 0
         self._cancel = ffi.NULL
         self._typecasts = {}
         self._tpc_xid = None
@@ -596,7 +596,7 @@ class Connection(object):
                 self.status = consts.STATUS_DATESTYLE
                 self._set_guc('datestyle', 'ISO')
 
-            self._closed = False
+            self._closed = 0
 
     def _have_cancel_key(self):
         if self._cancel != ffi.NULL:
@@ -690,7 +690,7 @@ class Connection(object):
             self._tpc_xid = None
 
     def _close(self):
-        if self._closed:
+        if self._closed == 1:
             return
 
         if self._cancel:
@@ -701,7 +701,7 @@ class Connection(object):
             libpq.PQfinish(self._pgconn)
             self._pgconn = None
 
-        self._closed = True
+        self._closed = 1
 
     def _commit(self):
         if self._autocommit or self.status != consts.STATUS_BEGIN:
@@ -810,7 +810,7 @@ class Connection(object):
 
         # Clear the connection if the status is CONNECTION_BAD (fatal error)
         if self._pgconn and libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
-            self._close()
+            self._closed = 2
 
         exc = exc_type(msg)
         exc.pgcode = code
