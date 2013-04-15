@@ -35,7 +35,6 @@ class Error(StandardError):
         return (t[0], t[1], d)
 
     def __setstate__(self, state):
-        print "setstate"
         self.pgerror = state.get('pgerror')
         self.pgcode = state.get('pgcode')
 
