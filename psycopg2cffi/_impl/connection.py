@@ -704,10 +704,9 @@ class Connection(object):
         self._closed = 1
 
     def _commit(self):
-        if self._autocommit or self.status != consts.STATUS_BEGIN:
-            return
-
         with self._lock:
+            if self._autocommit or self.status != consts.STATUS_BEGIN:
+                return
             self._mark += 1
             try:
                 self._execute_command('COMMIT')
