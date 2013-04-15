@@ -714,11 +714,14 @@ class Connection(object):
                 self.status = consts.STATUS_READY
 
     def _rollback(self):
-        if self._autocommit or self.status != consts.STATUS_BEGIN:
-            return
-        self._mark += 1
-        self._execute_command('ROLLBACK')
-        self.status = consts.STATUS_READY
+        with self._lock:
+            if self._autocommit or self.status != consts.STATUS_BEGIN:
+                return
+            self._mark += 1
+            try:
+                self._execute_command('ROLLBACK')
+            finally:
+                self.status = consts.STATUS_READY
 
     def _get_encoding(self):
         """Retrieving encoding"""
