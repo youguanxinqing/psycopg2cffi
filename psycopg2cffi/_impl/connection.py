@@ -648,10 +648,11 @@ class Connection(object):
 
         try:
             _green_callback(self)
-            return util.pq_get_last_result(self._pgconn)
-        except:
-            util.pq_clear_async(self._pgconn)
+        except Exception:
+            self.close()
             raise
+        else:
+            return util.pq_get_last_result(self._pgconn)
         finally:
             self._async_cursor = None
             self._async_status = consts.ASYNC_DONE
