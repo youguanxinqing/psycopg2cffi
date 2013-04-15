@@ -550,9 +550,7 @@ class Connection(object):
 
             self._equote = self._get_equote()
             self._get_encoding()
-            self._cancel = libpq.PQgetCancel(self._pgconn)
-            if self._cancel == ffi.NULL:
-                raise exceptions.OperationalError("can't get cancellation key")
+            self._have_cancel_key()
 
             self._autocommit = True
 
@@ -589,10 +587,7 @@ class Connection(object):
     def _setup(self):
         self._equote = self._get_equote()
         self._get_encoding()
-
-        self._cancel = libpq.PQgetCancel(self._pgconn)
-        if self._cancel == ffi.NULL:
-            raise exceptions.OperationalError("can't get cancellation key")
+        self._have_cancel_key()
 
         with self._lock:
             # If the current datestyle is not compatible (not ISO) then
@@ -602,6 +597,15 @@ class Connection(object):
                 self._set_guc('datestyle', 'ISO')
 
             self._closed = False
+
+    def _have_cancel_key(self):
+        if self._cancel != ffi.NULL:
+            tmp, self._cancel = self._cancel, ffi.NULL
+            libpq.PQfreeCancel(tmp)
+
+        self._cancel = libpq.PQgetCancel(self._pgconn)
+        if self._cancel == ffi.NULL:
+            raise exceptions.OperationalError("can't get cancellation key")
 
     def _begin_transaction(self):
         if self.status == consts.STATUS_READY and not self._autocommit:
