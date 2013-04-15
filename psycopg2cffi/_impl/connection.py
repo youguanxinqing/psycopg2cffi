@@ -330,7 +330,7 @@ class Connection(object):
         err_length = 256
         errbuf = ffi.new('char[]', err_length)
         if libpq.PQcancel(self._cancel, errbuf, err_length) == 0:
-            raise self._create_exception(msg=ffi.string(errbuf))
+            raise exceptions.OperationalError(ffi.string(errbuf))
 
     def isexecuting(self):
         if not self._async:
@@ -782,8 +782,7 @@ class Connection(object):
             "cannot specify pgres and cursor together"
 
         if cursor and cursor._pgres:
-            pgres = cursor._pgres
-            cursor._pgres = ffi.NULL
+            pgres, cursor._pgres = cursor._pgres, ffi.NULL
 
         exc_type = exceptions.OperationalError
         code = pgmsg = None
@@ -793,8 +792,6 @@ class Connection(object):
         # last command, and then the error message for the connection
         if pgres:
             pgmsg = libpq.PQresultErrorMessage(pgres)
-            if pgmsg:
-                pgmsg = libpq.PQerrorMessage(self._pgconn)
             pgmsg = ffi.string(pgmsg) if pgmsg else None
 
             # Get the correct exception class based on the error code
@@ -802,6 +799,13 @@ class Connection(object):
             if code != ffi.NULL:
                 code = ffi.string(code)
                 exc_type = util.get_exception_for_sqlstate(code)
+            else:
+                code = None
+                exc_type = exceptions.DatabaseError
+
+        if not pgmsg:
+            pgmsg = libpq.PQerrorMessage(self._pgconn)
+            pgmsg = ffi.string(pgmsg) if pgmsg else None
 
         if msg is None and pgmsg:
             msg = pgmsg
