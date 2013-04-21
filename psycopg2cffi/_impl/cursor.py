@@ -673,46 +673,47 @@ class Cursor(object):
 
     def _pq_execute(self, query, async=False):
         """Execute the query"""
-        pgconn = self._conn._pgconn
+        with self._conn._lock:
+            pgconn = self._conn._pgconn
 
-        # Check the status of the connection
-        if libpq.PQstatus(pgconn) != libpq.CONNECTION_OK:
-            raise self._conn._create_exception(cursor=self)
+            # Check the status of the connection
+            if libpq.PQstatus(pgconn) != libpq.CONNECTION_OK:
+                raise self._conn._create_exception(cursor=self)
 
-        if not async:
-            with self._conn._lock:
-                if not self._conn._have_wait_callback():
-                    self._pgres = libpq.PQexec(pgconn, query)
-                else:
-                    self._pgres = self._conn._execute_green(query)
-                if not self._pgres:
-                    raise self._conn._create_exception(cursor=self)
-                self._conn._process_notifies()
-            self._pq_fetch()
+            if not async:
+                with self._conn._lock:
+                    if not self._conn._have_wait_callback():
+                        self._pgres = libpq.PQexec(pgconn, query)
+                    else:
+                        self._pgres = self._conn._execute_green(query)
+                    if not self._pgres:
+                        raise self._conn._create_exception(cursor=self)
+                    self._conn._process_notifies()
+                self._pq_fetch()
 
-        else:
-            with self._conn._lock:
-                ret = libpq.PQsendQuery(pgconn, query)
-                if not ret:
+            else:
+                with self._conn._lock:
+                    ret = libpq.PQsendQuery(pgconn, query)
+                    if not ret:
 
-                    # XXX: check if this is correct, seems like a hack.
-                    # but the test_async_after_async expects it.
-                    if self._conn._async_cursor:
-                        raise ProgrammingError(
-                            'cannot be used while an asynchronous query is underway')
+                        # XXX: check if this is correct, seems like a hack.
+                        # but the test_async_after_async expects it.
+                        if self._conn._async_cursor:
+                            raise ProgrammingError(
+                                'cannot be used while an asynchronous query is underway')
 
-                    raise self._conn._create_exception(cursor=self)
+                        raise self._conn._create_exception(cursor=self)
 
-                ret = libpq.PQflush(pgconn)
-                if ret == 0:
-                    async_status = consts.ASYNC_READ
-                elif ret == 1:
-                    async_status = consts.ASYNC_WRITE
-                else:
-                    raise ValueError()  # XXX
+                    ret = libpq.PQflush(pgconn)
+                    if ret == 0:
+                        async_status = consts.ASYNC_READ
+                    elif ret == 1:
+                        async_status = consts.ASYNC_WRITE
+                    else:
+                        raise ValueError()  # XXX
 
-            self._conn._async_status = async_status
-            self._conn._async_cursor = weakref.ref(self)
+                self._conn._async_status = async_status
+                self._conn._async_cursor = weakref.ref(self)
 
     def _pq_fetch(self):
         pgstatus = libpq.PQresultStatus(self._pgres)
