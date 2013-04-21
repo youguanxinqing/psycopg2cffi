@@ -60,6 +60,17 @@ def check_tpc(func):
     return check_tpc_
 
 
+def check_tpc_supported(func):
+    @wraps(func)
+    def check_tpc_supported_(self, *args, **kwargs):
+        if self.server_version < 80100:
+            raise exceptions.NotSupportedError(
+                "server version %s: two-phase transactions not supported"
+                % self.server_version)
+        return func(self, *args, **kwargs)
+    return check_tpc_supported_
+
+
 def check_async(func):
     @wraps(func)
     def check_async_(self, *args, **kwargs):
@@ -383,11 +394,13 @@ class Connection(object):
         return self._closed
 
     @check_closed
+    @check_tpc_supported
     def xid(self, format_id, gtrid, bqual):
         return Xid(format_id, gtrid, bqual)
 
     @check_closed
     @check_async
+    @check_tpc_supported
     def tpc_begin(self, xid):
         if not isinstance(xid, Xid):
             xid = Xid.from_string(xid)
@@ -405,11 +418,13 @@ class Connection(object):
 
     @check_closed
     @check_async
+    @check_tpc_supported
     def tpc_commit(self, xid=None):
         self._finish_tpc('COMMIT PREPARED', self._commit, xid)
 
     @check_closed
     @check_async
+    @check_tpc_supported
     def tpc_rollback(self, xid=None):
         self._finish_tpc('ROLLBACK PREPARED', self._rollback, xid)
 
@@ -425,6 +440,7 @@ class Connection(object):
 
     @check_closed
     @check_async
+    @check_tpc_supported
     def tpc_recover(self):
         return Xid.tpc_recover(self)
 
