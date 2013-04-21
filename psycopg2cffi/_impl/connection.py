@@ -269,12 +269,18 @@ class Connection(object):
                     raise ValueError('isolation level must be between 1 and 4')
                 isolation_level = _isolevels[isolation_level]
             elif isinstance(isolation_level, basestring):
-                if not isolation_level \
-                or isolation_level.lower() not in _isolevels:
+                isolation_level = isolation_level.lower()
+                if not isolation_level or isolation_level not in _isolevels:
                     raise ValueError("bad value for isolation level: '%s'" %
                         isolation_level)
             else:
                 raise TypeError("bad isolation level: '%r'" % isolation_level)
+
+            if self.server_version < 80000:
+                if isolation_level == 'read uncommitted':
+                    isolation_level = 'read committed'
+                elif isolation_level == 'repeatable read':
+                    isolation_level = 'serializable'
 
             self._set_guc("default_transaction_isolation", isolation_level)
 
