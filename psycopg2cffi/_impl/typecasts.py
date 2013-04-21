@@ -22,13 +22,12 @@ class Type(object):
     def __eq__(self, other):
         return other in self.values
 
-    def cast(self, value, cursor, length=None):
+    def cast(self, value, cursor=None, length=None):
         if self.py_caster is not None:
             return self.py_caster(value, cursor)
         return self.caster(value, length, cursor)
 
-    def __call__(self, value, cursor=None):
-        return self.cast(value, cursor)
+    __call__ = cast
 
 
 def register_type(type_obj, scope=None):
@@ -127,9 +126,6 @@ class parse_array(object):
         self._caster = caster
 
     def cast(self, value, length, cursor):
-        return self(value, length, cursor)
-
-    def __call__(self, value, length, cursor):
         if value is None:
             return None
 
@@ -191,6 +187,7 @@ class parse_array(object):
                 array.append(val)
         return stack[-1]
 
+    __call__ = cast
 
 def parse_unicode(value, length, cursor):
     """Decode the given value with the connection encoding"""

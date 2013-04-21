@@ -853,18 +853,13 @@ class Cursor(object):
         # Fill it
         n = self._nfields
         for i in xrange(n):
-
-            # PQgetvalue will return an empty string for null values,
-            # so check with PQgetisnull if the value is really null
-            length = libpq.PQgetlength(self._pgres, row_num, i)
-            val = ffi.buffer(libpq.PQgetvalue(self._pgres, row_num, i),
-                    length)[:]
-            if not val and libpq.PQgetisnull(self._pgres, row_num, i):
-                val = None
+            if libpq.PQgetisnull(self._pgres, row_num, i):
+                row[i] = None
             else:
-                caster = self._casts[i]
-                val = typecasts.typecast(caster, val, length, self)
-            row[i] = val
+                length = libpq.PQgetlength(self._pgres, row_num, i)
+                val = ffi.buffer(
+                        libpq.PQgetvalue(self._pgres, row_num, i), length)[:]
+                row[i] = typecasts.typecast(self._casts[i], val, length, self)
 
         if is_tuple:
             return tuple(row)
