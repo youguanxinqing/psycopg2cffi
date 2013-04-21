@@ -310,8 +310,8 @@ class Connection(object):
         return libpq.PQbackendPID(self._pgconn)
 
     def get_parameter_status(self, parameter):
-        return ffi.string(
-                libpq.PQparameterStatus(self._pgconn, parameter))
+        p = libpq.PQparameterStatus(self._pgconn, parameter)
+        return ffi.string(p) if p != ffi.NULL else None
 
     def get_transaction_status(self):
         return libpq.PQtransactionStatus(self._pgconn)
@@ -754,7 +754,7 @@ class Connection(object):
     def _get_equote(self):
         ret = libpq.PQparameterStatus(
             self._pgconn, 'standard_conforming_strings')
-        return ret and ffi.string(ret) == 'off'
+        return ret and ffi.string(ret) == 'off' or False
 
     def _is_busy(self):
         with self._lock:
