@@ -62,10 +62,10 @@ def typecast(caster, value, length, cursor):
 
 
 def parse_unknown(value, length, cursor):
-    if value != '{}':
-        return value
-    else:
-        return []
+    if value is None:
+        return None
+
+    return value if value != '{}' else []
 
 
 def parse_string(value, length, cursor):
@@ -73,22 +73,25 @@ def parse_string(value, length, cursor):
 
 
 def parse_longinteger(value, length, cursor):
-    return long(value)
+    return long(value) if value is not None else None
 
 
 def parse_integer(value, length, cursor):
-    return int(value)
+    return int(value) if value is not None else None
 
 
 def parse_float(value, length, cursor):
-    return float(value)
+    return float(value) if value is not None else None
 
 
 def parse_decimal(value, length, cursor):
-    return decimal.Decimal(value)
+    return decimal.Decimal(value) if value is not None else None
 
 
 def parse_binary(value, length, cursor):
+    if value is None:
+        return None
+
     to_length = ffi.new('size_t *')
     s = libpq.PQunescapeBytea(
             ffi.new('unsigned char[]', str(value)), to_length)
@@ -105,7 +108,7 @@ def parse_boolean(value, length, cursor):
     Postgres returns the boolean as a string with 'true' or 'false'
 
     """
-    return value[0] == "t"
+    return value[0] == "t" if value is not None else None
 
 
 class parse_array(object):
@@ -127,6 +130,9 @@ class parse_array(object):
         return self(value, length, cursor)
 
     def __call__(self, value, length, cursor):
+        if value is None:
+            return None
+
         s = value
         if not (len(s) >= 2 and  s[0] == "{" and s[-1] == "}"):
             raise DataError("malformed array")
@@ -188,11 +194,12 @@ class parse_array(object):
 
 def parse_unicode(value, length, cursor):
     """Decode the given value with the connection encoding"""
-    return value.decode(cursor._conn._py_enc)
+    return value.decode(cursor._conn._py_enc) if value is not None else None
 
 
 def _parse_date(value):
-    return datetime.date(*[int(x) for x in value.split('-')])
+    if value is not None:
+        return datetime.date(*[int(x) for x in value.split('-')])
 
 
 def _parse_time(value, cursor):
@@ -201,7 +208,8 @@ def _parse_time(value, cursor):
     The given value is in the format of `16:28:09.506488+01`
 
     """
-    return datetime.time(*_parse_time_to_args(value, cursor))
+    if value is not None:
+        return datetime.time(*_parse_time_to_args(value, cursor))
 
 
 def _parse_time_to_args(value, cursor):
@@ -240,6 +248,9 @@ def _parse_time_to_args(value, cursor):
 
 
 def parse_datetime(value, length, cursor):
+    if value is None:
+        return None
+
     date, time = value.split(' ')
     date_args = date.split('-')
     return datetime.datetime(
@@ -250,11 +261,11 @@ def parse_datetime(value, length, cursor):
 
 
 def parse_date(value, length, cursor):
-    return _parse_date(value)
+    return _parse_date(value) if value is not None else None
 
 
 def parse_time(value, length, cursor):
-    return _parse_time(value, cursor)
+    return _parse_time(value, cursor) if value is not None else None
 
 
 def parse_interval(value, length, cursor):
@@ -264,6 +275,9 @@ def parse_interval(value, length, cursor):
     to `datetime.timedelta(763, 36099, 100)`.
 
     """
+    if value is None:
+        return None
+
     years = months = days = 0
     hours = minutes = seconds = hundreths = 0.0
     v = 0.0
