@@ -158,6 +158,7 @@ class CursorTests(ConnectingTestCase):
         curs = self.conn.cursor()
         w = ref(curs)
         del curs
+        import gc; gc.collect()
         self.assert_(w() is None)
 
     def test_null_name(self):
