@@ -27,7 +27,7 @@ import psycopg2
 import psycopg2.extensions
 from psycopg2.extensions import b
 from testutils import unittest, ConnectingTestCase, skip_before_postgres
-from testutils import skip_if_no_namedtuple
+from testutils import skip_if_no_namedtuple, skip_if_no_getrefcount
 
 class CursorTests(ConnectingTestCase):
 
@@ -97,6 +97,7 @@ class CursorTests(ConnectingTestCase):
         self.assertEqual(b('SELECT 10.3;'),
             cur.mogrify("SELECT %s;", (Decimal("10.3"),)))
 
+    @skip_if_no_getrefcount
     def test_mogrify_leak_on_multiple_reference(self):
         # issue #81: reference leak when a parameter value is referenced
         # more than once from a dict.
