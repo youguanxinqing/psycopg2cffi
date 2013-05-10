@@ -213,6 +213,14 @@ class DatetimeTests(ConnectingTestCase, CommonDatetimeTestsMixin):
         self.assertEqual(value.seconds, 41103)
         self.assertEqual(value.microseconds, 876544)
 
+    def test_parse_infinity(self):
+        value = self.DATETIME('-infinity', self.curs)
+        self.assertEqual(str(value), '0001-01-01 00:00:00')
+        value = self.DATETIME('infinity', self.curs)
+        self.assertEqual(str(value), '9999-12-31 23:59:59.999999')
+        value = self.DATE('infinity', self.curs)
+        self.assertEqual(str(value), '9999-12-31')
+
     def test_adapt_date(self):
         from datetime import date
         value = self.execute('select (%s)::date::text',
