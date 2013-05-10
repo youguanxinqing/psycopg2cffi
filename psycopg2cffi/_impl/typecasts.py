@@ -246,6 +246,8 @@ def parse_datetime(value, length, cursor):
                 int(date_args[2]),
                 *_parse_time_to_args(time, cursor))
     except (TypeError, ValueError):
+        if value.endswith('BC'):
+            raise ValueError('BC dates not supported')
         raise DataError("bad datetime: '%s'" % value)
 
 
@@ -256,11 +258,13 @@ def parse_date(value, length, cursor):
         return datetime.date.max
     elif value == '-infinity':
         return datetime.date.min
-    else:
-        try:
-            return datetime.date(*[int(x) for x in value.split('-')])
-        except (TypeError, ValueError):
-            raise DataError("bad datetime: '%s'" % value)
+
+    try:
+        return datetime.date(*[int(x) for x in value.split('-')])
+    except (TypeError, ValueError):
+        if value.endswith('BC'):
+            raise ValueError('BC dates not supported')
+        raise DataError("bad datetime: '%s'" % value)
 
 
 def parse_time(value, length, cursor):
