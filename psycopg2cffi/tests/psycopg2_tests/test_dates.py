@@ -248,7 +248,7 @@ class DatetimeTests(ConnectingTestCase, CommonDatetimeTestsMixin):
         self.assertEqual(seconds, 3674096)
         self.assertEqual(int(round((value - seconds) * 1000000)), 123456)
 
-    def test_adapt_megative_timedelta(self):
+    def test_adapt_negative_timedelta(self):
         from datetime import timedelta
         value = self.execute('select extract(epoch from (%s)::interval)',
                              [timedelta(days=-42, seconds=45296,
@@ -436,7 +436,7 @@ class mxDateTimeTests(ConnectingTestCase, CommonDatetimeTestsMixin):
         self.assertEqual(seconds, 3674096)
         self.assertEqual(int(round((value - seconds) * 1000000)), 123456)
 
-    def test_adapt_megative_timedelta(self):
+    def test_adapt_negative_timedelta(self):
         from mx.DateTime import DateTimeDeltaFrom
         value = self.execute('select extract(epoch from (%s)::interval)',
                              [DateTimeDeltaFrom(days=-42,
