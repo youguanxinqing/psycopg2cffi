@@ -56,6 +56,11 @@ from psycopg2cffi._impl.typecasts import string_types, binary_types
 from psycopg2cffi._impl.typecasts import new_type, new_array_type, register_type
 from psycopg2cffi._impl.xid import Xid
 
+# These are looked for by the test suite to make the tests run
+from psycopg2cffi._impl.typecasts import DATETIME as PYDATETIME
+PYDATE = DATE
+PYTIME = TIME
+PYINTERVAL = INTERVAL
 
 # Return bytes from a string
 if _sys.version_info[0] < 3:
