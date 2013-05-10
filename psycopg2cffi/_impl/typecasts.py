@@ -215,12 +215,12 @@ def _parse_time_to_args(value, cursor):
 
     if not cursor.tzinfo_factory is None and sign:
         parts = timezone.split(':')
-        tz_min = sign * 60 * int(parts[0])
+        tz_min = 60 * int(parts[0])
         if len(parts) > 1:
             tz_min += int(parts[1])
-        if len(parts) > 2:
-            tz_min += int(int(parts[2]) / 60.0)
-        tzinfo = cursor.tzinfo_factory(tz_min)
+        if len(parts) > 2 and int(parts[2]) >= 30:
+            tz_min += 1
+        tzinfo = cursor.tzinfo_factory(sign * tz_min)
 
     if '.' in second:
         second, microsecond = second.split('.')
