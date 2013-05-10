@@ -194,21 +194,6 @@ def parse_unicode(value, length, cursor):
     return value.decode(cursor._conn._py_enc) if value is not None else None
 
 
-def _parse_date(value):
-    if value is not None:
-        return datetime.date(*[int(x) for x in value.split('-')])
-
-
-def _parse_time(value, cursor):
-    """Parse the time to a datetime.time type.
-
-    The given value is in the format of `16:28:09.506488+01`
-
-    """
-    if value is not None:
-        return datetime.time(*_parse_time_to_args(value, cursor))
-
-
 def _parse_time_to_args(value, cursor):
     """Return arguemnts for datetime.time constructor
 
@@ -247,22 +232,36 @@ def _parse_time_to_args(value, cursor):
 def parse_datetime(value, length, cursor):
     if value is None:
         return None
+    elif value == 'infinity':
+        return datetime.datetime.max
+    elif value == '-infinity':
+        return datetime.datetime.min
 
     date, time = value.split(' ')
     date_args = date.split('-')
     return datetime.datetime(
-            int(date_args[0]), 
-            int(date_args[1]), 
-            int(date_args[2]), 
+            int(date_args[0]),
+            int(date_args[1]),
+            int(date_args[2]),
             *_parse_time_to_args(time, cursor))
 
 
 def parse_date(value, length, cursor):
-    return _parse_date(value) if value is not None else None
+    if value is None:
+        return None
+    elif value == 'infinity':
+        return datetime.date.max
+    elif value == '-infinity':
+        return datetime.date.min
+    else:
+        return datetime.date(*[int(x) for x in value.split('-')])
 
 
 def parse_time(value, length, cursor):
-    return _parse_time(value, cursor) if value is not None else None
+    if value is None:
+        return None
+
+    return datetime.time(*_parse_time_to_args(value, cursor))
 
 
 def parse_interval(value, length, cursor):
