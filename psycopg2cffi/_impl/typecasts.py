@@ -306,7 +306,7 @@ def parse_interval(value, length, cursor):
     if months is not None:
         days += int(months) * 30
     if years is not None:
-        days += int(years) * 356
+        days += int(years) * 365
 
     if hours is not None:
         secs = int(hours) * 3600 + int(mins) * 60 + int(secs)
