@@ -1,3 +1,4 @@
+import re
 import datetime
 import decimal
 import math
@@ -277,6 +278,14 @@ def parse_time(value, length, cursor):
         raise DataError("bad datetime: '%s'" % value)
 
 
+_re_interval = re.compile(r"""
+    (?:(-?\+?\d+)\sy\w+\s?)?    # year
+    (?:(-?\+?\d+)\sm\w+\s?)?    # month
+    (?:(-?\+?\d+)\sd\w+\s?)?    # day
+    (?:(-?\+?)(\d+):(\d+):(\d+) # +/- hours:mins:secs
+        (?:\.(\d+))?)?          # second fraction
+    """, re.VERBOSE)
+
 def parse_interval(value, length, cursor):
     """Typecast an interval to a datetime.timedelta instance.
 
@@ -287,79 +296,32 @@ def parse_interval(value, length, cursor):
     if value is None:
         return None
 
-    years = months = days = 0
-    hours = minutes = seconds = hundreths = 0.0
-    v = 0.0
-    sign = 1
-    denominator = 1.0
-    part = 0
-    skip_to_space = False
+    m = _re_interval.match(value)
+    if not m:
+        raise ValueError("failed to parse interval: '%s'" % value)
 
-    s = value
-    for c in s:
-        if skip_to_space:
-            if c == " ":
-                skip_to_space = False
-            continue
-        if c == "-":
-            sign = -1
-        elif "0" <= c <= "9":
-            v = v * 10 + ord(c) - ord("0")
-            if part == 6:
-                denominator *= 10
-        elif c == "y":
-            if part == 0:
-                years = int(v * sign)
-                skip_to_space = True
-                v = 0.0
-                sign = 1
-                part = 1
-        elif c == "m":
-            if part <= 1:
-                months = int(v * sign)
-                skip_to_space = True
-                v = 0.0
-                sign = 1
-                part = 2
-        elif c == "d":
-            if part <= 2:
-                days = int(v * sign)
-                skip_to_space = True
-                v = 0.0
-                sign = 1
-                part = 3
-        elif c == ":":
-            if part <= 3:
-                hours = v
-                v = 0.0
-                part = 4
-            elif part == 4:
-                minutes = v
-                v = 0.0
-                part = 5
-        elif c == ".":
-            if part == 5:
-                seconds = v
-                v = 0.0
-                part = 6
+    years, months, days, sign, hours, mins, secs, frac = m.groups()
 
-    if part == 4:
-        minutes = v
-    elif part == 5:
-        seconds = v
-    elif part == 6:
-        hundreths = v / denominator
+    days = int(days) if days is not None else 0
+    if months is not None:
+        days += int(months) * 30
+    if years is not None:
+        days += int(years) * 356
 
-    if sign < 0.0:
-        seconds = - (hundreths + seconds + minutes * 60 + hours * 3600)
+    if hours is not None:
+        secs = int(hours) * 3600 + int(mins) * 60 + int(secs)
+        if frac is not None:
+            micros = int((frac + ('0' * (6 - len(frac))))[:6])
+        else:
+            micros = 0
+
+        if sign == '-':
+            secs = -secs
+            micros = -micros
     else:
-        seconds += hundreths + minutes * 60 + hours * 3600
+        secs = micros = 0
 
-    days += years * 365 + months * 30
-    micro = (seconds - math.floor(seconds)) * 1000000.0
-    seconds = int(math.floor(seconds))
-    return datetime.timedelta(days, seconds, int(micro))
-
+    return datetime.timedelta(days, secs, micros)
 
 
 def Date(year, month, day):
