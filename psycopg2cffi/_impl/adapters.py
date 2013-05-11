@@ -72,9 +72,10 @@ class DateTime(_BaseAdapter):
     def getquoted(self):
         obj = self._wrapped
         if isinstance(obj, datetime.timedelta):
-            # TODO: microseconds
-            return "'%d days %d.0 seconds'::interval" % (
-                int(obj.days), int(obj.seconds))
+            us = str(obj.microseconds)
+            us = '0' * (6 - len(us)) + us
+            return "'%d days %d.%s seconds'::interval" % (
+                obj.days, obj.seconds, us)
         else:
             iso = obj.isoformat()
             if isinstance(obj, datetime.datetime):
