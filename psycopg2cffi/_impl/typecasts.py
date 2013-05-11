@@ -1,7 +1,6 @@
 import re
-import datetime
 import decimal
-import math
+import datetime
 from time import localtime
 
 from psycopg2cffi._impl.libpq import libpq, ffi
@@ -201,7 +200,6 @@ def _parse_time_to_args(value, cursor):
     The given value is in the format of `16:28:09.506488+01`
 
     """
-    microsecond = 0
     hour, minute, second = value.split(':', 2)
 
     sign = 0
@@ -224,10 +222,12 @@ def _parse_time_to_args(value, cursor):
         tzinfo = cursor.tzinfo_factory(sign * tz_min)
 
     if '.' in second:
-        second, microsecond = second.split('.')
-        microsecond = int(microsecond) * int(math.pow(10.0, 6.0 - len(microsecond)))
+        second, frac = second.split('.')
+        micros = int((frac + ('0' * (6 - len(frac))))[:6])
+    else:
+        micros = 0
 
-    return int(hour), int(minute), int(second), microsecond, tzinfo
+    return int(hour), int(minute), int(second), micros, tzinfo
 
 
 def parse_datetime(value, length, cursor):
