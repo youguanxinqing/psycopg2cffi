@@ -263,7 +263,7 @@ setup(
     author_email='konstantin.lopuhin@chtd.ru',
     license='LGPL',
     url='http://github.com/chtd/psycopg2cffi',
-    version='0.1.5',
+    version='2.5',
     cmdclass={
         'build_py': build_py
     },
@@ -289,7 +289,7 @@ setup(
     packages=['psycopg2cffi', 'psycopg2cffi._impl', 'psycopg2cffi.tests'],
     install_requires=[
         'six',
-        'cffi ==0.4, ==0.5',
+        'cffi ==0.4, ==0.5, ==0.6',
         ],
     ext_package='psycopg2cffi',
     ext_modules=ext_modules,

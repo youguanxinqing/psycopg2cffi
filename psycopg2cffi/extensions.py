@@ -13,6 +13,27 @@ This module holds all the extensions to the DBAPI-2.0 provided by psycopg.
 
 from __future__ import unicode_literals
 
+# psycopg/extensions.py - DBAPI-2.0 extensions specific to psycopg
+#
+# Copyright (C) 2003-2010 Federico Di Gregorio  <fog@debian.org>
+#
+# psycopg2 is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders give
+# permission to link this program with the OpenSSL library (or with
+# modified versions of OpenSSL that use the same license as OpenSSL),
+# and distribute linked combinations including the two.
+#
+# You must obey the GNU Lesser General Public License in all respects for
+# all of the code used other than OpenSSL.
+#
+# psycopg2 is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+# License for more details.
 import sys as _sys
 
 from psycopg2cffi._impl import connection as _connection
@@ -25,6 +46,8 @@ from psycopg2cffi._impl.cursor import Cursor as cursor
 from psycopg2cffi._impl.encodings import encodings
 from psycopg2cffi._impl.exceptions import QueryCanceledError
 from psycopg2cffi._impl.exceptions import TransactionRollbackError
+from psycopg2cffi._impl.exceptions import Diagnostics
+from psycopg2cffi._impl.lobject import LargeObject as lobject
 from psycopg2cffi._impl.notify import Notify
 from psycopg2cffi._impl.typecasts import (
     UNICODE, INTEGER, LONGINTEGER, BOOLEAN, FLOAT, TIME, DATE, INTERVAL,
@@ -36,6 +59,13 @@ from psycopg2cffi._impl.typecasts import string_types, binary_types
 from psycopg2cffi._impl.typecasts import new_type, new_array_type, register_type
 from psycopg2cffi._impl.xid import Xid
 
+# These are looked for by the test suite to make the tests run
+from psycopg2cffi._impl.typecasts import DATETIME as PYDATETIME
+PYDATE = DATE
+PYTIME = TIME
+PYINTERVAL = INTERVAL
+
+# Return bytes from a string
 if _sys.version_info[0] < 3:
     def b(s):
         return s
@@ -51,9 +81,9 @@ def register_adapter(typ, callable):
 # The SQL_IN class is the official adapter for tuples starting from 2.0.6.
 class SQL_IN(object):
     """Adapt any iterable to an SQL quotable object."""
-
     def __init__(self, seq):
         self._seq = seq
+        self._conn = None
 
     def prepare(self, conn):
         self._conn = conn
@@ -62,9 +92,10 @@ class SQL_IN(object):
         # this is the important line: note how every object in the
         # list is adapted and then how getquoted() is called on it
         pobjs = [adapt(o) for o in self._seq]
-        for obj in pobjs:
-            if hasattr(obj, 'prepare'):
-                obj.prepare(self._conn)
+        if self._conn is not None:
+            for obj in pobjs:
+                if hasattr(obj, 'prepare'):
+                    obj.prepare(self._conn)
         qobjs = [o.getquoted() for o in pobjs]
         return b'(' + b', '.join(qobjs) + b')'
 
@@ -85,12 +116,24 @@ class NoneAdapter(object):
         return _null
 
 
+# Create default json typecasters for PostgreSQL 9.2 oids
+from psycopg2cffi._json import register_default_json
+
+try:
+    JSON, JSONARRAY = register_default_json()
+except ImportError:
+    pass
+
+del register_default_json
+
+
+# Create default Range typecasters
+from psycopg2cffi._range import Range
+del Range
+
 def set_wait_callback(f):
     _connection._green_callback = f
 
 
 def get_wait_callback():
     return _connection._green_callback
-
-
-__all__ = filter(lambda k: not k.startswith('_'), locals().keys())

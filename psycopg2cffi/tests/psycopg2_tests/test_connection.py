@@ -28,26 +28,26 @@ import threading
 from operator import attrgetter
 
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
-        decorate_all_tests, skip_before_postgres, skip_after_postgres, _u
+        decorate_all_tests, skip_before_postgres, skip_after_postgres, _u, \
+        ConnectingTestCase, skip_if_tpc_disabled, skip_if_no_superuser
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extensions
 from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn, dbname
 
 
-class ConnectionTests(unittest.TestCase):
 
-    def setUp(self):
-        self.conn = psycopg2.connect(dsn)
-
-    def tearDown(self):
-        if not self.conn.closed:
-            self.conn.close()
-
+class ConnectionTests(ConnectingTestCase):
     def test_closed_attribute(self):
         conn = self.conn
         self.assertEqual(conn.closed, False)
         conn.close()
         self.assertEqual(conn.closed, True)
+
+    def test_close_idempotent(self):
+        conn = self.conn
+        conn.close()
+        conn.close()
+        self.assert_(conn.closed)
 
     def test_cursor_closed_attribute(self):
         conn = self.conn
@@ -61,12 +61,26 @@ class ConnectionTests(unittest.TestCase):
         conn.close()
         self.assertEqual(curs.closed, True)
 
-    def test_unexpected_close(self):
+    @skip_before_postgres(8, 4)
+    @skip_if_no_superuser
+    def test_cleanup_on_badconn_close(self):
+        # ticket #148
         conn = self.conn
         cur = conn.cursor()
-        self.assertRaises(psycopg2.DatabaseError,
-            lambda: cur.execute('SELECT pg_terminate_backend(pg_backend_pid())'))
-        self.assertEqual(cur.closed, True)
+        try:
+            cur.execute("select pg_terminate_backend(pg_backend_pid())")
+        except psycopg2.OperationalError, e:
+            if e.pgcode != psycopg2.errorcodes.ADMIN_SHUTDOWN:
+                raise
+        except psycopg2.DatabaseError, e:
+            # curiously when disconnected in green mode we get a DatabaseError
+            # without pgcode.
+            if e.pgcode is not None:
+                raise
+
+        self.assertEqual(conn.closed, 2)
+        conn.close()
+        self.assertEqual(conn.closed, 1)
 
     def test_reset(self):
         conn = self.conn
@@ -81,6 +95,8 @@ class ConnectionTests(unittest.TestCase):
     def test_notices(self):
         conn = self.conn
         cur = conn.cursor()
+        if self.conn.server_version >= 90300:
+            cur.execute("set client_min_messages=debug1")
         cur.execute("create temp table chatty (id serial primary key);")
         self.assertEqual("CREATE TABLE", cur.statusmessage)
         self.assert_(conn.notices)
@@ -88,6 +104,8 @@ class ConnectionTests(unittest.TestCase):
     def test_notices_consistent_order(self):
         conn = self.conn
         cur = conn.cursor()
+        if self.conn.server_version >= 90300:
+            cur.execute("set client_min_messages=debug1")
         cur.execute("create temp table table1 (id serial); create temp table table2 (id serial);")
         cur.execute("create temp table table3 (id serial); create temp table table4 (id serial);")
         self.assertEqual(4, len(conn.notices))
@@ -99,6 +117,8 @@ class ConnectionTests(unittest.TestCase):
     def test_notices_limited(self):
         conn = self.conn
         cur = conn.cursor()
+        if self.conn.server_version >= 90300:
+            cur.execute("set client_min_messages=debug1")
         for i in range(0, 100, 10):
             sql = " ".join(["create temp table table%d (id serial);" % j for j in range(i, i+10)])
             cur.execute(sql)
@@ -127,7 +147,7 @@ class ConnectionTests(unittest.TestCase):
     @skip_before_postgres(8, 2)
     def test_concurrent_execution(self):
         def slave():
-            cnn = psycopg2.connect(dsn)
+            cnn = self.connect()
             cur = cnn.cursor()
             cur.execute("select pg_sleep(4)")
             cur.close()
@@ -157,7 +177,7 @@ class ConnectionTests(unittest.TestCase):
         oldenc = os.environ.get('PGCLIENTENCODING')
         os.environ['PGCLIENTENCODING'] = 'utf-8'    # malformed spelling
         try:
-            self.conn = psycopg2.connect(dsn)
+            self.conn = self.connect()
         finally:
             if oldenc is not None:
                 os.environ['PGCLIENTENCODING'] = oldenc
@@ -174,11 +194,66 @@ class ConnectionTests(unittest.TestCase):
         gc.collect()
         self.assert_(w() is None)
 
+    def test_commit_concurrency(self):
+        # The problem is the one reported in ticket #103. Because of bad
+        # status check, we commit even when a commit is already on its way.
+        # We can detect this condition by the warnings.
+        conn = self.conn
+        notices = []
+        stop = []
 
-class IsolationLevelsTestCase(unittest.TestCase):
+        def committer():
+            while not stop:
+                conn.commit()
+                while conn.notices:
+                    notices.append((2, conn.notices.pop()))
+
+        cur = conn.cursor()
+        t1 = threading.Thread(target=committer)
+        t1.start()
+        i = 1
+        for i in range(1000):
+            cur.execute("select %s;",(i,))
+            conn.commit()
+            while conn.notices:
+                notices.append((1, conn.notices.pop()))
+
+        # Stop the committer thread
+        stop.append(True)
+
+        self.assert_(not notices, "%d notices raised" % len(notices))
+
+    def test_connect_cursor_factory(self):
+        import psycopg2.extras
+        conn = self.connect(cursor_factory=psycopg2.extras.DictCursor)
+        cur = conn.cursor()
+        cur.execute("select 1 as a")
+        self.assertEqual(cur.fetchone()['a'], 1)
+
+    def test_cursor_factory(self):
+        self.assertEqual(self.conn.cursor_factory, None)
+        cur = self.conn.cursor()
+        cur.execute("select 1 as a")
+        self.assertRaises(TypeError, (lambda r: r['a']), cur.fetchone())
+
+        self.conn.cursor_factory = psycopg2.extras.DictCursor
+        self.assertEqual(self.conn.cursor_factory, psycopg2.extras.DictCursor)
+        cur = self.conn.cursor()
+        cur.execute("select 1 as a")
+        self.assertEqual(cur.fetchone()['a'], 1)
+
+        self.conn.cursor_factory = None
+        self.assertEqual(self.conn.cursor_factory, None)
+        cur = self.conn.cursor()
+        cur.execute("select 1 as a")
+        self.assertRaises(TypeError, (lambda r: r['a']), cur.fetchone())
+
+
+class IsolationLevelsTestCase(ConnectingTestCase):
 
     def setUp(self):
-        self._conns = []
+        ConnectingTestCase.setUp(self)
+
         conn = self.connect()
         cur = conn.cursor()
         try:
@@ -188,17 +263,6 @@ class IsolationLevelsTestCase(unittest.TestCase):
         cur.execute("create table isolevel (id integer);")
         conn.commit()
         conn.close()
-
-    def tearDown(self):
-        # close the connections used in the test
-        for conn in self._conns:
-            if not conn.closed:
-                conn.close()
-
-    def connect(self):
-        conn = psycopg2.connect(dsn)
-        self._conns.append(conn)
-        return conn
 
     def test_isolation_level(self):
         conn = self.connect()
@@ -365,20 +429,16 @@ class IsolationLevelsTestCase(unittest.TestCase):
             cnn.set_isolation_level, 1)
 
 
-class ConnectionTwoPhaseTests(unittest.TestCase):
+class ConnectionTwoPhaseTests(ConnectingTestCase):
     def setUp(self):
-        self._conns = []
+        ConnectingTestCase.setUp(self)
 
         self.make_test_table()
         self.clear_test_xacts()
 
     def tearDown(self):
         self.clear_test_xacts()
-
-        # close the connections used in the test
-        for conn in self._conns:
-            if not conn.closed:
-                conn.close()
+        ConnectingTestCase.tearDown(self)
 
     def clear_test_xacts(self):
         """Rollback all the prepared transaction in the testing db."""
@@ -430,11 +490,6 @@ class ConnectionTwoPhaseTests(unittest.TestCase):
         rv = cur.fetchone()[0]
         cnn.close()
         return rv
-
-    def connect(self):
-        conn = psycopg2.connect(dsn)
-        self._conns.append(conn)
-        return conn
 
     def test_tpc_commit(self):
         cnn = self.connect()
@@ -734,18 +789,29 @@ class ConnectionTwoPhaseTests(unittest.TestCase):
         cnn.tpc_prepare()
         self.assertRaises(psycopg2.ProgrammingError, cnn.cancel)
 
+<<<<<<< HEAD
 from psycopg2cffi.tests.psycopg2_tests.testutils import skip_if_tpc_disabled
+decorate_all_tests(ConnectionTwoPhaseTests, skip_if_tpc_disabled)
+=======
+    def test_tpc_recover_non_dbapi_connection(self):
+        from psycopg2.extras import RealDictConnection
+        cnn = self.connect(connection_factory=RealDictConnection)
+        cnn.tpc_begin('dict-connection')
+        cnn.tpc_prepare()
+        cnn.reset()
+>>>>>>> master
+
+        xids = cnn.tpc_recover()
+        xid = [ xid for xid in xids if xid.database == dbname ][0]
+        self.assertEqual(None, xid.format_id)
+        self.assertEqual('dict-connection', xid.gtrid)
+        self.assertEqual(None, xid.bqual)
+
+
 decorate_all_tests(ConnectionTwoPhaseTests, skip_if_tpc_disabled)
 
 
-class TransactionControlTests(unittest.TestCase):
-    def setUp(self):
-        self.conn = psycopg2.connect(dsn)
-
-    def tearDown(self):
-        if not self.conn.closed:
-            self.conn.close()
-
+class TransactionControlTests(ConnectingTestCase):
     def test_closed(self):
         self.conn.close()
         self.assertRaises(psycopg2.InterfaceError,
@@ -887,14 +953,7 @@ class TransactionControlTests(unittest.TestCase):
             self.conn.set_session, readonly=True, deferrable=True)
 
 
-class AutocommitTests(unittest.TestCase):
-    def setUp(self):
-        self.conn = psycopg2.connect(dsn)
-
-    def tearDown(self):
-        if not self.conn.closed:
-            self.conn.close()
-
+class AutocommitTests(ConnectingTestCase):
     def test_closed(self):
         self.conn.close()
         self.assertRaises(psycopg2.InterfaceError,

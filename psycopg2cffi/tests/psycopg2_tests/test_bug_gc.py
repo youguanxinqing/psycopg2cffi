@@ -22,24 +22,15 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-import psycopg2cffi as psycopg2
-from psycopg2cffi import extensions
-import time
 import unittest
 import gc
 
-from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
+from psycopg2cffi import extensions
+from psycopg2cffi.tests.psycopg2_tests.testutils import skip_if_no_uuid, \
+        ConnectingTestCase
 
-from psycopg2cffi.tests.psycopg2_tests.testutils import skip_if_no_uuid
 
-
-class StolenReferenceTestCase(unittest.TestCase):
-    def setUp(self):
-        self.conn = psycopg2.connect(dsn)
-
-    def tearDown(self):
-        self.conn.close()
-
+class StolenReferenceTestCase(ConnectingTestCase):
     @skip_if_no_uuid
     def test_stolen_reference_bug(self):
         def fish(val, cur):

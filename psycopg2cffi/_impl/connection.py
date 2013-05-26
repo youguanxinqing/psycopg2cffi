@@ -64,6 +64,17 @@ def check_tpc(func):
     return check_tpc_
 
 
+def check_tpc_supported(func):
+    @wraps(func)
+    def check_tpc_supported_(self, *args, **kwargs):
+        if self.server_version < 80100:
+            raise exceptions.NotSupportedError(
+                "server version %s: two-phase transactions not supported"
+                % self.server_version)
+        return func(self, *args, **kwargs)
+    return check_tpc_supported_
+
+
 def check_async(func):
     @wraps(func)
     def check_async_(self, *args, **kwargs):
@@ -94,7 +105,7 @@ class Connection(object):
         self.status = consts.STATUS_SETUP
         self._encoding = None
 
-        self._closed = False
+        self._closed = 0
         self._cancel = ffi.NULL
         self._typecasts = {}
         self._tpc_xid = None
@@ -104,6 +115,7 @@ class Connection(object):
         self._equote = False
         self._lock = threading.RLock()
         self.notices = []
+        self.cursor_factory = None
 
         # The number of commits/rollbacks done so far
         self._mark = 0
@@ -159,6 +171,15 @@ class Connection(object):
         self._close()
 
     @check_closed
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, name, tb):
+        if type is None:
+            self.commit()
+        else:
+            self.rollback()
+
     def close(self):
         return self._close()
 
@@ -257,12 +278,18 @@ class Connection(object):
             elif isinstance(isolation_level, six.string_types):
                 if isinstance(isolation_level, six.binary_type):
                     isolation_level = bytes_to_ascii(isolation_level)
-                if not isolation_level \
-                        or isolation_level.lower() not in _isolevels:
+                isolation_level = isolation_level.lower()
+                if not isolation_level or isolation_level not in _isolevels:
                     raise ValueError("bad value for isolation level: '%s'" %
                         isolation_level)
             else:
                 raise TypeError("bad isolation level: '%r'" % isolation_level)
+
+            if self.server_version < 80000:
+                if isolation_level == 'read uncommitted':
+                    isolation_level = 'read committed'
+                elif isolation_level == 'repeatable read':
+                    isolation_level = 'serializable'
 
             self._set_guc("default_transaction_isolation", isolation_level)
 
@@ -292,13 +319,17 @@ class Connection(object):
         return libpq.PQbackendPID(self._pgconn)
 
     def get_parameter_status(self, parameter):
-        return bytes_to_ascii(ffi.string(libpq.PQparameterStatus(
-            self._pgconn, ascii_to_bytes(parameter))))
+        p = libpq.PQparameterStatus(self._pgconn, ascii_to_bytes(parameter))
+        return bytes_to_ascii(ffi.string(p)) if p != ffi.NULL else None
 
     def get_transaction_status(self):
         return libpq.PQtransactionStatus(self._pgconn)
 
-    def cursor(self, name=None, cursor_factory=Cursor, withhold=False):
+    def cursor(self, name=None, cursor_factory=None,
+            withhold=False, scrollable=None):
+        if cursor_factory is None:
+            cursor_factory = self.cursor_factory or Cursor
+
         cur = cursor_factory(self, name)
 
         if not isinstance(cur, Cursor):
@@ -307,11 +338,10 @@ class Connection(object):
                 '.'.join([Cursor.__module__, Cursor.__name__]))
 
         if withhold:
-            if name:
-                cur.withhold = True
-            else:
-                raise exceptions.ProgrammingError(
-                    "withhold=True can be specified only for named cursors")
+            cur.withhold = withhold
+
+        if scrollable is not None:
+            cur.scrollable = scrollable
 
         if name and self._async:
             raise exceptions.ProgrammingError(
@@ -326,7 +356,7 @@ class Connection(object):
         err_length = 256
         errbuf = ffi.new('char[]', err_length)
         if libpq.PQcancel(self._cancel, errbuf, err_length) == 0:
-            raise self._create_exception(msg=ffi.string(errbuf))
+            raise exceptions.OperationalError(ffi.string(errbuf))
 
     def isexecuting(self):
         if not self._async:
@@ -379,11 +409,13 @@ class Connection(object):
         return self._closed
 
     @check_closed
+    @check_tpc_supported
     def xid(self, format_id, gtrid, bqual):
         return Xid(format_id, gtrid, bqual)
 
     @check_closed
     @check_async
+    @check_tpc_supported
     def tpc_begin(self, xid):
         if not isinstance(xid, Xid):
             xid = Xid.from_string(xid)
@@ -401,11 +433,13 @@ class Connection(object):
 
     @check_closed
     @check_async
+    @check_tpc_supported
     def tpc_commit(self, xid=None):
         self._finish_tpc('COMMIT PREPARED', self._commit, xid)
 
     @check_closed
     @check_async
+    @check_tpc_supported
     def tpc_rollback(self, xid=None):
         self._finish_tpc('ROLLBACK PREPARED', self._rollback, xid)
 
@@ -421,6 +455,7 @@ class Connection(object):
 
     @check_closed
     @check_async
+    @check_tpc_supported
     def tpc_recover(self):
         return Xid.tpc_recover(self)
 
@@ -546,9 +581,7 @@ class Connection(object):
 
             self._equote = self._get_equote()
             self._get_encoding()
-            self._cancel = libpq.PQgetCancel(self._pgconn)
-            if self._cancel == ffi.NULL:
-                raise exceptions.OperationalError("can't get cancellation key")
+            self._have_cancel_key()
 
             self._autocommit = True
 
@@ -585,10 +618,7 @@ class Connection(object):
     def _setup(self):
         self._equote = self._get_equote()
         self._get_encoding()
-
-        self._cancel = libpq.PQgetCancel(self._pgconn)
-        if self._cancel == ffi.NULL:
-            raise exceptions.OperationalError("can't get cancellation key")
+        self._have_cancel_key()
 
         with self._lock:
             # If the current datestyle is not compatible (not ISO) then
@@ -597,7 +627,16 @@ class Connection(object):
                 self.status = consts.STATUS_DATESTYLE
                 self._set_guc('datestyle', 'ISO')
 
-            self._closed = False
+            self._closed = 0
+
+    def _have_cancel_key(self):
+        if self._cancel != ffi.NULL:
+            tmp, self._cancel = self._cancel, ffi.NULL
+            libpq.PQfreeCancel(tmp)
+
+        self._cancel = libpq.PQgetCancel(self._pgconn)
+        if self._cancel == ffi.NULL:
+            raise exceptions.OperationalError("can't get cancellation key")
 
     def _begin_transaction(self):
         if self.status == consts.STATUS_READY and not self._autocommit:
@@ -616,9 +655,12 @@ class Connection(object):
             try:
                 pgstatus = libpq.PQresultStatus(pgres)
                 if pgstatus != libpq.PGRES_COMMAND_OK:
-                    raise self._create_exception(pgres=pgres)
+                    exc = self._create_exception(pgres=pgres)
+                    pgres = None    # ownership transferred to exc
+                    raise exc
             finally:
-                libpq.PQclear(pgres)
+                if pgres:
+                    libpq.PQclear(pgres)
 
     def _execute_tpc_command(self, command, xid):
         cmd = b' '.join([
@@ -643,10 +685,11 @@ class Connection(object):
 
         try:
             _green_callback(self)
-            return util.pq_get_last_result(self._pgconn)
-        except:
-            util.pq_clear_async(self._pgconn)
+        except Exception:
+            self.close()
             raise
+        else:
+            return util.pq_get_last_result(self._pgconn)
         finally:
             self._async_cursor = None
             self._async_status = consts.ASYNC_DONE
@@ -680,7 +723,8 @@ class Connection(object):
             self._tpc_xid = None
 
     def _close(self):
-        self._closed = True
+        if self._closed == 1:
+            return
 
         if self._cancel:
             libpq.PQfreeCancel(self._cancel)
@@ -690,11 +734,12 @@ class Connection(object):
             libpq.PQfinish(self._pgconn)
             self._pgconn = None
 
-    def _commit(self):
-        if self._autocommit or self.status != consts.STATUS_BEGIN:
-            return
+        self._closed = 1
 
+    def _commit(self):
         with self._lock:
+            if self._autocommit or self.status != consts.STATUS_BEGIN:
+                return
             self._mark += 1
             try:
                 self._execute_command('COMMIT')
@@ -702,11 +747,14 @@ class Connection(object):
                 self.status = consts.STATUS_READY
 
     def _rollback(self):
-        if self._autocommit or self.status != consts.STATUS_BEGIN:
-            return
-        self._mark += 1
-        self._execute_command('ROLLBACK')
-        self.status = consts.STATUS_READY
+        with self._lock:
+            if self._autocommit or self.status != consts.STATUS_BEGIN:
+                return
+            self._mark += 1
+            try:
+                self._execute_command('ROLLBACK')
+            finally:
+                self.status = consts.STATUS_READY
 
     def _get_encoding(self):
         """Retrieving encoding"""
@@ -716,8 +764,8 @@ class Connection(object):
 
     def _get_equote(self):
         ret = libpq.PQparameterStatus(
-            self._pgconn, b'standard_conforming_strings')
-        return ret and ffi.string(ret) == 'off'
+                self._pgconn, b'standard_conforming_strings')
+        return ret and ffi.string(ret) == b'off' or False
 
     def _is_busy(self):
         with self._lock:
@@ -754,33 +802,62 @@ class Connection(object):
 
             libpq.PQfreemem(pg_notify)
 
-    def _create_exception(self, pgres=None, msg=None):
+    def _create_exception(self, pgres=None, msg=None, cursor=None):
         """Return the appropriate exception instance for the current status.
 
+        IMPORTANT: the new exception takes ownership of pgres: if pgres is
+        passed as parameter, the callee must delete its pointer (e.g. it may
+        be set to null). If there is a pgres in the cursor it is "stolen": the
+        cursor will have it set to Null.
+
         """
+        assert pgres is None or cursor is None, \
+            "cannot specify pgres and cursor together"
+
+        if cursor and cursor._pgres:
+            pgres, cursor._pgres = cursor._pgres, ffi.NULL
+
         exc_type = exceptions.OperationalError
+        code = pgmsg = None
 
         # If no custom message is passed then get the message from postgres.
         # If pgres is available then we first try to get the message for the
         # last command, and then the error message for the connection
-        if msg is None:
-            if pgres:
-                msg = libpq.PQresultErrorMessage(pgres)
-            if msg is None or msg == ffi.NULL:
-                msg = libpq.PQerrorMessage(self._pgconn)
-            msg = ffi.string(msg) if msg != ffi.NULL else None
-
-        # Get the correct exception class based on the error code
         if pgres:
+            pgmsg = libpq.PQresultErrorMessage(pgres)
+            pgmsg = ffi.string(pgmsg) if pgmsg else None
+
+            # Get the correct exception class based on the error code
             code = libpq.PQresultErrorField(pgres, libpq.PG_DIAG_SQLSTATE)
             if code != ffi.NULL:
-                exc_type = util.get_exception_for_sqlstate(
-                        ffi.string(code))
+                code = ffi.string(code)
+                exc_type = util.get_exception_for_sqlstate(code)
+            else:
+                code = None
+                exc_type = exceptions.DatabaseError
+
+        if not pgmsg:
+            pgmsg = libpq.PQerrorMessage(self._pgconn)
+            pgmsg = ffi.string(pgmsg) if pgmsg else None
+
+        if msg is None and pgmsg:
+            msg = pgmsg
+            for prefix in ("ERROR:  ", "FATAL:  ", "PANIC:  "):
+                if msg.startswith(prefix):
+                    msg = msg[len(prefix):]
+                    break
 
         # Clear the connection if the status is CONNECTION_BAD (fatal error)
         if self._pgconn and libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
-            self._close()
-        return exc_type(msg)
+            self._closed = 2
+
+        exc = exc_type(msg)
+        exc.pgcode = code
+        exc.pgerror = pgmsg
+        exc.cursor = cursor
+        exc._pgres = pgres
+
+        return exc
 
     def _have_wait_callback(self):
         return bool(_green_callback)

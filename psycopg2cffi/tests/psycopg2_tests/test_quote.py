@@ -25,14 +25,14 @@
 import sys
 import six
 
-from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, _u
-from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, _u, \
+        ConnectingTestCase
 
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extensions
 
 
-class QuotingTestCase(unittest.TestCase):
+class QuotingTestCase(ConnectingTestCase):
     r"""Checks the correct quoting of strings and binary objects.
 
     Since ver. 8.1, PostgreSQL is moving towards SQL standard conforming
@@ -47,15 +47,9 @@ class QuotingTestCase(unittest.TestCase):
     The tests also check that no warning is raised ('escape_string_warning'
     should be on).
 
-    http://www.postgresql.org/docs/8.1/static/sql-syntax.html#SQL-SYNTAX-STRINGS
-    http://www.postgresql.org/docs/8.1/static/runtime-config-compatible.html
+    http://www.postgresql.org/docs/current/static/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS
+    http://www.postgresql.org/docs/current/static/runtime-config-compatible.html
     """
-    def setUp(self):
-        self.conn = psycopg2.connect(dsn)
-
-    def tearDown(self):
-        self.conn.close()
-
     def test_string(self):
         data = """some data with \t chars
         to escape into, 'quotes' and \\ a backslash too.
@@ -165,6 +159,16 @@ class QuotingTestCase(unittest.TestCase):
             res = curs.fetchone()[0]
             self.assertEqual(res, data)
             self.assert_(not self.conn.notices)
+
+
+class TestQuotedString(ConnectingTestCase):
+    def test_encoding(self):
+        q = psycopg2.extensions.QuotedString('hi')
+        self.assertEqual(q.encoding, 'latin1')
+
+        self.conn.set_client_encoding('utf_8')
+        q.prepare(self.conn)
+        self.assertEqual(q.encoding, 'utf_8')
 
 
 def test_suite():

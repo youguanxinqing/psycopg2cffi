@@ -61,8 +61,9 @@ def get_exception_for_sqlstate(code):
             return exceptions.NotSupportedError
 
     elif code[0] == '2':
+        # Class 20 - Case Not Found
         # Class 21 - Cardinality Violation
-        if code[1] == '1':
+        if code[1] in '01':
             return exceptions.ProgrammingError
 
         # Class 22 - Data Exception
@@ -125,12 +126,15 @@ def get_exception_for_sqlstate(code):
         # Class 55 - Object Not In Prerequisite State
         # Class 57 - Operator Intervention
         # Class 58 - System Error (errors external to PostgreSQL itself)
-        if code in '34578':
-            return exceptions.OperationalError
+        return exceptions.OperationalError
 
     elif code[0] == 'F':
         # Class F0 - Configuration File Error
         return exceptions.InternalError
+
+    elif code[0] == 'H':
+        # Class HV - Foreign Data Wrapper Error (SQL/MED)
+        return exceptions.OperationalError
 
     elif code[0] == 'P':
         # Class P0 - PL/pgSQL Error

@@ -27,22 +27,16 @@ from psycopg2cffi.tests.psycopg2_tests.testutils import unittest
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extensions
 from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
-from psycopg2cffi.tests.psycopg2_tests.testutils import script_to_py3
+from psycopg2cffi.tests.psycopg2_tests.testutils import script_to_py3, \
+        ConnectingTestCase
 
 import sys
 import time
 import select
-import signal
 from subprocess import Popen, PIPE
 
 
-class NotifiesTests(unittest.TestCase):
-
-    def setUp(self):
-        self.conn = psycopg2.connect(dsn)
-
-    def tearDown(self):
-        self.conn.close()
+class NotifiesTests(ConnectingTestCase):
 
     def autocommit(self, conn):
         """Set a connection in autocommit mode."""
@@ -64,17 +58,18 @@ class NotifiesTests(unittest.TestCase):
         script = ("""\
 import time
 time.sleep(%(sec)s)
-import psycopg2cffi
-import psycopg2cffi.extensions
-conn = psycopg2cffi.connect(%(dsn)r)
-conn.set_isolation_level(psycopg2cffi.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+import %(module)s as psycopg2
+import %(module)s.extensions as ext
+conn = psycopg2.connect(%(dsn)r)
+conn.set_isolation_level(ext.ISOLATION_LEVEL_AUTOCOMMIT)
 print conn.get_backend_pid()
 curs = conn.cursor()
 curs.execute("NOTIFY " %(name)r %(payload)r)
 curs.close()
 conn.close()
-"""
-            % { 'dsn': dsn, 'sec': sec, 'name': name, 'payload': payload})
+""" % {
+        'module': psycopg2.__name__,
+        'dsn': dsn, 'sec': sec, 'name': name, 'payload': payload})
 
         return Popen([sys.executable, '-c', script_to_py3(script)], stdout=PIPE)
 

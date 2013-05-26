@@ -7,3 +7,4 @@ dist/
 __pycache__
 env
 *.swp
+psycopg2cffi/_cffi__*.so

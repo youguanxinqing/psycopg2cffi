@@ -1,19 +1,18 @@
 from __future__ import unicode_literals
 
-import datetime
+import re
 import decimal
-import math
+import datetime
 from time import localtime
 import six
 
 from psycopg2cffi._impl.libpq import libpq, ffi
 from psycopg2cffi._impl.adapters import bytes_to_ascii
-
+from psycopg2cffi._impl.exceptions import DataError
 
 # Typecasters accept bytes and return python objects.
 # This only applies to our internal typecasers - user-defined ones
 # accept unicode, to mimic psycopg2 behaviour
-
 
 string_types = {}
 
@@ -30,13 +29,15 @@ class Type(object):
     def __eq__(self, other):
         return other in self.values
 
-    def cast(self, value, cursor, length=None):
+    def cast(self, value, cursor=None, length=None):
         if self.py_caster is not None:
             # py_caster-s are part of external api and so accept unicode
             if isinstance(value, six.binary_type):
                 value = value.decode(cursor._conn._py_enc)
             return self.py_caster(value, cursor)
         return self.caster(value, length, cursor)
+
+    __call__ = cast
 
 
 def register_type(type_obj, scope=None):
@@ -70,6 +71,8 @@ def typecast(caster, value, length, cursor):
 
 
 def parse_unknown(value, length, cursor):
+    if value is None:
+        return None
     if value != b'{}':
         # FIXME hmm not sure
         if six.PY3 and isinstance(value, six.binary_type):
@@ -89,27 +92,32 @@ else:
 
 if six.PY3:
     def parse_longinteger(value, length, cursor):
-        return int(value)
+        return int(value) if value is not None else None
 else:
     def parse_longinteger(value, length, cursor):
-        return long(value)
+        return long(value) if value is not None else None
 
 
 def parse_integer(value, length, cursor):
-    return int(value)
+    return int(value) if value is not None else None
 
 
 def parse_float(value, length, cursor):
-    return float(value)
+    return float(value) if value is not None else None
 
 
 def parse_decimal(value, length, cursor):
+    if value is None:
+        return None
     if isinstance(value, six.binary_type):
         value = bytes_to_ascii(value)
     return decimal.Decimal(value)
 
 
 def parse_binary(value, length, cursor):
+    if value is None:
+        return None
+
     to_length = ffi.new('size_t *')
     s = libpq.PQunescapeBytea(
             ffi.new('unsigned char[]', value), to_length)
@@ -126,7 +134,7 @@ def parse_boolean(value, length, cursor):
     Postgres returns the boolean as a string with 'true' or 'false'
 
     """
-    return value[:1] == b"t"
+    return value[:1] == b"t" if value is not None else None
 
 
 class parse_array(object):
@@ -145,11 +153,13 @@ class parse_array(object):
         self._caster = caster
 
     def cast(self, value, length, cursor):
-        return self(value, length, cursor)
+        if value is None:
+            return None
 
-    def __call__(self, value, length, cursor):
         s = value
-        assert s[:1] == b"{" and s[-1:] == b"}"
+        if not (len(s) >= 2 and  s[:1] == b"{" and s[-1:] == b"}"):
+            raise DataError("malformed array")
+
         i = 1
         array = []
         stack = [array]
@@ -160,10 +170,15 @@ class parse_array(object):
                 sub_array = []
                 array.append(sub_array)
                 stack.append(sub_array)
+                if len(stack) > 16:
+                    raise DataError("excessive array dimensions")
+
                 array = sub_array
                 i += 1
             elif si == b'}':
                 stack.pop()
+                if not stack:
+                    raise DataError("unbalanced braces in array")
                 array = stack[-1]
                 i += 1
             elif si in b', ':
@@ -201,23 +216,11 @@ class parse_array(object):
                 array.append(val)
         return stack[-1]
 
+    __call__ = cast
 
 def parse_unicode(value, length, cursor):
     """Decode the given value with the connection encoding"""
-    return value.decode(cursor._conn._py_enc)
-
-
-def _parse_date(value):
-    return datetime.date(*[int(x) for x in value.split(b'-')])
-
-
-def _parse_time(value, cursor):
-    """Parse the time to a datetime.time type.
-
-    The given value is in the format of `16:28:09.506488+01`
-
-    """
-    return datetime.time(*_parse_time_to_args(value, cursor))
+    return value.decode(cursor._conn._py_enc) if value is not None else None
 
 
 def _parse_time_to_args(value, cursor):
@@ -226,7 +229,6 @@ def _parse_time_to_args(value, cursor):
     The given value is in the format of `16:28:09.506488+01`
 
     """
-    microsecond = 0
     hour, minute, second = value.split(b':', 2)
 
     sign = 0
@@ -241,37 +243,77 @@ def _parse_time_to_args(value, cursor):
 
     if not cursor.tzinfo_factory is None and sign:
         parts = timezone.split(b':')
-        tz_min = sign * 60 * int(parts[0])
+        tz_min = 60 * int(parts[0])
         if len(parts) > 1:
             tz_min += int(parts[1])
-        if len(parts) > 2:
-            tz_min += int(int(parts[2]) / 60.0)
-        tzinfo = cursor.tzinfo_factory(tz_min)
+        if len(parts) > 2 and int(parts[2]) >= 30:
+            tz_min += 1
+        tzinfo = cursor.tzinfo_factory(sign * tz_min)
 
     if b'.' in second:
-        second, microsecond = second.split(b'.')
-        microsecond = int(microsecond) * int(math.pow(10.0, 6.0 - len(microsecond)))
+        second, frac = second.split(b'.')
+        micros = int((frac + (b'0' * (6 - len(frac))))[:6])
+    else:
+        micros = 0
 
-    return int(hour), int(minute), int(second), microsecond, tzinfo
+    return int(hour), int(minute), int(second), micros, tzinfo
 
 
 def parse_datetime(value, length, cursor):
-    date, time = value.split(b' ')
-    date_args = date.split(b'-')
-    return datetime.datetime(
-            int(date_args[0]), 
-            int(date_args[1]), 
-            int(date_args[2]), 
-            *_parse_time_to_args(time, cursor))
+    if value is None:
+        return None
+    elif value == b'infinity':
+        return datetime.datetime.max
+    elif value == b'-infinity':
+        return datetime.datetime.min
+
+    try:
+        date, time = value.split(b' ')
+        date_args = date.split(b'-')
+        return datetime.datetime(
+                int(date_args[0]),
+                int(date_args[1]),
+                int(date_args[2]),
+                *_parse_time_to_args(time, cursor))
+    except (TypeError, ValueError):
+        if value.endswith(b'BC'):
+            raise ValueError('BC dates not supported')
+        raise DataError("bad datetime: '%s'" % value)
 
 
 def parse_date(value, length, cursor):
-    return _parse_date(value)
+    if value is None:
+        return None
+    elif value == 'infinity':
+        return datetime.date.max
+    elif value == '-infinity':
+        return datetime.date.min
+
+    try:
+        return datetime.date(*[int(x) for x in value.split('-')])
+    except (TypeError, ValueError):
+        if value.endswith('BC'):
+            raise ValueError('BC dates not supported')
+        raise DataError("bad datetime: '%s'" % value)
 
 
 def parse_time(value, length, cursor):
-    return _parse_time(value, cursor)
+    if value is None:
+        return None
 
+    try:
+        return datetime.time(*_parse_time_to_args(value, cursor))
+    except (TypeError, ValueError):
+        raise DataError("bad datetime: '%s'" % value)
+
+
+_re_interval = re.compile(r"""
+    (?:(-?\+?\d+)\sy\w+\s?)?    # year
+    (?:(-?\+?\d+)\sm\w+\s?)?    # month
+    (?:(-?\+?\d+)\sd\w+\s?)?    # day
+    (?:(-?\+?)(\d+):(\d+):(\d+) # +/- hours:mins:secs
+        (?:\.(\d+))?)?          # second fraction
+    """, re.VERBOSE)
 
 def parse_interval(value, length, cursor):
     """Typecast an interval to a datetime.timedelta instance.
@@ -280,79 +322,35 @@ def parse_interval(value, length, cursor):
     to `datetime.timedelta(763, 36099, 100)`.
 
     """
-    years = months = days = 0
-    hours = minutes = seconds = hundreths = 0.0
-    v = 0.0
-    sign = 1
-    denominator = 1.0
-    part = 0
-    skip_to_space = False
+    if value is None:
+        return None
 
-    s = value
-    for c in s:
-        if skip_to_space:
-            if c == " ":
-                skip_to_space = False
-            continue
-        if c == "-":
-            sign = -1
-        elif "0" <= c <= "9":
-            v = v * 10 + ord(c) - ord("0")
-            if part == 6:
-                denominator *= 10
-        elif c == "y":
-            if part == 0:
-                years = int(v * sign)
-                skip_to_space = True
-                v = 0.0
-                sign = 1
-                part = 1
-        elif c == "m":
-            if part <= 1:
-                months = int(v * sign)
-                skip_to_space = True
-                v = 0.0
-                sign = 1
-                part = 2
-        elif c == "d":
-            if part <= 2:
-                days = int(v * sign)
-                skip_to_space = True
-                v = 0.0
-                sign = 1
-                part = 3
-        elif c == ":":
-            if part <= 3:
-                hours = v
-                v = 0.0
-                part = 4
-            elif part == 4:
-                minutes = v
-                v = 0.0
-                part = 5
-        elif c == ".":
-            if part == 5:
-                seconds = v
-                v = 0.0
-                part = 6
+    m = _re_interval.match(value)
+    if not m:
+        raise ValueError("failed to parse interval: '%s'" % value)
 
-    if part == 4:
-        minutes = v
-    elif part == 5:
-        seconds = v
-    elif part == 6:
-        hundreths = v / denominator
+    years, months, days, sign, hours, mins, secs, frac = m.groups()
 
-    if sign < 0.0:
-        seconds = - (hundreths + seconds + minutes * 60 + hours * 3600)
+    days = int(days) if days is not None else 0
+    if months is not None:
+        days += int(months) * 30
+    if years is not None:
+        days += int(years) * 365
+
+    if hours is not None:
+        secs = int(hours) * 3600 + int(mins) * 60 + int(secs)
+        if frac is not None:
+            micros = int((frac + ('0' * (6 - len(frac))))[:6])
+        else:
+            micros = 0
+
+        if sign == '-':
+            secs = -secs
+            micros = -micros
     else:
-        seconds += hundreths + minutes * 60 + hours * 3600
+        secs = micros = 0
 
-    days += years * 365 + months * 30
-    micro = (seconds - math.floor(seconds)) * 1000000.0
-    seconds = int(math.floor(seconds))
-    return datetime.timedelta(days, seconds, int(micro))
-
+    return datetime.timedelta(days, secs, micros)
 
 
 def Date(year, month, day):

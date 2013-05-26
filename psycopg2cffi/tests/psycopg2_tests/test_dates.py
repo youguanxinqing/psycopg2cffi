@@ -23,10 +23,10 @@
 # License for more details.
 
 import math
-import unittest
 import psycopg2cffi as psycopg2
-from psycopg2cffi.tz import FixedOffsetTimezone
-from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
+from psycopg2cffi.tz import FixedOffsetTimezone, ZERO
+from psycopg2cffi.tests.psycopg2_tests.testutils import ConnectingTestCase, \
+        unittest
 
 class CommonDatetimeTestsMixin:
 
@@ -78,7 +78,7 @@ class CommonDatetimeTestsMixin:
         value = self.DATETIME(None, self.curs)
         self.assertEqual(value, None)
 
-    def test_parse_incomplete_time(self):
+    def test_parse_incomplete_datetime(self):
         self.assertRaises(psycopg2.DataError,
                           self.DATETIME, '2007', self.curs)
         self.assertRaises(psycopg2.DataError,
@@ -93,19 +93,16 @@ class CommonDatetimeTestsMixin:
         self.assertEqual(value, None)
 
 
-class DatetimeTests(unittest.TestCase, CommonDatetimeTestsMixin):
+class DatetimeTests(ConnectingTestCase, CommonDatetimeTestsMixin):
     """Tests for the datetime based date handling in psycopg2."""
 
     def setUp(self):
-        self.conn = psycopg2.connect(dsn)
+        ConnectingTestCase.setUp(self)
         self.curs = self.conn.cursor()
         self.DATE = psycopg2.extensions.PYDATE
         self.TIME = psycopg2.extensions.PYTIME
         self.DATETIME = psycopg2.extensions.PYDATETIME
         self.INTERVAL = psycopg2.extensions.PYINTERVAL
-
-    def tearDown(self):
-        self.conn.close()
 
     def test_parse_bc_date(self):
         # datetime does not support BC dates
@@ -217,6 +214,14 @@ class DatetimeTests(unittest.TestCase, CommonDatetimeTestsMixin):
         self.assertEqual(value.seconds, 41103)
         self.assertEqual(value.microseconds, 876544)
 
+    def test_parse_infinity(self):
+        value = self.DATETIME('-infinity', self.curs)
+        self.assertEqual(str(value), '0001-01-01 00:00:00')
+        value = self.DATETIME('infinity', self.curs)
+        self.assertEqual(str(value), '9999-12-31 23:59:59.999999')
+        value = self.DATE('infinity', self.curs)
+        self.assertEqual(str(value), '9999-12-31')
+
     def test_adapt_date(self):
         from datetime import date
         value = self.execute('select (%s)::date::text',
@@ -244,7 +249,7 @@ class DatetimeTests(unittest.TestCase, CommonDatetimeTestsMixin):
         self.assertEqual(seconds, 3674096)
         self.assertEqual(int(round((value - seconds) * 1000000)), 123456)
 
-    def test_adapt_megative_timedelta(self):
+    def test_adapt_negative_timedelta(self):
         from datetime import timedelta
         value = self.execute('select extract(epoch from (%s)::interval)',
                              [timedelta(days=-42, seconds=45296,
@@ -311,11 +316,11 @@ if not hasattr(psycopg2.extensions, 'PYDATETIME'):
     del DatetimeTests
 
 
-class mxDateTimeTests(unittest.TestCase, CommonDatetimeTestsMixin):
+class mxDateTimeTests(ConnectingTestCase, CommonDatetimeTestsMixin):
     """Tests for the mx.DateTime based date handling in psycopg2."""
 
     def setUp(self):
-        self.conn = psycopg2.connect(dsn)
+        ConnectingTestCase.setUp(self)
         self.curs = self.conn.cursor()
         self.DATE = psycopg2._psycopg.MXDATE
         self.TIME = psycopg2._psycopg.MXTIME
@@ -432,7 +437,7 @@ class mxDateTimeTests(unittest.TestCase, CommonDatetimeTestsMixin):
         self.assertEqual(seconds, 3674096)
         self.assertEqual(int(round((value - seconds) * 1000000)), 123456)
 
-    def test_adapt_megative_timedelta(self):
+    def test_adapt_negative_timedelta(self):
         from mx.DateTime import DateTimeDeltaFrom
         value = self.execute('select extract(epoch from (%s)::interval)',
                              [DateTimeDeltaFrom(days=-42,
@@ -511,6 +516,51 @@ class FromTicksTestCase(unittest.TestCase):
         s = psycopg2.TimeFromTicks(1273173119.99992)
         self.assertEqual(s.adapted.replace(hour=0),
             time(0, 11, 59, 999920))
+
+
+class FixedOffsetTimezoneTests(unittest.TestCase):
+
+    def test_init_with_no_args(self):
+        tzinfo = FixedOffsetTimezone()
+        self.assert_(tzinfo._offset is ZERO)
+        self.assert_(tzinfo._name is None)
+
+    def test_repr_with_positive_offset(self):
+        tzinfo = FixedOffsetTimezone(5 * 60)
+        self.assertEqual(repr(tzinfo), "psycopg2.tz.FixedOffsetTimezone(offset=300, name=None)")
+
+    def test_repr_with_negative_offset(self):
+        tzinfo = FixedOffsetTimezone(-5 * 60)
+        self.assertEqual(repr(tzinfo), "psycopg2.tz.FixedOffsetTimezone(offset=-300, name=None)")
+
+    def test_repr_with_name(self):
+        tzinfo = FixedOffsetTimezone(name="FOO")
+        self.assertEqual(repr(tzinfo), "psycopg2.tz.FixedOffsetTimezone(offset=0, name='FOO')")
+
+    def test_instance_caching(self):
+        self.assert_(FixedOffsetTimezone(name="FOO") is FixedOffsetTimezone(name="FOO"))
+        self.assert_(FixedOffsetTimezone(7 * 60) is FixedOffsetTimezone(7 * 60))
+        self.assert_(FixedOffsetTimezone(-9 * 60, 'FOO') is FixedOffsetTimezone(-9 * 60, 'FOO'))
+        self.assert_(FixedOffsetTimezone(9 * 60) is not FixedOffsetTimezone(9 * 60, 'FOO'))
+        self.assert_(FixedOffsetTimezone(name='FOO') is not FixedOffsetTimezone(9 * 60, 'FOO'))
+
+    def test_pickle(self):
+        # ticket #135
+        import pickle
+
+        tz11 = FixedOffsetTimezone(60)
+        tz12 = FixedOffsetTimezone(120)
+        for proto in [-1, 0, 1, 2]:
+            tz21, tz22 = pickle.loads(pickle.dumps([tz11, tz12], proto))
+            self.assertEqual(tz11, tz21)
+            self.assertEqual(tz12, tz22)
+
+        tz11 = FixedOffsetTimezone(60, name='foo')
+        tz12 = FixedOffsetTimezone(120, name='bar')
+        for proto in [-1, 0, 1, 2]:
+            tz21, tz22 = pickle.loads(pickle.dumps([tz11, tz12], proto))
+            self.assertEqual(tz11, tz21)
+            self.assertEqual(tz12, tz22)
 
 
 def test_suite():

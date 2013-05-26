@@ -26,32 +26,8 @@ This module implements thread-safe (and not) connection pools.
 
 from __future__ import unicode_literals
 
-import psycopg2
-import psycopg2.extensions as _ext
-
-try:
-    import logging
-    # create logger object for psycopg2 module and sub-modules
-    _logger = logging.getLogger("psycopg2")
-    def dbg(*args):
-        _logger.debug("psycopg2", ' '.join([str(x) for x in args]))
-    try:
-        import App # does this make sure that we're running in Zope?
-        _logger.info("installed. Logging using Python logging module")
-    except:
-        _logger.debug("installed. Logging using Python logging module")
-    
-except ImportError:
-    from zLOG import LOG, DEBUG, INFO
-    def dbg(*args):
-        LOG('ZPsycopgDA',  DEBUG, "",
-            ' '.join([str(x) for x in args])+'\n')
-    LOG('ZPsycopgDA', INFO, "Installed", "Logging using Zope's zLOG\n") 
-
-except:
-    import sys
-    def dbg(*args):
-        sys.stderr.write(' '.join(args)+'\n')
+import psycopg2cffi as psycopg2
+import psycopg2cffi.extensions as _ext
 
 
 class PoolError(psycopg2.Error):
@@ -219,6 +195,10 @@ class PersistentConnectionPool(AbstractConnectionPool):
 
     def __init__(self, minconn, maxconn, *args, **kwargs):
         """Initialize the threading lock."""
+        import warnings
+        warnings.warn("deprecated: use ZPsycopgDA.pool implementation",
+            DeprecationWarning)
+
         import threading
         AbstractConnectionPool.__init__(
             self, minconn, maxconn, *args, **kwargs)

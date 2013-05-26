@@ -7,7 +7,6 @@ import six
 from six.moves import xrange
 
 from psycopg2cffi._impl.libpq import libpq, ffi
-from psycopg2cffi._impl.encodings import encodings
 from psycopg2cffi._impl.exceptions import ProgrammingError
 from psycopg2cffi._config import PG_VERSION
 from psycopg2cffi.tz import LOCAL as TZ_LOCAL
@@ -97,11 +96,12 @@ class DateTime(_BaseAdapter):
     def getquoted(self):
         obj = self._wrapped
         if isinstance(obj, datetime.timedelta):
-            # TODO: microseconds
+            us = str(obj.microseconds)
+            us = b'0' * (6 - len(us)) + us
             return b''.join([b"'", 
                 ascii_to_bytes(str(int(obj.days))), b" days ",
-                ascii_to_bytes(str(int(obj.seconds))), b".0 seconds'::interval"
-                ])
+                ascii_to_bytes(str(int(obj.seconds))), b".",
+                ascii_to_bytes(str(int(us))), b" seconds'::interval"])
         else:
             iso = obj.isoformat()
             if isinstance(obj, datetime.datetime):
@@ -217,18 +217,22 @@ def TimestampFromTicks(ticks):
 class QuotedString(_BaseAdapter):
     def __init__(self, obj):
         super(QuotedString, self).__init__(obj)
-        self.encoding = "LATIN1"
+        self._default_encoding = "latin1"
 
     def prepare(self, conn):
         self._conn = conn
-        self.encoding = conn.encoding
+
+    @property
+    def encoding(self):
+        if self._conn:
+            return self._conn._py_enc
+        else:
+            return self._default_encoding
 
     def getquoted(self):
-
         obj = self._wrapped
         if isinstance(obj, six.text_type):
-            encoding = encodings[self.encoding]
-            obj = obj.encode(encoding)
+            obj = obj.encode(self.encoding)
         else:
             assert isinstance(obj, six.binary_type)
         string = obj

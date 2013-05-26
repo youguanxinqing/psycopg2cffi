@@ -94,6 +94,7 @@ class Cursor(object):
         self._lastrowid = 0
         self._name = name.replace('"', '""') if name is not None else name
         self._withhold = False
+        self._scrollable = None
         self._no_tuples = True
         self._rowcount = -1
         self._rownumber = 0
@@ -108,6 +109,12 @@ class Cursor(object):
         if self._pgres:
             libpq.PQclear(self._pgres)
             self._pgres = ffi.NULL
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, name, tb):
+        self.close()
 
     @property
     def closed(self):
@@ -171,7 +178,6 @@ class Cursor(object):
         self.execute(sql, parameters)
         return parameters
 
-    @check_closed
     def close(self):
         """Close the cursor now (rather than whenever __del__ is called).
 
@@ -180,6 +186,9 @@ class Cursor(object):
         with the cursor.
 
         """
+        if self._closed:
+            return
+
         if self._name is not None:
             self._pq_execute('CLOSE "%s"' % self._name)
 
@@ -232,14 +241,18 @@ class Cursor(object):
         else:
             self._query = query
 
+        scroll = ""
+        if self._scrollable is not None:
+            scroll = self._scrollable and "SCROLL " or "NO SCROLL "
+
         conn._begin_transaction()
         self._clear_pgres()
 
         if self._name:
             self._query = \
                 util.ascii_to_bytes(
-                        'DECLARE "%s" CURSOR %s HOLD FOR ' % (
-                            self._name,
+                        'DECLARE "%s" %sCURSOR %s HOLD FOR ' % (
+                            self._name, scroll,
                             "WITH" if self._withhold else "WITHOUT")) \
                 + self._query
 
@@ -618,6 +631,18 @@ class Cursor(object):
 
         self._withhold = bool(value)
 
+    @property
+    def scrollable(self):
+        return self._scrollable
+
+    @scrollable.setter
+    def scrollable(self, value):
+        if not self._name:
+            raise ProgrammingError(
+                "trying to set .scrollable on unnamed cursor")
+
+        self._scrollable = bool(value) if value is not None else None
+
     @check_closed
     def scroll(self, value, mode='relative'):
         if not self._name:
@@ -648,7 +673,6 @@ class Cursor(object):
             else:
                 cmd = 'MOVE %d FROM "%s"' % (value, self._name)
             self._pq_execute(cmd)
-            self._pq_fetch()  # XXX: should be prefetch?
 
     def _clear_pgres(self):
         if self._pgres:
@@ -657,52 +681,56 @@ class Cursor(object):
 
     def _pq_execute(self, query, async=False):
         """Execute the query"""
-        pgconn = self._conn._pgconn
+        with self._conn._lock:
+            pgconn = self._conn._pgconn
 
-        # Check the status of the connection
-        if libpq.PQstatus(pgconn) != libpq.CONNECTION_OK:
-            raise self._conn._create_exception()
+            # Check the status of the connection
+            if libpq.PQstatus(pgconn) != libpq.CONNECTION_OK:
+                raise self._conn._create_exception(cursor=self)
 
-        if not async:
-            with self._conn._lock:
-                if not self._conn._have_wait_callback():
-                    self._pgres = libpq.PQexec(
-                            pgconn, util.ascii_to_bytes(query))
-                else:
-                    self._pgres = self._conn._execute_green(query)
-                if not self._pgres:
-                    raise self._conn._create_exception(pgres=self._pgres)
-                self._conn._process_notifies()
-            self._pq_fetch()
+            if not async:
+                with self._conn._lock:
+                    if not self._conn._have_wait_callback():
+                        self._pgres = libpq.PQexec(
+                                pgconn, util.ascii_to_bytes(query))
+                    else:
+                        self._pgres = self._conn._execute_green(query)
+                    if not self._pgres:
+                        raise self._conn._create_exception(cursor=self)
+                    self._conn._process_notifies()
+                self._pq_fetch()
 
-        else:
-            with self._conn._lock:
-                ret = libpq.PQsendQuery(pgconn, query)
-                if not ret:
+            else:
+                with self._conn._lock:
+                    ret = libpq.PQsendQuery(pgconn, query)
+                    if not ret:
 
-                    # XXX: check if this is correct, seems like a hack.
-                    # but the test_async_after_async expects it.
-                    if self._conn._async_cursor:
-                        raise ProgrammingError(
-                            'cannot be used while an asynchronous query is underway')
+                        # XXX: check if this is correct, seems like a hack.
+                        # but the test_async_after_async expects it.
+                        if self._conn._async_cursor:
+                            raise ProgrammingError(
+                                'cannot be used while an asynchronous query is underway')
 
-                    raise self._conn._create_exception()
+                        raise self._conn._create_exception(cursor=self)
 
-                ret = libpq.PQflush(pgconn)
-                if ret == 0:
-                    async_status = consts.ASYNC_READ
-                elif ret == 1:
-                    async_status = consts.ASYNC_WRITE
-                else:
-                    raise ValueError()  # XXX
+                    ret = libpq.PQflush(pgconn)
+                    if ret == 0:
+                        async_status = consts.ASYNC_READ
+                    elif ret == 1:
+                        async_status = consts.ASYNC_WRITE
+                    else:
+                        raise ValueError()  # XXX
 
-            self._conn._async_status = async_status
-            self._conn._async_cursor = weakref.ref(self)
+                self._conn._async_status = async_status
+                self._conn._async_cursor = weakref.ref(self)
 
     def _pq_fetch(self):
         pgstatus = libpq.PQresultStatus(self._pgres)
-        self._statusmessage = util.bytes_to_ascii(
-                ffi.string(libpq.PQcmdStatus(self._pgres)))
+        if pgstatus != libpq.PGRES_FATAL_ERROR:
+            self._statusmessage = util.bytes_to_ascii(
+                    ffi.string(libpq.PQcmdStatus(self._pgres)))
+        else:
+            self._statusmessage = None
 
         self._no_tuples = True
         self._rownumber = 0
@@ -727,10 +755,11 @@ class Cursor(object):
             return self._pq_fetch_copy_out()
 
         elif pgstatus == libpq.PGRES_EMPTY_QUERY:
+            self._clear_pgres()
             raise ProgrammingError("can't execute an empty query")
 
         else:
-            raise self._conn._create_exception(pgres=self._pgres)
+            raise self._conn._create_exception(cursor=self)
 
     def _pq_fetch_tuples(self):
         with self._conn._lock:
@@ -815,7 +844,7 @@ class Cursor(object):
 
                 self._copyfile.write(value)
             elif length == -2:
-                raise self._conn._create_exception()
+                raise self._conn._create_exception(cursor=self)
             else:
                 break
 
@@ -835,18 +864,13 @@ class Cursor(object):
         # Fill it
         n = self._nfields
         for i in xrange(n):
-
-            # PQgetvalue will return an empty string for null values,
-            # so check with PQgetisnull if the value is really null
-            length = libpq.PQgetlength(self._pgres, row_num, i)
-            val = ffi.buffer(libpq.PQgetvalue(self._pgres, row_num, i),
-                    length)[:]
-            if not val and libpq.PQgetisnull(self._pgres, row_num, i):
-                val = None
+            if libpq.PQgetisnull(self._pgres, row_num, i):
+                row[i] = None
             else:
-                caster = self._casts[i]
-                val = typecasts.typecast(caster, val, length, self)
-            row[i] = val
+                length = libpq.PQgetlength(self._pgres, row_num, i)
+                val = ffi.buffer(
+                        libpq.PQgetvalue(self._pgres, row_num, i), length)[:]
+                row[i] = typecasts.typecast(self._casts[i], val, length, self)
 
         if is_tuple:
             return tuple(row)

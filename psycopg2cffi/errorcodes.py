@@ -26,7 +26,7 @@ This module contains symbolic names for all PostgreSQL error codes.
 #
 # Based on:
 #
-#   http://www.postgresql.org/docs/8.4/static/errcodes-appendix.html
+#   http://www.postgresql.org/docs/current/static/errcodes-appendix.html
 #
 
 from __future__ import unicode_literals
@@ -61,6 +61,7 @@ CLASS_INVALID_TRANSACTION_INITIATION = '0B'
 CLASS_LOCATOR_EXCEPTION = '0F'
 CLASS_INVALID_GRANTOR = '0L'
 CLASS_INVALID_ROLE_SPECIFICATION = '0P'
+CLASS_DIAGNOSTICS_EXCEPTION = '0Z'
 CLASS_CASE_NOT_FOUND = '20'
 CLASS_CARDINALITY_VIOLATION = '21'
 CLASS_DATA_EXCEPTION = '22'
@@ -140,6 +141,10 @@ INVALID_GRANT_OPERATION = '0LP01'
 
 # Class 0P - Invalid Role Specification
 INVALID_ROLE_SPECIFICATION = '0P000'
+
+# Class 0Z - Diagnostics Exception
+DIAGNOSTICS_EXCEPTION = '0Z000'
+STACKED_DIAGNOSTICS_ACCESSED_WITHOUT_ACTIVE_HANDLER = '0Z002'
 
 # Class 20 - Case Not Found
 CASE_NOT_FOUND = '20000'
@@ -333,6 +338,7 @@ INSUFFICIENT_RESOURCES = '53000'
 DISK_FULL = '53100'
 OUT_OF_MEMORY = '53200'
 TOO_MANY_CONNECTIONS = '53300'
+CONFIGURATION_LIMIT_EXCEEDED = '53400'
 
 # Class 54 - Program Limit Exceeded
 PROGRAM_LIMIT_EXCEEDED = '54000'
@@ -355,6 +361,7 @@ CANNOT_CONNECT_NOW = '57P03'
 DATABASE_DROPPED = '57P04'
 
 # Class 58 - System Error (errors external to PostgreSQL itself)
+SYSTEM_ERROR = '58000'
 IO_ERROR = '58030'
 UNDEFINED_FILE = '58P01'
 DUPLICATE_FILE = '58P02'

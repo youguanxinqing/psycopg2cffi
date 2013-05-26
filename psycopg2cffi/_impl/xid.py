@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import re
 
 from psycopg2cffi._impl import consts
+from psycopg2cffi._impl.cursor import Cursor
 
 
 class Xid(object):
@@ -80,7 +81,7 @@ class Xid(object):
         # should we rollback?
         rb = conn.status == consts.STATUS_READY and not conn.autocommit
 
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=Cursor)
         try:
             cur.execute(
                 "SELECT gid, prepared, owner, database "

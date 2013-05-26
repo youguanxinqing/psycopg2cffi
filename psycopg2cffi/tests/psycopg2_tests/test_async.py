@@ -33,7 +33,7 @@ import time
 import select
 from six import StringIO
 
-from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
+from psycopg2cffi.tests.psycopg2_tests.testutils import ConnectingTestCase
 
 class PollableStub(object):
     """A 'pollable' wrapper allowing analysis of the `poll()` calls."""
@@ -50,11 +50,13 @@ class PollableStub(object):
         return rv
 
 
-class AsyncTests(unittest.TestCase):
+class AsyncTests(ConnectingTestCase):
 
     def setUp(self):
-        self.sync_conn = psycopg2.connect(dsn)
-        self.conn = psycopg2.connect(dsn, async=True)
+        ConnectingTestCase.setUp(self)
+
+        self.sync_conn = self.conn
+        self.conn = self.connect(async=True)
 
         self.wait(self.conn)
 
@@ -64,10 +66,6 @@ class AsyncTests(unittest.TestCase):
               id int PRIMARY KEY
             )''')
         self.wait(curs)
-
-    def tearDown(self):
-        self.sync_conn.close()
-        self.conn.close()
 
     def wait(self, cur_or_conn):
         pollable = cur_or_conn
@@ -329,7 +327,7 @@ class AsyncTests(unittest.TestCase):
             def __init__(self, dsn, async=0):
                 psycopg2.extensions.connection.__init__(self, dsn, async=async)
 
-        conn = psycopg2.connect(dsn, connection_factory=MyConn, async=True)
+        conn = self.connect(connection_factory=MyConn, async=True)
         self.assert_(isinstance(conn, MyConn))
         self.assert_(conn.async)
         conn.close()
@@ -430,6 +428,9 @@ class AsyncTests(unittest.TestCase):
     def test_notices(self):
         del self.conn.notices[:]
         cur = self.conn.cursor()
+        if self.conn.server_version >= 90300:
+            cur.execute("set client_min_messages=debug1")
+            self.wait(cur)
         cur.execute("create temp table chatty (id serial primary key);")
         self.wait(cur)
         self.assertEqual("CREATE TABLE", cur.statusmessage)

@@ -29,19 +29,19 @@ import six
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extensions
 from psycopg2cffi.extensions import b
-from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
-        skip_before_postgres, skip_if_no_namedtuple, skipIf, _u
+        skip_before_postgres, skip_if_no_namedtuple, _u, \
+        skip_if_no_getrefcount, ConnectingTestCase
 from psycopg2cffi._impl.cursor import _combine_cmd_params
 
 
-class CursorTests(unittest.TestCase):
+class CursorTests(ConnectingTestCase):
 
-    def setUp(self):
-        self.conn = psycopg2.connect(dsn)
-
-    def tearDown(self):
-        self.conn.close()
+    def test_close_idempotent(self):
+        cur = self.conn.cursor()
+        cur.close()
+        cur.close()
+        self.assert_(cur.closed)
 
     def test_empty_query(self):
         cur = self.conn.cursor()
@@ -111,14 +111,13 @@ class CursorTests(unittest.TestCase):
         self.assertEqual(b('SELECT 10.3;'),
             cur.mogrify("SELECT %s;", (Decimal("10.3"),)))
 
-    @skipIf(not hasattr(sys, 'getrefcount'), "skipped, no sys.getrefcount()")
+    @skip_if_no_getrefcount
     def test_mogrify_leak_on_multiple_reference(self):
         # issue #81: reference leak when a parameter value is referenced
         # more than once from a dict.
         cur = self.conn.cursor()
         i = lambda x: x
         foo = i('foo') * 10
-        import sys
         nref1 = sys.getrefcount(foo)
         cur.mogrify("select %(foo)s, %(foo)s, %(foo)s", {'foo': foo})
         nref2 = sys.getrefcount(foo)
@@ -175,6 +174,10 @@ class CursorTests(unittest.TestCase):
         import gc; gc.collect()
         self.assert_(w() is None)
 
+    def test_null_name(self):
+        curs = self.conn.cursor(None)
+        self.assertEqual(curs.name, None)
+
     def test_invalid_name(self):
         curs = self.conn.cursor()
         curs.execute("create temp table invname (data int);")
@@ -219,6 +222,71 @@ class CursorTests(unittest.TestCase):
         curs.execute("drop table withhold")
         self.conn.commit()
 
+    def test_scrollable(self):
+        self.assertRaises(psycopg2.ProgrammingError, self.conn.cursor,
+                          scrollable=True)
+
+        curs = self.conn.cursor()
+        curs.execute("create table scrollable (data int)")
+        curs.executemany("insert into scrollable values (%s)",
+            [ (i,) for i in range(100) ])
+        curs.close()
+
+        for t in range(2):
+            if not t:
+                curs = self.conn.cursor("S")
+                self.assertEqual(curs.scrollable, None);
+                curs.scrollable = True
+            else:
+                curs = self.conn.cursor("S", scrollable=True)
+
+            self.assertEqual(curs.scrollable, True);
+            curs.itersize = 10
+
+            # complex enough to make postgres cursors declare without
+            # scroll/no scroll to fail
+            curs.execute("""
+                select x.data
+                from scrollable x
+                join scrollable y on x.data = y.data
+                order by y.data""")
+            for i, (n,) in enumerate(curs):
+                self.assertEqual(i, n)
+
+            curs.scroll(-1)
+            for i in range(99, -1, -1):
+                curs.scroll(-1)
+                self.assertEqual(i, curs.fetchone()[0])
+                curs.scroll(-1)
+
+            curs.close()
+
+    def test_not_scrollable(self):
+        self.assertRaises(psycopg2.ProgrammingError, self.conn.cursor,
+                          scrollable=False)
+
+        curs = self.conn.cursor()
+        curs.execute("create table scrollable (data int)")
+        curs.executemany("insert into scrollable values (%s)",
+            [ (i,) for i in range(100) ])
+        curs.close()
+
+        curs = self.conn.cursor("S")    # default scrollability
+        curs.execute("select * from scrollable")
+        self.assertEqual(curs.scrollable, None)
+        curs.scroll(2)
+        try:
+            curs.scroll(-1)
+        except psycopg2.OperationalError:
+            return self.skipTest("can't evaluate non-scrollable cursor")
+        curs.close()
+
+        curs = self.conn.cursor("S", scrollable=False)
+        self.assertEqual(curs.scrollable, False)
+        curs.execute("select * from scrollable")
+        curs.scroll(2)
+        self.assertRaises(psycopg2.OperationalError, curs.scroll, -1)
+
     @skip_before_postgres(8, 2)
     def test_iter_named_cursor_efficient(self):
         curs = self.conn.cursor('tmp')
@@ -249,6 +317,17 @@ class CursorTests(unittest.TestCase):
         rv = [ (r[0], curs.rownumber) for r in curs ]
         # everything swallowed in two gulps
         self.assertEqual(rv, [(i,((i - 1) % 30) + 1) for i in range(1,51)])
+
+    @skip_before_postgres(8, 0)
+    def test_iter_named_cursor_rownumber(self):
+        curs = self.conn.cursor('tmp')
+        # note: this fails if itersize < dataset: internally we check
+        # rownumber == rowcount to detect when to read anoter page, so we
+        # would need an extra attribute to have a monotonic rownumber.
+        curs.itersize = 20
+        curs.execute('select generate_series(1,10)')
+        for i, rec in enumerate(curs):
+            self.assertEqual(i + 1, curs.rownumber)
 
     @skip_if_no_namedtuple
     def test_namedtuple_description(self):

@@ -22,7 +22,6 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-import os
 import sys
 import string
 from six.moves import cStringIO as StringIO
@@ -30,19 +29,9 @@ from itertools import cycle
 from six.moves import xrange, zip as izip
 
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
-        decorate_all_tests, skip_if_no_iobase
-import psycopg2cffi as psycopg2
+        decorate_all_tests, skip_if_no_iobase, skip_copy_if_green, \
+        ConnectingTestCase
 from psycopg2cffi import extensions
-from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn, green
-
-def skip_if_green(f):
-    def skip_if_green_(self):
-        if green:
-            return self.skipTest("copy in async mode currently not supported")
-        else:
-            return f(self)
-
-    return skip_if_green_
 
 
 if sys.version_info[0] < 3:
@@ -70,10 +59,10 @@ class MinimalWrite(_base):
         return self.f.write(data)
 
 
-class CopyTests(unittest.TestCase):
+class CopyTests(ConnectingTestCase):
 
     def setUp(self):
-        self.conn = psycopg2.connect(dsn)
+        ConnectingTestCase.setUp(self)
         self._create_temp_table()
 
     def _create_temp_table(self):
@@ -83,9 +72,6 @@ class CopyTests(unittest.TestCase):
               id serial PRIMARY KEY,
               data text
             )''')
-
-    def tearDown(self):
-        self.conn.close()
 
     def test_copy_from(self):
         curs = self.conn.cursor()
@@ -229,7 +215,7 @@ class CopyTests(unittest.TestCase):
         f.read = read
         curs.copy_expert('COPY tcopy (data) FROM STDIN', f, size=exp_size)
         curs.execute("select data from tcopy;")
-        self.assertEqual(curs.fetchone()[0], abin)
+        self.assertEqual(curs.fetchone()[0], abin) 
 
     def _copy_from(self, curs, nrecs, srec, copykw):
         f = StringIO()
@@ -290,7 +276,7 @@ class CopyTests(unittest.TestCase):
         self.assertEqual(curs.fetchone()[0], 2)
 
 
-decorate_all_tests(CopyTests, skip_if_green)
+decorate_all_tests(CopyTests, skip_copy_if_green)
 
 
 def test_suite():
