@@ -870,7 +870,7 @@ class JsonTestCase(ConnectingTestCase):
         from psycopg2.extras import json, Json
 
         objs = [None, "te'xt", 123, 123.45,
-            u'\xe0\u20ac', ['a', 100], {'a': 100} ]
+            _u(b'\xc3\xa0\xe2\x82\xac'), ['a', 100], {'a': 100} ]
 
         curs = self.conn.cursor()
         for obj in enumerate(objs):
@@ -1401,7 +1401,7 @@ class RangeCasterTestCase(ConnectingTestCase):
         from psycopg2.tz import FixedOffsetTimezone
         cur = self.conn.cursor()
 
-        d1 = date(2012, 01, 01)
+        d1 = date(2012, 1, 1)
         d2 = date(2012, 12, 31)
         r = DateRange(d1, d2)
         cur.execute("select %s", (r,))

@@ -28,7 +28,7 @@ import os
 import sys
 import six
 from functools import wraps
-from testconfig import dsn
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 
 try:
     import unittest2
@@ -97,12 +97,12 @@ class ConnectingTestCase(unittest.TestCase):
     def connect(self, **kwargs):
         try:
             self._conns
-        except AttributeError, e:
+        except AttributeError as e:
             raise AttributeError(
                 "%s (did you remember calling ConnectingTestCase.setUp()?)"
                 % e)
 
-        import psycopg2
+        import psycopg2cffi as psycopg2
         conn = psycopg2.connect(dsn, **kwargs)
         self._conns.append(conn)
         return conn
@@ -270,7 +270,7 @@ def skip_if_no_superuser(f):
         from psycopg2 import ProgrammingError
         try:
             return f(self)
-        except ProgrammingError, e:
+        except ProgrammingError as e:
             import psycopg2.errorcodes
             if e.pgcode == psycopg2.errorcodes.INSUFFICIENT_PRIVILEGE:
                 self.skipTest("skipped because not superuser")

@@ -25,6 +25,7 @@
 # License for more details.
 
 import re
+import six
 
 from psycopg2cffi._impl.exceptions import ProgrammingError, InterfaceError
 from psycopg2cffi.extensions import ISQLQuote, adapt, register_adapter, b
@@ -246,7 +247,7 @@ class RangeCaster(object):
         # an implementation detail and is not documented. It is currently used
         # for the numeric ranges.
         self.adapter = None
-        if isinstance(pgrange, basestring):
+        if isinstance(pgrange, six.string_types):
             self.adapter = type(pgrange, (RangeAdapter,), {})
             self.adapter.name = pgrange
         else:
@@ -262,7 +263,7 @@ class RangeCaster(object):
 
         self.range = None
         try:
-            if isinstance(pyrange, basestring):
+            if isinstance(pyrange, six.string_types):
                 self.range = type(pyrange, (Range,), {})
             if issubclass(pyrange, Range) and pyrange is not Range:
                 self.range = pyrange

@@ -51,7 +51,7 @@ from psycopg2cffi.tests.psycopg2_tests import (
         )
 
 if sys.version_info[:2] >= (2, 5):
-    import test_with
+    from psycopg2cffi.tests.psycopg2_tests import test_with
 else:
     test_with = None
 
