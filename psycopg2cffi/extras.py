@@ -91,16 +91,16 @@ class DictCursorBase(_cursor):
     def __iter__(self):
         if self._prefetch:
             res = super(DictCursorBase, self).__iter__()
-            first = res.next()
+            first = six.next(res)
         if self._query_executed:
             self._build_index()
         if not self._prefetch:
             res = super(DictCursorBase, self).__iter__()
-            first = res.next()
+            first = six.next(res)
 
         yield first
         while 1:
-            yield res.next()
+            yield six.next(res)
 
 
 class DictConnection(_connection):
@@ -311,18 +311,18 @@ class NamedTupleCursor(_cursor):
         nt = self.Record
         if nt is None:
             nt = self.Record = self._make_nt()
-        return map(nt._make, ts)
+        return [nt._make(x) for x in ts]
 
     def fetchall(self):
         ts = super(NamedTupleCursor, self).fetchall()
         nt = self.Record
         if nt is None:
             nt = self.Record = self._make_nt()
-        return map(nt._make, ts)
+        return [nt._make(x) for x in ts]
 
     def __iter__(self):
         it = super(NamedTupleCursor, self).__iter__()
-        t = it.next()
+        t = six.next(it)
 
         nt = self.Record
         if nt is None:
@@ -331,7 +331,7 @@ class NamedTupleCursor(_cursor):
         yield nt._make(t)
 
         while 1:
-            yield nt._make(it.next())
+            yield nt._make(six.next(it))
 
     try:
         from collections import namedtuple

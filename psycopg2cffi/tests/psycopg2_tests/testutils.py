@@ -267,12 +267,12 @@ def skip_if_no_superuser(f):
     """Skip a test if the database user running the test is not a superuser"""
     @wraps(f)
     def skip_if_no_superuser_(self):
-        from psycopg2 import ProgrammingError
+        from psycopg2cffi import ProgrammingError
         try:
             return f(self)
         except ProgrammingError as e:
-            import psycopg2.errorcodes
-            if e.pgcode == psycopg2.errorcodes.INSUFFICIENT_PRIVILEGE:
+            from psycopg2cffi import errorcodes
+            if e.pgcode == errorcodes.INSUFFICIENT_PRIVILEGE:
                 self.skipTest("skipped because not superuser")
             else:
                 raise
@@ -283,7 +283,7 @@ def skip_if_green(reason):
     def skip_if_green_(f):
         @wraps(f)
         def skip_if_green__(self):
-            from testconfig import green
+            from psycopg2cffi.tests.psycopg2_tests.testconfig import green
             if green:
                 return self.skipTest(reason)
             else:

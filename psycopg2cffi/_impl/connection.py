@@ -842,7 +842,7 @@ class Connection(object):
 
         if msg is None and pgmsg:
             msg = pgmsg
-            for prefix in ("ERROR:  ", "FATAL:  ", "PANIC:  "):
+            for prefix in (b"ERROR:  ", b"FATAL:  ", b"PANIC:  "):
                 if msg.startswith(prefix):
                     msg = msg[len(prefix):]
                     break

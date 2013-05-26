@@ -84,7 +84,8 @@ def parse_unknown(value, length, cursor):
 
 if six.PY3:
     def parse_string(value, length, cursor):
-        return value.decode(cursor.connection._py_enc)
+        return value.decode(cursor.connection._py_enc) \
+                if value is not None else None
 else:
     def parse_string(value, length, cursor):
         return value
@@ -278,23 +279,23 @@ def parse_datetime(value, length, cursor):
     except (TypeError, ValueError):
         if value.endswith(b'BC'):
             raise ValueError('BC dates not supported')
-        raise DataError("bad datetime: '%s'" % value)
+        raise DataError("bad datetime: '%s'" % bytes_to_ascii(value))
 
 
 def parse_date(value, length, cursor):
     if value is None:
         return None
-    elif value == 'infinity':
+    elif value == b'infinity':
         return datetime.date.max
-    elif value == '-infinity':
+    elif value == b'-infinity':
         return datetime.date.min
 
     try:
-        return datetime.date(*[int(x) for x in value.split('-')])
+        return datetime.date(*[int(x) for x in value.split(b'-')])
     except (TypeError, ValueError):
-        if value.endswith('BC'):
+        if value.endswith(b'BC'):
             raise ValueError('BC dates not supported')
-        raise DataError("bad datetime: '%s'" % value)
+        raise DataError("bad datetime: '%s'" % bytes_to_ascii(value))
 
 
 def parse_time(value, length, cursor):

@@ -205,7 +205,7 @@ class ExceptionsTestCase(ConnectingTestCase):
 
     @skip_copy_if_green
     def test_diagnostics_copy(self):
-        from StringIO import StringIO
+        from six.moves import StringIO
         f = StringIO()
         cur = self.conn.cursor()
         try:
