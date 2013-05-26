@@ -891,7 +891,7 @@ class JsonTestCase(ConnectingTestCase):
         obj = Decimal('123.45')
         dumps = lambda obj: json.dumps(obj, cls=DecimalEncoder)
         self.assertEqual(curs.mogrify("%s", (Json(obj, dumps=dumps),)),
-            b("'123.45'"))
+                b"'123.45'")
 
     @skip_if_no_json_module
     def test_adapt_subclass(self):
@@ -910,7 +910,7 @@ class JsonTestCase(ConnectingTestCase):
         curs = self.conn.cursor()
         obj = Decimal('123.45')
         self.assertEqual(curs.mogrify("%s", (MyJson(obj),)),
-            b("'123.45'"))
+                b"'123.45'")
 
     @skip_if_no_json_module
     def test_register_on_dict(self):
@@ -921,7 +921,7 @@ class JsonTestCase(ConnectingTestCase):
             curs = self.conn.cursor()
             obj = {'a': 123}
             self.assertEqual(curs.mogrify("%s", (obj,)),
-                b("""'{"a": 123}'"""))
+                    b"""'{"a": 123}'""")
         finally:
            del psycopg2.extensions.adapters[dict, psycopg2.extensions.ISQLQuote]
 

@@ -889,8 +889,7 @@ class CompositeCaster(object):
             elif m.group(2) is not None:
                 rv.append(self._re_undouble.sub(r"\1", m.group(2)))
             else:
-                v = m.group(3)
-            rv.append(v)
+                rv.append(m.group(3))
         return rv
 
     def _create_type(self, name, attnames):
@@ -981,10 +980,10 @@ def register_composite(name, conn_or_curs, globally=False, factory=None):
 
 
 # expose the json adaptation stuff into the module
-from psycopg2._json import json, Json, register_json, register_default_json
+from psycopg2cffi._json import json, Json, register_json, register_default_json
 
 
 # Expose range-related objects
-from psycopg2._range import Range, NumericRange
-from psycopg2._range import DateRange, DateTimeRange, DateTimeTZRange
-from psycopg2._range import register_range, RangeAdapter, RangeCaster
+from psycopg2cffi._range import Range, NumericRange
+from psycopg2cffi._range import DateRange, DateTimeRange, DateTimeTZRange
+from psycopg2cffi._range import register_range, RangeAdapter, RangeCaster

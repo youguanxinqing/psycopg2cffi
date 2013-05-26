@@ -24,7 +24,8 @@
 
 import psycopg2cffi as psycopg2
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
-        ConnectingTestCase, skip_copy_if_green
+        ConnectingTestCase, skip_copy_if_green, skip_before_postgres, \
+        skip_before_python
 
 
 class ConnectTestCase(unittest.TestCase):

@@ -31,6 +31,7 @@ from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
         decorate_all_tests, skip_before_postgres, skip_after_postgres, _u, \
         ConnectingTestCase, skip_if_tpc_disabled, skip_if_no_superuser
 import psycopg2cffi as psycopg2
+from psycopg2cffi import errorcodes
 from psycopg2cffi import extensions
 from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn, dbname
 
@@ -70,7 +71,7 @@ class ConnectionTests(ConnectingTestCase):
         try:
             cur.execute("select pg_terminate_backend(pg_backend_pid())")
         except psycopg2.OperationalError, e:
-            if e.pgcode != psycopg2.errorcodes.ADMIN_SHUTDOWN:
+            if e.pgcode != errorcodes.ADMIN_SHUTDOWN:
                 raise
         except psycopg2.DatabaseError, e:
             # curiously when disconnected in green mode we get a DatabaseError
@@ -789,17 +790,12 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
         cnn.tpc_prepare()
         self.assertRaises(psycopg2.ProgrammingError, cnn.cancel)
 
-<<<<<<< HEAD
-from psycopg2cffi.tests.psycopg2_tests.testutils import skip_if_tpc_disabled
-decorate_all_tests(ConnectionTwoPhaseTests, skip_if_tpc_disabled)
-=======
     def test_tpc_recover_non_dbapi_connection(self):
-        from psycopg2.extras import RealDictConnection
+        from psycopg2cffi.extras import RealDictConnection
         cnn = self.connect(connection_factory=RealDictConnection)
         cnn.tpc_begin('dict-connection')
         cnn.tpc_prepare()
         cnn.reset()
->>>>>>> master
 
         xids = cnn.tpc_recover()
         xid = [ xid for xid in xids if xid.database == dbname ][0]

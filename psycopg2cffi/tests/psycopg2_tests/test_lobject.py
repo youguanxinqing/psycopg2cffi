@@ -30,7 +30,8 @@ from functools import wraps
 import psycopg2cffi as psycopg2
 from psycopg2cffi import extensions
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
-        decorate_all_tests, skip_if_tpc_disabled, _u, ConnectingTestCase
+        decorate_all_tests, skip_if_tpc_disabled, _u, ConnectingTestCase, \
+        skip_if_green
 
 
 def skip_if_no_lo(f):
