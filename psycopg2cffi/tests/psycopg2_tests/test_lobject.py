@@ -396,7 +396,7 @@ class LargeObjectTruncateTests(LargeObjectTestCase):
         lo.write(b"some data")
         lo.close()
 
-        lo = self.conn.lobject(lo.oid, "w")
+        lo = self.conn.lobject(lo.oid, "wb")
         lo.truncate(4)
 
         # seek position unchanged

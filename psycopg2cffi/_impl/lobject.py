@@ -72,7 +72,7 @@ class LargeObject(object):
         length = libpq.lo_read(self._conn._pgconn, self._fd, buf, size)
         if length < 0:
             return
-        
+
         return ffi.buffer(buf, length)[:] if binary_mode else \
                ffi.string(buf).decode(self._conn._py_enc)
 
