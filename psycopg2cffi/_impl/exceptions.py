@@ -1,3 +1,5 @@
+import six
+
 try:
     StandardError = StandardError
 except NameError:
@@ -97,7 +99,10 @@ class Diagnostics(object):
         if self._exc and self._exc._pgres:
             b = libpq.PQresultErrorField(self._exc._pgres, field)
             if b:
-                return bytes_to_ascii(ffi.string(b))
+                b = ffi.string(b)
+                if six.PY3: # py2 tests insist on str here
+                    b = bytes_to_ascii(b)
+                return b
 
     @property
     def severity(self):
