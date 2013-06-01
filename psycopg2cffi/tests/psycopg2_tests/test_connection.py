@@ -225,8 +225,8 @@ class ConnectionTests(ConnectingTestCase):
         self.assert_(not notices, "%d notices raised" % len(notices))
 
     def test_connect_cursor_factory(self):
-        import psycopg2.extras
-        conn = self.connect(cursor_factory=psycopg2.extras.DictCursor)
+        from psycopg2cffi import extras
+        conn = self.connect(cursor_factory=extras.DictCursor)
         cur = conn.cursor()
         cur.execute("select 1 as a")
         self.assertEqual(cur.fetchone()['a'], 1)

@@ -25,6 +25,7 @@
 import decimal
 
 import sys
+import six
 from functools import wraps
 from psycopg2cffi.tests.psycopg2_tests import testutils
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
@@ -56,8 +57,9 @@ class TypesBasicTests(ConnectingTestCase):
     def testNumber(self):
         s = self.execute("SELECT %s AS foo", (1971,))
         self.failUnless(s == 1971, "wrong integer quoting: " + str(s))
-        s = self.execute("SELECT %s AS foo", (long(1971),))
-        self.failUnless(s == long(1971), "wrong integer quoting: " + str(s))
+        if not six.PY3:
+            s = self.execute("SELECT %s AS foo", (long(1971),))
+            self.failUnless(s == long(1971), "wrong integer quoting: " + str(s))
 
     def testBoolean(self):
         x = self.execute("SELECT %s as foo", (False,))

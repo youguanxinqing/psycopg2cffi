@@ -279,8 +279,8 @@ class DatetimeTests(ConnectingTestCase, CommonDatetimeTestsMixin):
 
     def test_type_roundtrip_datetimetz(self):
         from datetime import datetime
-        import psycopg2.tz
-        tz = psycopg2.tz.FixedOffsetTimezone(8*60)
+        from psycopg2cffi import tz
+        tz = tz.FixedOffsetTimezone(8*60)
         dt1 = datetime(2010,5,3,10,20,30, tzinfo=tz)
         dt2 = self._test_type_roundtrip(dt1)
         self.assertNotEqual(None, dt2.tzinfo)

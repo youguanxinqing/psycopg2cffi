@@ -93,10 +93,11 @@ class Diagnostics(object):
         self._exc = exc
 
     def _get_field(self, field):
+        from psycopg2cffi._impl.adapters import bytes_to_ascii
         if self._exc and self._exc._pgres:
             b = libpq.PQresultErrorField(self._exc._pgres, field)
             if b:
-                return ffi.string(b)
+                return bytes_to_ascii(ffi.string(b))
 
     @property
     def severity(self):

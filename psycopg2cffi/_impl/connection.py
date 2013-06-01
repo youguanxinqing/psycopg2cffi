@@ -825,12 +825,12 @@ class Connection(object):
         # last command, and then the error message for the connection
         if pgres:
             pgmsg = libpq.PQresultErrorMessage(pgres)
-            pgmsg = ffi.string(pgmsg) if pgmsg else None
+            pgmsg = bytes_to_ascii(ffi.string(pgmsg)) if pgmsg else None
 
             # Get the correct exception class based on the error code
             code = libpq.PQresultErrorField(pgres, libpq.PG_DIAG_SQLSTATE)
             if code != ffi.NULL:
-                code = ffi.string(code)
+                code = bytes_to_ascii(ffi.string(code))
                 exc_type = util.get_exception_for_sqlstate(code)
             else:
                 code = None
@@ -838,11 +838,11 @@ class Connection(object):
 
         if not pgmsg:
             pgmsg = libpq.PQerrorMessage(self._pgconn)
-            pgmsg = ffi.string(pgmsg) if pgmsg else None
+            pgmsg = bytes_to_ascii(ffi.string(pgmsg)) if pgmsg else None
 
         if msg is None and pgmsg:
             msg = pgmsg
-            for prefix in (b"ERROR:  ", b"FATAL:  ", b"PANIC:  "):
+            for prefix in ("ERROR:  ", "FATAL:  ", "PANIC:  "):
                 if msg.startswith(prefix):
                     msg = msg[len(prefix):]
                     break

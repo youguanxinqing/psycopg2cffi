@@ -7,7 +7,7 @@ from time import localtime
 import six
 
 from psycopg2cffi._impl.libpq import libpq, ffi
-from psycopg2cffi._impl.adapters import bytes_to_ascii
+from psycopg2cffi._impl.adapters import bytes_to_ascii, ascii_to_bytes
 from psycopg2cffi._impl.exceptions import DataError
 
 # Typecasters accept bytes and return python objects.
@@ -263,7 +263,9 @@ def _parse_time_to_args(value, cursor):
 def parse_datetime(value, length, cursor):
     if value is None:
         return None
-    elif value == b'infinity':
+    if isinstance(value, six.text_type):
+        value = ascii_to_bytes(value)
+    if value == b'infinity':
         return datetime.datetime.max
     elif value == b'-infinity':
         return datetime.datetime.min
@@ -285,7 +287,9 @@ def parse_datetime(value, length, cursor):
 def parse_date(value, length, cursor):
     if value is None:
         return None
-    elif value == b'infinity':
+    if isinstance(value, six.text_type):
+        value = ascii_to_bytes(value)
+    if value == b'infinity':
         return datetime.date.max
     elif value == b'-infinity':
         return datetime.date.min
@@ -301,14 +305,15 @@ def parse_date(value, length, cursor):
 def parse_time(value, length, cursor):
     if value is None:
         return None
-
+    if isinstance(value, six.text_type):
+        value = ascii_to_bytes(value)
     try:
         return datetime.time(*_parse_time_to_args(value, cursor))
     except (TypeError, ValueError):
         raise DataError("bad datetime: '%s'" % value)
 
 
-_re_interval = re.compile(r"""
+_re_interval = re.compile(br"""
     (?:(-?\+?\d+)\sy\w+\s?)?    # year
     (?:(-?\+?\d+)\sm\w+\s?)?    # month
     (?:(-?\+?\d+)\sd\w+\s?)?    # day
@@ -325,6 +330,8 @@ def parse_interval(value, length, cursor):
     """
     if value is None:
         return None
+    if isinstance(value, six.text_type):
+        value = ascii_to_bytes(value)
 
     m = _re_interval.match(value)
     if not m:
@@ -341,11 +348,11 @@ def parse_interval(value, length, cursor):
     if hours is not None:
         secs = int(hours) * 3600 + int(mins) * 60 + int(secs)
         if frac is not None:
-            micros = int((frac + ('0' * (6 - len(frac))))[:6])
+            micros = int((frac + (b'0' * (6 - len(frac))))[:6])
         else:
             micros = 0
 
-        if sign == '-':
+        if sign == b'-':
             secs = -secs
             micros = -micros
     else:
