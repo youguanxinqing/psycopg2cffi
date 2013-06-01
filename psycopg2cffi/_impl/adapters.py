@@ -96,7 +96,7 @@ class DateTime(_BaseAdapter):
     def getquoted(self):
         obj = self._wrapped
         if isinstance(obj, datetime.timedelta):
-            us = str(obj.microseconds)
+            us = ascii_to_bytes(str(obj.microseconds))
             us = b'0' * (6 - len(us)) + us
             return b''.join([b"'", 
                 ascii_to_bytes(str(int(obj.days))), b" days ",
