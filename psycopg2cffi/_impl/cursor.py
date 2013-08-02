@@ -767,6 +767,7 @@ class Cursor(object):
             self._no_tuples = False
             description = []
             casts = []
+            fast_parsers = []
             for i in xrange(self._nfields):
                 ftype = libpq.PQftype(self._pgres, i)
                 fsize = libpq.PQfsize(self._pgres, i)
@@ -800,8 +801,21 @@ class Cursor(object):
                     null_ok=None,
                 ))
 
+                fast_parser = None
+                if ftype == 21 or ftype == 23:
+                    fast_parser = libpq.PQEgetint
+                elif ftype == 20:
+                    fast_parser = libpq.PQEgetlong
+                elif ftype == 700:
+                    fast_parser = libpq.PQEgetfloat
+                elif ftype == 701:
+                    fast_parser = libpq.PQEgetdouble
+                fast_parsers.append(fast_parser)
+
+
             self._description = tuple(description)
             self._casts = casts
+            self._fast_parsers = fast_parsers
 
     def _pq_fetch_copy_in(self):
         pgconn = self._conn._pgconn
@@ -867,10 +881,15 @@ class Cursor(object):
             if libpq.PQgetisnull(self._pgres, row_num, i):
                 row[i] = None
             else:
-                length = libpq.PQgetlength(self._pgres, row_num, i)
-                val = ffi.buffer(
-                        libpq.PQgetvalue(self._pgres, row_num, i), length)[:]
-                row[i] = typecasts.typecast(self._casts[i], val, length, self)
+                fast_parser = self._fast_parsers[i]
+                if fast_parser:
+                    row[i] = fast_parser(self._pgres, row_num, i)
+                else:
+                    length = libpq.PQgetlength(self._pgres, row_num, i)
+                    val = ffi.buffer(libpq.PQgetvalue(
+                        self._pgres, row_num, i), length)[:]
+                    row[i] = typecasts.typecast(
+                            self._casts[i], val, length, self)
 
         if is_tuple:
             return tuple(row)
