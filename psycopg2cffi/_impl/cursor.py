@@ -308,9 +308,7 @@ class Cursor(object):
         if self._rownumber >= self._rowcount:
             return None
 
-        row = self._build_row(self._rownumber)
-        self._rownumber += 1
-        return row
+        return self._build_row()
 
     @check_closed
     @check_no_tuples
@@ -349,11 +347,7 @@ class Cursor(object):
         if size <= 0:
             return []
 
-        rows = []
-        for i in xrange(size):
-            rows.append(self._build_row(self._rownumber))
-            self._rownumber += 1
-        return rows
+        return [self._build_row() for _ in xrange(size)]
 
     @check_closed
     @check_no_tuples
@@ -375,11 +369,7 @@ class Cursor(object):
         if size <= 0:
             return []
 
-        result = []
-        for row in xrange(size):
-            result.append(self._build_row(self._rownumber))
-            self._rownumber += 1
-        return result
+        return [self._build_row() for _ in xrange(size)]
 
     def nextset(self):
         """This method will make the cursor skip to the next available set,
@@ -865,7 +855,8 @@ class Cursor(object):
         self._clear_pgres()
         util.pq_clear_async(pgconn)
 
-    def _build_row(self, row_num):
+    def _build_row(self):
+        row_num = self._rownumber
 
         # Create the row
         if self.row_factory:
@@ -890,6 +881,8 @@ class Cursor(object):
                         self._pgres, row_num, i), length)[:]
                     row[i] = typecasts.typecast(
                             self._casts[i], val, length, self)
+
+        self._rownumber += 1
 
         if is_tuple:
             return tuple(row)
