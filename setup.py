@@ -289,7 +289,7 @@ setup(
     packages=['psycopg2cffi', 'psycopg2cffi._impl', 'psycopg2cffi.tests'],
     install_requires=[
         'six',
-        'cffi ==0.4, ==0.5, ==0.6',
+        'cffi < 1.0'
         ],
     ext_package='psycopg2cffi',
     ext_modules=ext_modules,
