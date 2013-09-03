@@ -35,7 +35,7 @@ try:
 except:
     _logging = None
 
-import psycopg2
+import psycopg2cffi as psycopg2
 from psycopg2cffi import extensions as _ext
 from psycopg2cffi.extensions import cursor as _cursor
 from psycopg2cffi.extensions import connection as _connection
@@ -572,7 +572,7 @@ def wait_select(conn):
 
     """
     import select
-    from psycopg2.extensions import POLL_OK, POLL_READ, POLL_WRITE
+    from psycopg2cffi.extensions import POLL_OK, POLL_READ, POLL_WRITE
 
     while 1:
         state = conn.poll()
@@ -965,10 +965,10 @@ def register_composite(name, conn_or_curs, globally=False, factory=None):
 
 
 # expose the json adaptation stuff into the module
-from psycopg2._json import json, Json, register_json, register_default_json
+from psycopg2cffi._json import json, Json, register_json, register_default_json
 
 
 # Expose range-related objects
-from psycopg2._range import Range, NumericRange
-from psycopg2._range import DateRange, DateTimeRange, DateTimeTZRange
-from psycopg2._range import register_range, RangeAdapter, RangeCaster
+from psycopg2cffi._range import Range, NumericRange
+from psycopg2cffi._range import DateRange, DateTimeRange, DateTimeTZRange
+from psycopg2cffi._range import register_range, RangeAdapter, RangeCaster
