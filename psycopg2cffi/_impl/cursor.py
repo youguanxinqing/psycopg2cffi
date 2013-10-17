@@ -336,6 +336,7 @@ class Cursor(object):
             size = self.arraysize
 
         if self._name is not None:
+            self._clear_pgres()
             self._pq_execute(
                 'FETCH FORWARD %d FROM "%s"' % (size, self._name))
 
