@@ -248,8 +248,8 @@ with open('README.rst', 'r') as fh:
 
 try:
     import psycopg2cffi._impl.libpq
-except ImportError: 
-    # installing - there is no cffi yet
+except ImportError:
+    # installing - there is no cffi yet, so we can not import libpq
     ext_modules = []
 else:
     # building bdist - cffi is here!
@@ -261,7 +261,7 @@ setup(
     author_email='konstantin.lopuhin@chtd.ru',
     license='LGPL',
     url='http://github.com/chtd/psycopg2cffi',
-    version='2.5',
+    version=PSYCOPG_VERSION,
     cmdclass={
         'build_py': build_py
     },
