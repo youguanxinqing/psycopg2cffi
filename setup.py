@@ -167,6 +167,7 @@ class build_py(_build_py):
         pg_config_helper = PostgresConfig(self)
         self.libpq_path = self.find_libpq(pg_config_helper)
         self.libpq_version = self.find_version(pg_config_helper)
+        self.libpq_include_dir = self.find_include_dir(pg_config_helper)
 
     def find_version(self, helper):
         try:
@@ -229,6 +230,9 @@ class build_py(_build_py):
                 sys.exit(1)
             return fname
 
+    def find_include_dir(self, helper):
+        return helper.query('includedir') or None
+
     def run(self):
         if not self.dry_run:
             target_path = os.path.join(self.build_lib, 'psycopg2cffi')
@@ -239,6 +243,7 @@ class build_py(_build_py):
                 fh.write('VERSION = %r\n' % PSYCOPG_VERSION)
                 fh.write('PG_LIBRARY = %r\n' % self.libpq_path)
                 fh.write('PG_VERSION = %s\n' % self.libpq_version)
+                fh.write('PG_INCLUDE_DIR = %r\n' % self.libpq_include_dir)
 
         _build_py.run(self)
 
