@@ -83,8 +83,8 @@ class Cursor(object):
 
         #: Read/write attribute specifying the number of rows to fetch from
         #: the backend at each network roundtrip during iteration on a named
-        #: cursor. The default is 10000
-        self.itersize = 10000
+        #: cursor. The default is 2000
+        self.itersize = 2000
 
         self.tzinfo_factory = tz.FixedOffsetTimezone
         self.row_factory = row_factory
@@ -338,6 +338,7 @@ class Cursor(object):
             size = self.arraysize
 
         if self._name is not None:
+            self._clear_pgres()
             self._pq_execute(
                 'FETCH FORWARD %d FROM "%s"' % (size, self._name))
 

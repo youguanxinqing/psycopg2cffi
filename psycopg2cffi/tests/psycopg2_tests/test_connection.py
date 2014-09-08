@@ -249,6 +249,14 @@ class ConnectionTests(ConnectingTestCase):
         cur.execute("select 1 as a")
         self.assertRaises(TypeError, (lambda r: r['a']), cur.fetchone())
 
+    def test_connect_non_unicode_dsn(self):
+        conn = psycopg2.connect(str(dsn))
+        conn.close()
+
+    def test_connect_unicode_dsn(self):
+        conn = psycopg2.connect(unicode(dsn))
+        conn.close()
+
 
 class IsolationLevelsTestCase(ConnectingTestCase):
 

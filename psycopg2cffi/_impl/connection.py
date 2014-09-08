@@ -136,7 +136,7 @@ class Connection(object):
             self._connect_async()
 
     def _connect_sync(self):
-        self._pgconn = libpq.PQconnectdb(ascii_to_bytes(self.dsn))
+        self._pgconn = libpq.PQconnectdb(self.dsn.encode('utf-8'))
         if not self._pgconn:
             raise exceptions.OperationalError('PQconnectdb() failed')
         elif libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:

@@ -159,6 +159,7 @@ class build_py(_build_py):
         ('pg-config=', None,
          "The name of the pg_config binary and/or full path to find it"),
     ])
+    has_been_run = False
 
     def initialize_options(self):
         _build_py.initialize_options(self)
@@ -169,6 +170,7 @@ class build_py(_build_py):
         pg_config_helper = PostgresConfig(self)
         self.libpq_path = self.find_libpq(pg_config_helper)
         self.libpq_version = self.find_version(pg_config_helper)
+        self.libpq_include_dir = self.find_include_dir(pg_config_helper)
 
     def find_version(self, helper):
         try:
@@ -231,6 +233,9 @@ class build_py(_build_py):
                 sys.exit(1)
             return fname
 
+    def find_include_dir(self, helper):
+        return helper.query('includedir') or None
+
     def run(self):
         if not self.dry_run:
             target_path = os.path.join(self.build_lib, 'psycopg2cffi')
@@ -241,21 +246,22 @@ class build_py(_build_py):
                 fh.write('VERSION = %r\n' % PSYCOPG_VERSION)
                 fh.write('PG_LIBRARY = %r\n' % self.libpq_path)
                 fh.write('PG_VERSION = %s\n' % self.libpq_version)
+                fh.write('PG_INCLUDE_DIR = %r\n' % self.libpq_include_dir)
 
         _build_py.run(self)
+        self.has_been_run = True
 
 README = []
 with open('README.rst', 'r') as fh:
     README = fh.readlines()
 
-try:
+if build_py.has_been_run:
+    # building bdist
     import psycopg2cffi._impl.libpq
-except ImportError: 
-    # installing - there is no cffi yet
-    ext_modules = []
-else:
-    # building bdist - cffi is here!
     ext_modules = [psycopg2cffi._impl.libpq.ffi.verifier.get_extension()]
+else:
+    # installing
+    ext_modules = []
 
 setup(
     name='psycopg2cffi',
@@ -263,7 +269,7 @@ setup(
     author_email='konstantin.lopuhin@chtd.ru',
     license='LGPL',
     url='http://github.com/chtd/psycopg2cffi',
-    version='2.5',
+    version=PSYCOPG_VERSION,
     cmdclass={
         'build_py': build_py
     },

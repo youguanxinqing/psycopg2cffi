@@ -1,8 +1,10 @@
 ''' CFFI interface to libpq the library '''
 
+import os.path
+
 from cffi import FFI
 
-from psycopg2cffi._config import PG_VERSION
+from psycopg2cffi import _config
 
 
 ffi = FFI()
@@ -144,7 +146,7 @@ extern Oid PQoidValue(const PGresult *res); /* new and improved */
 
 ''')
 
-if PG_VERSION >= 0x090000:
+if _config.PG_VERSION >= 0x090000:
     ffi.cdef('''
 // Escaping string for inclusion in sql commands
 extern char *PQescapeLiteral(PGconn *conn, const char *str, size_t len);
@@ -213,6 +215,7 @@ extern int lo_truncate(PGconn *conn, int fd, size_t len);
 
 ''')
 
+
 libpq = ffi.verify('''
 #include <postgres_ext.h>
 #include <libpq-fe.h>
@@ -244,15 +247,11 @@ double PQEgetdouble(const PGresult *res, int tup_num, int field_num) {
     sscanf(val, "%lf", &raw_res);
     return raw_res;
 }
-        ''', 
+        ''',
         libraries=['pq'],
-        library_dirs=[
-            '/usr/pgsql-9.1/lib/',
-            ],
-        include_dirs=[
-            '/usr/include/postgresql/', 
-            '/usr/pgsql-9.1/include/',
-            ],
+        library_dirs=[os.path.dirname(_config.PG_LIBRARY)],
+        include_dirs=[_config.PG_INCLUDE_DIR] \
+                if _config.PG_INCLUDE_DIR else [],
         ext_package='psycopg2cffi')
 
 
