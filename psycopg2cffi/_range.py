@@ -118,8 +118,13 @@ class Range(object):
 
         return True
 
-    def __nonzero__(self):
+    def _nonzero(self):
         return self._bounds is not None
+
+    if six.PY3:
+        __bool__ = _nonzero
+    else:
+        __nonzero__ = _nonzero
 
     def __eq__(self, other):
         return (self._lower == other._lower
