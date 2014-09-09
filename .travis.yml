@@ -14,6 +14,6 @@ script: python setup.py test
 after_script:
   - git clone https://github.com/chtd/psycopg2-benchmarks.git --depth 1
   - pip install -r psycopg2-benchmarks/django_bench/requirements.txt
-  - cd psycopg2-benchmarks/django_bench/ && ./bench 1000
+  - cd psycopg2-benchmarks/django_bench/ && ./bench 1000 5
 matrix:
   fast_finish: true
