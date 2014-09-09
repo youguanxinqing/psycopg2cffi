@@ -249,7 +249,8 @@ double PQEgetdouble(const PGresult *res, int tup_num, int field_num) {
 }
         ''',
         libraries=['pq'],
-        library_dirs=[os.path.dirname(_config.PG_LIBRARY)],
+        library_dirs=[os.path.dirname(_config.PG_LIBRARY)] \
+                if _config.PG_LIBRARY else [],
         include_dirs=[_config.PG_INCLUDE_DIR] \
                 if _config.PG_INCLUDE_DIR else [],
         ext_package='psycopg2cffi')
