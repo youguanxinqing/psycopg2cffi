@@ -1,4 +1,6 @@
 language: python
+addons:
+  postgresql: "9.3"
 before_script:
  - "psql -c 'create database psycopg2_test;' -U postgres"
 env:
@@ -6,4 +8,12 @@ env:
 python:
  - "2.6"
  - "2.7"
+ - "pypy"
+install: python setup.py install
 script: python setup.py test
+after_script:
+  - git clone https://github.com/chtd/psycopg2-benchmarks.git --depth 1
+  - pip install -r psycopg2-benchmarks/django_bench/requirements.txt
+  - cd psycopg2-benchmarks/django_bench/ && ./bench 1000 5
+matrix:
+  fast_finish: true
