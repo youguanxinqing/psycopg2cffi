@@ -57,9 +57,9 @@ else:
 
 def test_suite():
     # If connection to test db fails, bail out early.
-    import psycopg2
+    import psycopg2cffi
     try:
-        cnn = psycopg2.connect(dsn)
+        cnn = psycopg2cffi.connect(dsn)
     except Exception as e:
         print("Failed connection to test db:", e.__class__.__name__, e)
         print("Please set env vars 'PSYCOPG2_TESTDB*' to valid values.")
