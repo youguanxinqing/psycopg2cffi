@@ -1412,6 +1412,15 @@ class RangeCasterTestCase(ConnectingTestCase):
         self.assert_(r1.lower_inc)
         self.assert_(not r1.upper_inc)
 
+        r = DateRange('2012-01-01', '2012-12-31', '(]')
+        cur.execute("select %s", (r,))
+        r1 = cur.fetchone()[0]
+        self.assert_(isinstance(r1, DateRange))
+        self.assertEqual(r1.lower, d1)
+        self.assertEqual(r1.upper, d2)
+        self.assert_(not r1.lower_inc)
+        self.assert_(r1.upper_inc)
+
         r = DateTimeRange(empty=True)
         cur.execute("select %s", (r,))
         r1 = cur.fetchone()[0]
