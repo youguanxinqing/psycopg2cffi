@@ -239,14 +239,14 @@ class TypesBasicTests(ConnectingTestCase):
         o1 = bytearray(range(256))
         o2 = self.execute("select %s;", (o1,))
 
+        self.assertEqual(len(o1), len(o2))
         if sys.version_info[0] < 3:
             self.assertEqual(buffer, type(o2))
+            for c1, c2 in zip(o1, o2):
+                self.assertEqual(c1, ord(c2))
         else:
             self.assertEqual(memoryview, type(o2))
-
-        self.assertEqual(len(o1), len(o2))
-        for c1, c2 in zip(o1, o2):
-            self.assertEqual(c1, ord(c2))
+            self.assertEqual(list(o1), list(o2))
 
         # Test with an empty buffer
         o1 = bytearray([])
