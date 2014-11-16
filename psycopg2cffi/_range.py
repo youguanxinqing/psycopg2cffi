@@ -285,8 +285,8 @@ class RangeCaster(object):
 
         Raise `ProgrammingError` if the type is not found.
         """
-        from psycopg2.extensions import STATUS_IN_TRANSACTION
-        from psycopg2.extras import _solve_conn_curs
+        from psycopg2cffi.extensions import STATUS_IN_TRANSACTION
+        from psycopg2cffi.extras import _solve_conn_curs
         conn, curs = _solve_conn_curs(conn_or_curs)
 
         if conn.server_version < 90200:
