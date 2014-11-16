@@ -29,7 +29,8 @@ from operator import attrgetter
 
 from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
         decorate_all_tests, skip_before_postgres, skip_after_postgres, _u, \
-        ConnectingTestCase, skip_if_tpc_disabled, skip_if_no_superuser
+        ConnectingTestCase, skip_if_tpc_disabled, skip_if_no_superuser, \
+        skip_from_python
 import psycopg2cffi as psycopg2
 from psycopg2cffi import errorcodes
 from psycopg2cffi import extensions
@@ -249,10 +250,11 @@ class ConnectionTests(ConnectingTestCase):
         cur.execute("select 1 as a")
         self.assertRaises(TypeError, (lambda r: r['a']), cur.fetchone())
 
-    def test_connect_non_unicode_dsn(self):
+    def test_connect_non_unicode_dsn(self): # non-unicode only on python 2
         conn = psycopg2.connect(str(dsn))
         conn.close()
 
+    @skip_from_python(3)
     def test_connect_unicode_dsn(self):
         conn = psycopg2.connect(unicode(dsn))
         conn.close()
