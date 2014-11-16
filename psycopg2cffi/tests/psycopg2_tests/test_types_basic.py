@@ -242,10 +242,12 @@ class TypesBasicTests(ConnectingTestCase):
         self.assertEqual(len(o1), len(o2))
         if sys.version_info[0] < 3:
             self.assertEqual(buffer, type(o2))
+        else:
+            self.assertEqual(memoryview, type(o2))
+        if sys.version_info[:2] < (3, 3):
             for c1, c2 in zip(o1, o2):
                 self.assertEqual(c1, ord(c2))
         else:
-            self.assertEqual(memoryview, type(o2))
             self.assertEqual(list(o1), list(o2))
 
         # Test with an empty buffer
@@ -280,7 +282,7 @@ class TypesBasicTests(ConnectingTestCase):
         # may be fooled if the first char is really an 'x'
         o1 = psycopg2.Binary(b('x'))
         o2 = self.execute("SELECT %s::bytea AS foo", (o1,))
-        if sys.version_info[0] < 3:
+        if sys.version_info[:2] < (3, 3):
             self.assertEqual(b('x'), o2[0])
         else:
             self.assertEqual(ord('x'), o2[0])
