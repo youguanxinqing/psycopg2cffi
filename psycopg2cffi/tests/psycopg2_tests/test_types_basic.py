@@ -280,7 +280,10 @@ class TypesBasicTests(ConnectingTestCase):
         # may be fooled if the first char is really an 'x'
         o1 = psycopg2.Binary(b('x'))
         o2 = self.execute("SELECT %s::bytea AS foo", (o1,))
-        self.assertEqual(b('x'), o2[0])
+        if sys.version_info[0] < 3:
+            self.assertEqual(b('x'), o2[0])
+        else:
+            self.assertEqual(ord('x'), o2[0])
 
     def testNegNumber(self):
         d1 = self.execute("select -%s;", (decimal.Decimal('-1.0'),))
