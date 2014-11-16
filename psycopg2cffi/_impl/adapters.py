@@ -50,6 +50,11 @@ class AsIs(_BaseAdapter):
         return ascii_to_bytes(self._wrapped)
 
 
+_bytearray_types = (bytearray,)
+try: _bytearray_types += (memoryview,)
+except NameError: pass # python 2.6
+
+
 class Binary(_BaseAdapter):
     def prepare(self, connection):
         self._conn = connection
@@ -65,7 +70,7 @@ class Binary(_BaseAdapter):
         _wrapped = self._wrapped
         if isinstance(_wrapped, six.text_type):
             _wrapped = ascii_to_bytes(_wrapped)
-        elif isinstance(_wrapped, (bytearray, memoryview)):
+        elif isinstance(_wrapped, _bytearray_types):
             _wrapped = six.binary_type(_wrapped)
         elif not six.PY3 and isinstance(_wrapped, buffer):
             _wrapped = bytes(_wrapped)
