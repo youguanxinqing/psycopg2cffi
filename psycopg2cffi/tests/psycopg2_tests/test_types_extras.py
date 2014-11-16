@@ -1471,8 +1471,8 @@ class RangeCasterTestCase(ConnectingTestCase):
         bounds = [ '[)', '(]', '()', '[]' ]
         ranges = [ TextRange(low, up, bounds[i % 4])
             for i, (low, up) in enumerate(zip(
-                [None] + map(chr, range(1, 128)),
-                map(chr, range(1,128)) + [None],
+                [None] + list(map(chr, range(1, 128))),
+                list(map(chr, range(1,128))) + [None],
                 ))]
         ranges.append(TextRange())
         ranges.append(TextRange(empty=True))
