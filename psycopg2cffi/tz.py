@@ -26,6 +26,8 @@ functions or used to set the .tzinfo_factory attribute in cursors.
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
+from __future__ import unicode_literals
+
 import datetime
 import time
 

@@ -20,19 +20,19 @@ from decimal import Decimal
 from datetime import date, datetime
 from functools import wraps
 
-from testutils import unittest, skip_if_no_uuid, skip_before_postgres
-from testutils import ConnectingTestCase, decorate_all_tests
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        skip_if_no_uuid, skip_before_postgres, _u, ConnectingTestCase, \
+        decorate_all_tests
 
-import psycopg2
-import psycopg2.extras
-from psycopg2.extensions import b
+import psycopg2cffi as psycopg2
+from psycopg2cffi import extras, extensions
 
 
 def filter_scs(conn, s):
     if conn.get_parameter_status("standard_conforming_strings") == 'off':
         return s
     else:
-        return s.replace(b("E'"), b("'"))
+        return s.replace(b"E'", b"'")
 
 class TypesExtrasTests(ConnectingTestCase):
     """Test that all type conversions are working."""
@@ -45,7 +45,7 @@ class TypesExtrasTests(ConnectingTestCase):
     @skip_if_no_uuid
     def testUUID(self):
         import uuid
-        psycopg2.extras.register_uuid()
+        extras.register_uuid()
         u = uuid.UUID('9c6d5a77-7256-457e-9461-347b4358e350')
         s = self.execute("SELECT %s AS foo", (u,))
         self.failUnless(u == s)
@@ -56,7 +56,7 @@ class TypesExtrasTests(ConnectingTestCase):
     @skip_if_no_uuid
     def testUUIDARRAY(self):
         import uuid
-        psycopg2.extras.register_uuid()
+        extras.register_uuid()
         u = [uuid.UUID('9c6d5a77-7256-457e-9461-347b4358e350'), uuid.UUID('9c6d5a77-7256-457e-9461-347b4358e352')]
         s = self.execute("SELECT %s AS foo", (u,))
         self.failUnless(u == s)
@@ -72,8 +72,8 @@ class TypesExtrasTests(ConnectingTestCase):
         self.failUnless(type(s) == list and len(s) == 0)
 
     def testINET(self):
-        psycopg2.extras.register_inet()
-        i = psycopg2.extras.Inet("192.168.1.0/24")
+        extras.register_inet()
+        i = extras.Inet("192.168.1.0/24")
         s = self.execute("SELECT %s AS foo", (i,))
         self.failUnless(i.addr == s.addr)
         # must survive NULL cast to inet
@@ -81,8 +81,8 @@ class TypesExtrasTests(ConnectingTestCase):
         self.failUnless(s is None)
 
     def testINETARRAY(self):
-        psycopg2.extras.register_inet()
-        i = psycopg2.extras.Inet("192.168.1.0/24")
+        extras.register_inet()
+        i = extras.Inet("192.168.1.0/24")
         s = self.execute("SELECT %s AS foo", ([i],))
         self.failUnless(i.addr == s[0].addr)
         # must survive NULL cast to inet
@@ -90,36 +90,36 @@ class TypesExtrasTests(ConnectingTestCase):
         self.failUnless(s is None)
 
     def test_inet_conform(self):
-        from psycopg2.extras import Inet
+        from psycopg2cffi.extras import Inet
         i = Inet("192.168.1.0/24")
-        a = psycopg2.extensions.adapt(i)
+        a = extensions.adapt(i)
         a.prepare(self.conn)
         self.assertEqual(
-            filter_scs(self.conn, b("E'192.168.1.0/24'::inet")),
+            filter_scs(self.conn, b"E'192.168.1.0/24'::inet"),
             a.getquoted())
 
         # adapts ok with unicode too
-        i = Inet(u"192.168.1.0/24")
-        a = psycopg2.extensions.adapt(i)
+        i = Inet(_u(b"192.168.1.0/24"))
+        a = extensions.adapt(i)
         a.prepare(self.conn)
         self.assertEqual(
-            filter_scs(self.conn, b("E'192.168.1.0/24'::inet")),
+            filter_scs(self.conn, b"E'192.168.1.0/24'::inet"),
             a.getquoted())
 
     def test_adapt_fail(self):
         class Foo(object): pass
         self.assertRaises(psycopg2.ProgrammingError,
-            psycopg2.extensions.adapt, Foo(), psycopg2.extensions.ISQLQuote, None)
+            extensions.adapt, Foo(), extensions.ISQLQuote, None)
         try:
-            psycopg2.extensions.adapt(Foo(), psycopg2.extensions.ISQLQuote, None)
-        except psycopg2.ProgrammingError, err:
+            extensions.adapt(Foo(), extensions.ISQLQuote, None)
+        except psycopg2.ProgrammingError as err:
             self.failUnless(str(err) == "can't adapt type 'Foo'")
 
 
 def skip_if_no_hstore(f):
     @wraps(f)
     def skip_if_no_hstore_(self):
-        from psycopg2.extras import HstoreAdapter
+        from psycopg2cffi.extras import HstoreAdapter
         oids = HstoreAdapter.get_oids(self.conn)
         if oids is None or not oids[0]:
             return self.skipTest("hstore not available in test database")
@@ -132,63 +132,64 @@ class HstoreTestCase(ConnectingTestCase):
         if self.conn.server_version >= 90000:
             return self.skipTest("skipping dict adaptation with PG pre-9 syntax")
 
-        from psycopg2.extras import HstoreAdapter
+        from psycopg2cffi.extras import HstoreAdapter
 
         o = {'a': '1', 'b': "'", 'c': None}
         if self.conn.encoding == 'UTF8':
-            o['d'] = u'\xe0'
+            o['d'] = _u(b'\xc3\xa0')
 
         a = HstoreAdapter(o)
         a.prepare(self.conn)
         q = a.getquoted()
 
-        self.assert_(q.startswith(b("((")), q)
-        ii = q[1:-1].split(b("||"))
+        self.assert_(q.startswith(b"(("), q)
+        ii = q[1:-1].split(b"||")
         ii.sort()
 
         self.assertEqual(len(ii), len(o))
-        self.assertEqual(ii[0], filter_scs(self.conn, b("(E'a' => E'1')")))
-        self.assertEqual(ii[1], filter_scs(self.conn, b("(E'b' => E'''')")))
-        self.assertEqual(ii[2], filter_scs(self.conn, b("(E'c' => NULL)")))
+        self.assertEqual(ii[0], filter_scs(self.conn, b"(E'a' => E'1')"))
+        self.assertEqual(ii[1], filter_scs(self.conn, b"(E'b' => E'''')"))
+        self.assertEqual(ii[2], filter_scs(self.conn, b"(E'c' => NULL)"))
         if 'd' in o:
-            encc = u'\xe0'.encode(psycopg2.extensions.encodings[self.conn.encoding])
-            self.assertEqual(ii[3], filter_scs(self.conn, b("(E'd' => E'") + encc + b("')")))
+            encc = _u(b'\xc3\xa0').encode(extensions.encodings[self.conn.encoding])
+            self.assertEqual(ii[3], 
+                    filter_scs(self.conn, b"(E'd' => E'" + encc + b"')"))
 
     def test_adapt_9(self):
         if self.conn.server_version < 90000:
             return self.skipTest("skipping dict adaptation with PG 9 syntax")
 
-        from psycopg2.extras import HstoreAdapter
+        from psycopg2cffi.extras import HstoreAdapter
 
         o = {'a': '1', 'b': "'", 'c': None}
         if self.conn.encoding == 'UTF8':
-            o['d'] = u'\xe0'
+            o['d'] = _u(b'\xc3\xa0')
 
         a = HstoreAdapter(o)
         a.prepare(self.conn)
         q = a.getquoted()
 
-        m = re.match(b(r'hstore\(ARRAY\[([^\]]+)\], ARRAY\[([^\]]+)\]\)'), q)
+        m = re.match(br'hstore\(ARRAY\[([^\]]+)\], ARRAY\[([^\]]+)\]\)', q)
         self.assert_(m, repr(q))
 
-        kk = m.group(1).split(b(", "))
-        vv = m.group(2).split(b(", "))
-        ii = zip(kk, vv)
+        kk = m.group(1).split(b", ")
+        vv = m.group(2).split(b", ")
+        ii = list(zip(kk, vv))
         ii.sort()
 
         def f(*args):
             return tuple([filter_scs(self.conn, s) for s in args])
 
         self.assertEqual(len(ii), len(o))
-        self.assertEqual(ii[0], f(b("E'a'"), b("E'1'")))
-        self.assertEqual(ii[1], f(b("E'b'"), b("E''''")))
-        self.assertEqual(ii[2], f(b("E'c'"), b("NULL")))
+        self.assertEqual(ii[0], f(b"E'a'", b"E'1'"))
+        self.assertEqual(ii[1], f(b"E'b'", b"E''''"))
+        self.assertEqual(ii[2], f(b"E'c'", b"NULL"))
         if 'd' in o:
-            encc = u'\xe0'.encode(psycopg2.extensions.encodings[self.conn.encoding])
-            self.assertEqual(ii[3], f(b("E'd'"), b("E'") + encc + b("'")))
+            encc = _u(b'\xc3\xa0').encode(extensions.encodings[self.conn.encoding])
+            self.assertEqual(ii[3], f(b"E'd'", b"E'" + encc + b"'"))
 
     def test_parse(self):
-        from psycopg2.extras import HstoreAdapter
+        from psycopg2cffi.extras import HstoreAdapter
 
         def ok(s, d):
             self.assertEqual(HstoreAdapter.parse(s, None), d)
@@ -219,7 +220,7 @@ class HstoreTestCase(ConnectingTestCase):
 
     @skip_if_no_hstore
     def test_register_conn(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
 
         register_hstore(self.conn)
         cur = self.conn.cursor()
@@ -231,7 +232,7 @@ class HstoreTestCase(ConnectingTestCase):
 
     @skip_if_no_hstore
     def test_register_curs(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
 
         cur = self.conn.cursor()
         register_hstore(cur)
@@ -243,7 +244,7 @@ class HstoreTestCase(ConnectingTestCase):
 
     @skip_if_no_hstore
     def test_register_unicode(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
 
         register_hstore(self.conn, unicode=True)
         cur = self.conn.cursor()
@@ -251,13 +252,13 @@ class HstoreTestCase(ConnectingTestCase):
         t = cur.fetchone()
         self.assert_(t[0] is None)
         self.assertEqual(t[1], {})
-        self.assertEqual(t[2], {u'a': u'b'})
+        self.assertEqual(t[2], {_u(b'a'): _u(b'b')})
         self.assert_(isinstance(t[2].keys()[0], unicode))
         self.assert_(isinstance(t[2].values()[0], unicode))
 
     @skip_if_no_hstore
     def test_register_globally(self):
-        from psycopg2.extras import register_hstore, HstoreAdapter
+        from psycopg2cffi.extras import register_hstore, HstoreAdapter
 
         oids = HstoreAdapter.get_oids(self.conn)
         try:
@@ -271,7 +272,7 @@ class HstoreTestCase(ConnectingTestCase):
             finally:
                 conn2.close()
         finally:
-            psycopg2.extensions.string_types.pop(oids[0][0])
+            extensions.string_types.pop(oids[0][0])
 
         # verify the caster is not around anymore
         cur = self.conn.cursor()
@@ -281,7 +282,7 @@ class HstoreTestCase(ConnectingTestCase):
 
     @skip_if_no_hstore
     def test_roundtrip(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(self.conn)
         cur = self.conn.cursor()
 
@@ -311,7 +312,7 @@ class HstoreTestCase(ConnectingTestCase):
 
     @skip_if_no_hstore
     def test_roundtrip_unicode(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(self.conn, unicode=True)
         cur = self.conn.cursor()
 
@@ -326,10 +327,10 @@ class HstoreTestCase(ConnectingTestCase):
                 self.assert_(v is None or isinstance(v, unicode))
 
         ok({})
-        ok({'a': 'b', 'c': None, 'd': u'\u20ac', u'\u2603': 'e'})
+        ok({'a': 'b', 'c': None, 'd': _u(b'\xe2\x82\xac'), _u(b'\xe2\x98\x83'): 'e'})
 
         ab = map(unichr, range(1, 1024))
-        ok({u''.join(ab): u''.join(ab)})
+        ok({_u(b'').join(ab): _u(b'').join(ab)})
         ok(dict(zip(ab, ab)))
 
     @skip_if_no_hstore
@@ -340,7 +341,7 @@ class HstoreTestCase(ConnectingTestCase):
 
         # Note: None as conn_or_cursor is just for testing: not public
         # interface and it may break in future.
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(None, globally=True, oid=oid)
         try:
             cur.execute("select null::hstore, ''::hstore, 'a => b'::hstore")
@@ -350,12 +351,12 @@ class HstoreTestCase(ConnectingTestCase):
             self.assertEqual(t[2], {'a': 'b'})
 
         finally:
-            psycopg2.extensions.string_types.pop(oid)
+            extensions.string_types.pop(oid)
 
     @skip_if_no_hstore
     @skip_before_postgres(8, 3)
     def test_roundtrip_array(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(self.conn)
 
         ds = []
@@ -383,7 +384,7 @@ class HstoreTestCase(ConnectingTestCase):
     @skip_if_no_hstore
     @skip_before_postgres(8, 3)
     def test_array_cast(self):
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(self.conn)
         cur = self.conn.cursor()
         cur.execute("select array['a=>1'::hstore, 'b=>2'::hstore];")
@@ -396,7 +397,7 @@ class HstoreTestCase(ConnectingTestCase):
         cur.execute("select 'hstore'::regtype::oid, 'hstore[]'::regtype::oid")
         oid, aoid = cur.fetchone()
 
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import register_hstore
         register_hstore(None, globally=True, oid=oid, array_oid=aoid)
         try:
             cur.execute("select null::hstore, ''::hstore, 'a => b'::hstore, '{a=>b}'::hstore[]")
@@ -407,13 +408,13 @@ class HstoreTestCase(ConnectingTestCase):
             self.assertEqual(t[3], [{'a': 'b'}])
 
         finally:
-            psycopg2.extensions.string_types.pop(oid)
-            psycopg2.extensions.string_types.pop(aoid)
+            extensions.string_types.pop(oid)
+            extensions.string_types.pop(aoid)
 
     @skip_if_no_hstore
     def test_non_dbapi_connection(self):
-        from psycopg2.extras import RealDictConnection
-        from psycopg2.extras import register_hstore
+        from psycopg2cffi.extras import RealDictConnection
+        from psycopg2cffi.extras import register_hstore
 
         conn = self.connect(connection_factory=RealDictConnection)
         try:
@@ -451,14 +452,14 @@ class AdaptTypeTestCase(ConnectingTestCase):
     def test_none_in_record(self):
         curs = self.conn.cursor()
         s = curs.mogrify("SELECT %s;", [(42, None)])
-        self.assertEqual(b("SELECT (42, NULL);"), s)
+        self.assertEqual(b"SELECT (42, NULL);", s)
         curs.execute("SELECT %s;", [(42, None)])
         d = curs.fetchone()[0]
         self.assertEqual("(42,)", d)
 
     def test_none_fast_path(self):
         # the None adapter is not actually invoked in regular adaptation
-        ext = psycopg2.extensions
+        ext = extensions
 
         class WonkyAdapter(object):
             def __init__(self, obj): pass
@@ -472,13 +473,13 @@ class AdaptTypeTestCase(ConnectingTestCase):
             self.assertEqual(ext.adapt(None).getquoted(), "NOPE!")
 
             s = curs.mogrify("SELECT %s;", (None,))
-            self.assertEqual(b("SELECT NULL;"), s)
+            self.assertEqual(b"SELECT NULL;", s)
 
         finally:
             ext.register_adapter(type(None), orig_adapter)
 
     def test_tokenization(self):
-        from psycopg2.extras import CompositeCaster
+        from psycopg2cffi.extras import CompositeCaster
         def ok(s, v):
             self.assertEqual(CompositeCaster.tokenize(s), v)
 
@@ -492,6 +493,7 @@ class AdaptTypeTestCase(ConnectingTestCase):
         ok('(10,"(20,""(30,40)"")")', ['10', '(20,"(30,40)")'])
         ok('(10,"(20,""(30,""""(40,50)"""")"")")', ['10', '(20,"(30,""(40,50)"")")'])
         ok('(,"(,""(a\nb\tc)"")")', [None, '(,"(a\nb\tc)")'])
+        bytelist = [chr(i) for i in range(1, 128)]
         ok('(\x01,\x02,\x03,\x04,\x05,\x06,\x07,\x08,"\t","\n","\x0b",'
            '"\x0c","\r",\x0e,\x0f,\x10,\x11,\x12,\x13,\x14,\x15,\x16,'
            '\x17,\x18,\x19,\x1a,\x1b,\x1c,\x1d,\x1e,\x1f," ",!,"""",#,'
@@ -499,19 +501,19 @@ class AdaptTypeTestCase(ConnectingTestCase):
            '@,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,[,"\\\\",],'
            '^,_,`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,{,|,},'
            '~,\x7f)',
-           map(chr, range(1, 128)))
+           bytelist) 
         ok('(,"\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
            '\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !'
            '""#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\\\]'
            '^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f")',
-           [None, ''.join(map(chr, range(1, 128)))])
+           [None, ''.join(bytelist)])
 
     @skip_if_no_composite
     def test_cast_composite(self):
         oid = self._create_type("type_isd",
             [('anint', 'integer'), ('astring', 'text'), ('adate', 'date')])
 
-        t = psycopg2.extras.register_composite("type_isd", self.conn)
+        t = extras.register_composite("type_isd", self.conn)
         self.assertEqual(t.name, 'type_isd')
         self.assertEqual(t.schema, 'public')
         self.assertEqual(t.oid, oid)
@@ -543,7 +545,7 @@ class AdaptTypeTestCase(ConnectingTestCase):
         # issue #141
         self._create_type("type_ss", [('s1', 'text'), ('s2', 'text')])
         curs = self.conn.cursor()
-        psycopg2.extras.register_composite("type_ss", curs)
+        extras.register_composite("type_ss", curs)
 
         def ok(t):
             curs.execute("select %s::type_ss", (t,))
@@ -567,9 +569,9 @@ class AdaptTypeTestCase(ConnectingTestCase):
         self._create_type("type_r_ft",
             [("afloat", "float8"), ("anotherpair", "type_r_dt")])
 
-        psycopg2.extras.register_composite("type_is", self.conn)
-        psycopg2.extras.register_composite("type_r_dt", self.conn)
-        psycopg2.extras.register_composite("type_r_ft", self.conn)
+        extras.register_composite("type_is", self.conn)
+        extras.register_composite("type_r_dt", self.conn)
+        extras.register_composite("type_r_ft", self.conn)
 
         curs = self.conn.cursor()
         r = (0.25, (date(2011,1,2), (42, "hello")))
@@ -591,7 +593,7 @@ class AdaptTypeTestCase(ConnectingTestCase):
 
         curs1 = self.conn.cursor()
         curs2 = self.conn.cursor()
-        psycopg2.extras.register_composite("type_ii", curs1)
+        extras.register_composite("type_ii", curs1)
         curs1.execute("select (1,2)::type_ii")
         self.assertEqual(curs1.fetchone()[0], (1,2))
         curs2.execute("select (1,2)::type_ii")
@@ -604,7 +606,7 @@ class AdaptTypeTestCase(ConnectingTestCase):
         conn1 = self.connect()
         conn2 = self.connect()
         try:
-            psycopg2.extras.register_composite("type_ii", conn1)
+            extras.register_composite("type_ii", conn1)
             curs1 = conn1.cursor()
             curs2 = conn2.cursor()
             curs1.execute("select (1,2)::type_ii")
@@ -622,7 +624,7 @@ class AdaptTypeTestCase(ConnectingTestCase):
         conn1 = self.connect()
         conn2 = self.connect()
         try:
-            t = psycopg2.extras.register_composite("type_ii", conn1, globally=True)
+            t = extras.register_composite("type_ii", conn1, globally=True)
             try:
                 curs1 = conn1.cursor()
                 curs2 = conn2.cursor()
@@ -633,9 +635,9 @@ class AdaptTypeTestCase(ConnectingTestCase):
             finally:
                 # drop the registered typecasters to help the refcounting
                 # script to return precise values.
-                del psycopg2.extensions.string_types[t.typecaster.values[0]]
+                del extensions.string_types[t.typecaster.values[0]]
                 if t.array_typecaster:
-                    del psycopg2.extensions.string_types[
+                    del extensions.string_types[
                         t.array_typecaster.values[0]]
 
         finally:
@@ -655,7 +657,7 @@ class AdaptTypeTestCase(ConnectingTestCase):
 
         self._create_type("typens.typens_ii",
             [("a", "integer"), ("b", "integer")])
-        t = psycopg2.extras.register_composite(
+        t = extras.register_composite(
             "typens.typens_ii", self.conn)
         self.assertEqual(t.schema, 'typens')
         curs.execute("select (4,8)::typens.typens_ii")
@@ -667,7 +669,7 @@ class AdaptTypeTestCase(ConnectingTestCase):
         oid = self._create_type("type_isd",
             [('anint', 'integer'), ('astring', 'text'), ('adate', 'date')])
 
-        t = psycopg2.extras.register_composite("type_isd", self.conn)
+        t = extras.register_composite("type_isd", self.conn)
 
         curs = self.conn.cursor()
         r1 = (10, 'hello', date(2011,1,2))
@@ -687,10 +689,10 @@ class AdaptTypeTestCase(ConnectingTestCase):
     @skip_if_no_composite
     def test_wrong_schema(self):
         oid = self._create_type("type_ii", [("a", "integer"), ("b", "integer")])
-        from psycopg2.extras import CompositeCaster
+        from psycopg2cffi.extras import CompositeCaster
         c = CompositeCaster('type_ii', oid, [('a', 23), ('b', 23), ('c', 23)])
         curs = self.conn.cursor()
-        psycopg2.extensions.register_type(c.typecaster, curs)
+        extensions.register_type(c.typecaster, curs)
         curs.execute("select (1,2)::type_ii")
         self.assertRaises(psycopg2.DataError, curs.fetchone)
 
@@ -721,8 +723,8 @@ class AdaptTypeTestCase(ConnectingTestCase):
                 ('testc', 2),
                 ('testd', 2);""")
 
-        psycopg2.extras.register_composite("ctest1", curs)
-        psycopg2.extras.register_composite("ctest2", curs)
+        extras.register_composite("ctest1", curs)
+        extras.register_composite("ctest2", curs)
 
         curs.execute("""
             select ctest1, array_agg(ctest2) as test2s
@@ -741,8 +743,8 @@ class AdaptTypeTestCase(ConnectingTestCase):
 
     @skip_if_no_composite
     def test_non_dbapi_connection(self):
-        from psycopg2.extras import RealDictConnection
-        from psycopg2.extras import register_composite
+        from psycopg2cffi.extras import RealDictConnection
+        from psycopg2cffi.extras import register_composite
         self._create_type("type_ii", [("a", "integer"), ("b", "integer")])
 
         conn = self.connect(connection_factory=RealDictConnection)
@@ -768,7 +770,7 @@ class AdaptTypeTestCase(ConnectingTestCase):
         oid = self._create_type("type_isd",
             [('anint', 'integer'), ('astring', 'text'), ('adate', 'date')])
 
-        from psycopg2.extras import register_composite, CompositeCaster
+        from psycopg2cffi.extras import register_composite, CompositeCaster
 
         class DictComposite(CompositeCaster):
             def make(self, values):
@@ -816,7 +818,7 @@ def skip_if_json_module(f):
     """Skip a test if a Python json module *is* available"""
     @wraps(f)
     def skip_if_json_module_(self):
-        if psycopg2.extras.json is not None:
+        if extras.json is not None:
             return self.skipTest("json module is available")
 
         return f(self)
@@ -827,7 +829,7 @@ def skip_if_no_json_module(f):
     """Skip a test if no Python json module is available"""
     @wraps(f)
     def skip_if_no_json_module_(self):
-        if psycopg2.extras.json is None:
+        if extras.json is None:
             return self.skipTest("json module not available")
 
         return f(self)
@@ -850,12 +852,12 @@ def skip_if_no_json_type(f):
 class JsonTestCase(ConnectingTestCase):
     @skip_if_json_module
     def test_module_not_available(self):
-        from psycopg2.extras import Json
+        from psycopg2cffi.extras import Json
         self.assertRaises(ImportError, Json(None).getquoted)
 
     @skip_if_json_module
     def test_customizable_with_module_not_available(self):
-        from psycopg2.extras import Json
+        from psycopg2cffi.extras import Json
         class MyJson(Json):
             def dumps(self, obj):
                 assert obj is None
@@ -865,19 +867,19 @@ class JsonTestCase(ConnectingTestCase):
 
     @skip_if_no_json_module
     def test_adapt(self):
-        from psycopg2.extras import json, Json
+        from psycopg2cffi.extras import json, Json
 
         objs = [None, "te'xt", 123, 123.45,
-            u'\xe0\u20ac', ['a', 100], {'a': 100} ]
+            _u(b'\xc3\xa0\xe2\x82\xac'), ['a', 100], {'a': 100} ]
 
         curs = self.conn.cursor()
         for obj in enumerate(objs):
             self.assertEqual(curs.mogrify("%s", (Json(obj),)),
-                psycopg2.extensions.QuotedString(json.dumps(obj)).getquoted())
+                extensions.QuotedString(json.dumps(obj)).getquoted())
 
     @skip_if_no_json_module
     def test_adapt_dumps(self):
-        from psycopg2.extras import json, Json
+        from psycopg2cffi.extras import json, Json
 
         class DecimalEncoder(json.JSONEncoder):
             def default(self, obj):
@@ -889,11 +891,11 @@ class JsonTestCase(ConnectingTestCase):
         obj = Decimal('123.45')
         dumps = lambda obj: json.dumps(obj, cls=DecimalEncoder)
         self.assertEqual(curs.mogrify("%s", (Json(obj, dumps=dumps),)),
-            b("'123.45'"))
+                b"'123.45'")
 
     @skip_if_no_json_module
     def test_adapt_subclass(self):
-        from psycopg2.extras import json, Json
+        from psycopg2cffi.extras import json, Json
 
         class DecimalEncoder(json.JSONEncoder):
             def default(self, obj):
@@ -908,20 +910,20 @@ class JsonTestCase(ConnectingTestCase):
         curs = self.conn.cursor()
         obj = Decimal('123.45')
         self.assertEqual(curs.mogrify("%s", (MyJson(obj),)),
-            b("'123.45'"))
+                b"'123.45'")
 
     @skip_if_no_json_module
     def test_register_on_dict(self):
-        from psycopg2.extras import Json
-        psycopg2.extensions.register_adapter(dict, Json)
+        from psycopg2cffi.extras import Json
+        extensions.register_adapter(dict, Json)
 
         try:
             curs = self.conn.cursor()
             obj = {'a': 123}
             self.assertEqual(curs.mogrify("%s", (obj,)),
-                b("""'{"a": 123}'"""))
+                    b"""'{"a": 123}'""")
         finally:
-           del psycopg2.extensions.adapters[dict, psycopg2.extensions.ISQLQuote]
+           del extensions.adapters[dict, extensions.ISQLQuote]
 
 
     def test_type_not_available(self):
@@ -931,7 +933,7 @@ class JsonTestCase(ConnectingTestCase):
             return self.skipTest("json available in test database")
 
         self.assertRaises(psycopg2.ProgrammingError,
-            psycopg2.extras.register_json, self.conn)
+            extras.register_json, self.conn)
 
     @skip_if_no_json_module
     @skip_before_postgres(9, 2)
@@ -947,7 +949,7 @@ class JsonTestCase(ConnectingTestCase):
     @skip_if_no_json_module
     @skip_if_no_json_type
     def test_register_on_connection(self):
-        psycopg2.extras.register_json(self.conn)
+        extras.register_json(self.conn)
         curs = self.conn.cursor()
         curs.execute("""select '{"a": 100.0, "b": null}'::json""")
         self.assertEqual(curs.fetchone()[0], {'a': 100.0, 'b': None})
@@ -956,34 +958,34 @@ class JsonTestCase(ConnectingTestCase):
     @skip_if_no_json_type
     def test_register_on_cursor(self):
         curs = self.conn.cursor()
-        psycopg2.extras.register_json(curs)
+        extras.register_json(curs)
         curs.execute("""select '{"a": 100.0, "b": null}'::json""")
         self.assertEqual(curs.fetchone()[0], {'a': 100.0, 'b': None})
 
     @skip_if_no_json_module
     @skip_if_no_json_type
     def test_register_globally(self):
-        old = psycopg2.extensions.string_types.get(114)
-        olda = psycopg2.extensions.string_types.get(199)
+        old = extensions.string_types.get(114)
+        olda = extensions.string_types.get(199)
         try:
-            new, newa = psycopg2.extras.register_json(self.conn, globally=True)
+            new, newa = extras.register_json(self.conn, globally=True)
             curs = self.conn.cursor()
             curs.execute("""select '{"a": 100.0, "b": null}'::json""")
             self.assertEqual(curs.fetchone()[0], {'a': 100.0, 'b': None})
         finally:
-            psycopg2.extensions.string_types.pop(new.values[0])
-            psycopg2.extensions.string_types.pop(newa.values[0])
+            extensions.string_types.pop(new.values[0])
+            extensions.string_types.pop(newa.values[0])
             if old:
-                psycopg2.extensions.register_type(old)
+                extensions.register_type(old)
             if olda:
-                psycopg2.extensions.register_type(olda)
+                extensions.register_type(olda)
 
     @skip_if_no_json_module
     @skip_if_no_json_type
     def test_loads(self):
-        json = psycopg2.extras.json
+        json = extras.json
         loads = lambda x: json.loads(x, parse_float=Decimal)
-        psycopg2.extras.register_json(self.conn, loads=loads)
+        extras.register_json(self.conn, loads=loads)
         curs = self.conn.cursor()
         curs.execute("""select '{"a": 100.0, "b": null}'::json""")
         data = curs.fetchone()[0]
@@ -993,14 +995,14 @@ class JsonTestCase(ConnectingTestCase):
     @skip_if_no_json_module
     @skip_if_no_json_type
     def test_no_conn_curs(self):
-        from psycopg2._json import _get_json_oids
+        from psycopg2cffi._json import _get_json_oids
         oid, array_oid = _get_json_oids(self.conn)
 
-        old = psycopg2.extensions.string_types.get(114)
-        olda = psycopg2.extensions.string_types.get(199)
-        loads = lambda x: psycopg2.extras.json.loads(x, parse_float=Decimal)
+        old = extensions.string_types.get(114)
+        olda = extensions.string_types.get(199)
+        loads = lambda x: extras.json.loads(x, parse_float=Decimal)
         try:
-            new, newa = psycopg2.extras.register_json(
+            new, newa = extras.register_json(
                 loads=loads, oid=oid, array_oid=array_oid)
             curs = self.conn.cursor()
             curs.execute("""select '{"a": 100.0, "b": null}'::json""")
@@ -1008,20 +1010,20 @@ class JsonTestCase(ConnectingTestCase):
             self.assert_(isinstance(data['a'], Decimal))
             self.assertEqual(data['a'], Decimal('100.0'))
         finally:
-            psycopg2.extensions.string_types.pop(new.values[0])
-            psycopg2.extensions.string_types.pop(newa.values[0])
+            extensions.string_types.pop(new.values[0])
+            extensions.string_types.pop(newa.values[0])
             if old:
-                psycopg2.extensions.register_type(old)
+                extensions.register_type(old)
             if olda:
-                psycopg2.extensions.register_type(olda)
+                extensions.register_type(olda)
 
     @skip_if_no_json_module
     @skip_before_postgres(9, 2)
     def test_register_default(self):
         curs = self.conn.cursor()
 
-        loads = lambda x: psycopg2.extras.json.loads(x, parse_float=Decimal)
-        psycopg2.extras.register_default_json(curs, loads=loads)
+        loads = lambda x: extras.json.loads(x, parse_float=Decimal)
+        extras.register_default_json(curs, loads=loads)
 
         curs.execute("""select '{"a": 100.0, "b": null}'::json""")
         data = curs.fetchone()[0]
@@ -1036,7 +1038,7 @@ class JsonTestCase(ConnectingTestCase):
     @skip_if_no_json_module
     @skip_if_no_json_type
     def test_null(self):
-        psycopg2.extras.register_json(self.conn)
+        extras.register_json(self.conn)
         curs = self.conn.cursor()
         curs.execute("""select NULL::json""")
         self.assertEqual(curs.fetchone()[0], None)
@@ -1046,7 +1048,7 @@ class JsonTestCase(ConnectingTestCase):
     @skip_if_no_json_module
     def test_no_array_oid(self):
         curs = self.conn.cursor()
-        t1, t2 = psycopg2.extras.register_json(curs, oid=25)
+        t1, t2 = extras.register_json(curs, oid=25)
         self.assertEqual(t1.values[0], 25)
         self.assertEqual(t2, None)
 
@@ -1058,7 +1060,7 @@ class JsonTestCase(ConnectingTestCase):
 
 class RangeTestCase(unittest.TestCase):
     def test_noparam(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         r = Range()
 
         self.assert_(not r.isempty)
@@ -1070,7 +1072,7 @@ class RangeTestCase(unittest.TestCase):
         self.assert_(not r.upper_inc)
 
     def test_empty(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         r = Range(empty=True)
 
         self.assert_(r.isempty)
@@ -1082,7 +1084,7 @@ class RangeTestCase(unittest.TestCase):
         self.assert_(not r.upper_inc)
 
     def test_nobounds(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         r = Range(10, 20)
         self.assertEqual(r.lower, 10)
         self.assertEqual(r.upper, 20)
@@ -1093,7 +1095,7 @@ class RangeTestCase(unittest.TestCase):
         self.assert_(not r.upper_inc)
 
     def test_bounds(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         for bounds, lower_inc, upper_inc in [
                 ('[)', True, False),
                 ('(]', False, True),
@@ -1109,7 +1111,7 @@ class RangeTestCase(unittest.TestCase):
             self.assertEqual(r.upper_inc, upper_inc)
 
     def test_keywords(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         r = Range(upper=20)
         self.assertEqual(r.lower, None)
         self.assertEqual(r.upper, 20)
@@ -1129,12 +1131,12 @@ class RangeTestCase(unittest.TestCase):
         self.assert_(not r.upper_inc)
 
     def test_bad_bounds(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         self.assertRaises(ValueError, Range, bounds='(')
         self.assertRaises(ValueError, Range, bounds='[}')
 
     def test_in(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         r = Range(empty=True)
         self.assert_(10 not in r)
 
@@ -1186,13 +1188,13 @@ class RangeTestCase(unittest.TestCase):
         self.assert_(21 not in r)
 
     def test_nonzero(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         self.assert_(Range())
         self.assert_(Range(10, 20))
         self.assert_(not Range(empty=True))
 
     def test_eq_hash(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         def assert_equal(r1, r2):
             self.assert_(r1 == r2)
             self.assert_(hash(r1) == hash(r2))
@@ -1213,7 +1215,7 @@ class RangeTestCase(unittest.TestCase):
         assert_not_equal(Range(10, 20, '[)'), Range(10, 20, '[]'))
 
     def test_not_ordered(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         self.assertRaises(TypeError, lambda: Range(empty=True) < Range(0,4))
         self.assertRaises(TypeError, lambda: Range(1,2) > Range(0,4))
         self.assertRaises(TypeError, lambda: Range(1,2) <= Range())
@@ -1246,7 +1248,7 @@ class RangeCasterTestCase(ConnectingTestCase):
             self.assertEqual(r, None)
 
     def test_cast_empty(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         cur = self.conn.cursor()
         for type in self.builtin_ranges:
             cur.execute("select 'empty'::%s" % type)
@@ -1255,7 +1257,7 @@ class RangeCasterTestCase(ConnectingTestCase):
             self.assert_(r.isempty)
 
     def test_cast_inf(self):
-        from psycopg2.extras import Range
+        from psycopg2cffi.extras import Range
         cur = self.conn.cursor()
         for type in self.builtin_ranges:
             cur.execute("select '(,)'::%s" % type)
@@ -1266,7 +1268,7 @@ class RangeCasterTestCase(ConnectingTestCase):
             self.assert_(r.upper_inf)
 
     def test_cast_numbers(self):
-        from psycopg2.extras import NumericRange
+        from psycopg2cffi.extras import NumericRange
         cur = self.conn.cursor()
         for type in ('int4range', 'int8range'):
             cur.execute("select '(10,20)'::%s" % type)
@@ -1292,7 +1294,7 @@ class RangeCasterTestCase(ConnectingTestCase):
         self.assert_(not r.upper_inc)
 
     def test_cast_date(self):
-        from psycopg2.extras import DateRange
+        from psycopg2cffi.extras import DateRange
         cur = self.conn.cursor()
         cur.execute("select '(2000-01-01,2012-12-31)'::daterange")
         r = cur.fetchone()[0]
@@ -1306,7 +1308,7 @@ class RangeCasterTestCase(ConnectingTestCase):
         self.assert_(not r.upper_inc)
 
     def test_cast_timestamp(self):
-        from psycopg2.extras import DateTimeRange
+        from psycopg2cffi.extras import DateTimeRange
         cur = self.conn.cursor()
         ts1 = datetime(2000,1,1)
         ts2 = datetime(2000,12,31,23,59,59,999)
@@ -1322,8 +1324,8 @@ class RangeCasterTestCase(ConnectingTestCase):
         self.assert_(not r.upper_inc)
 
     def test_cast_timestamptz(self):
-        from psycopg2.extras import DateTimeTZRange
-        from psycopg2.tz import FixedOffsetTimezone
+        from psycopg2cffi.extras import DateTimeTZRange
+        from psycopg2cffi.tz import FixedOffsetTimezone
         cur = self.conn.cursor()
         ts1 = datetime(2000,1,1, tzinfo=FixedOffsetTimezone(600))
         ts2 = datetime(2000,12,31,23,59,59,999, tzinfo=FixedOffsetTimezone(600))
@@ -1339,7 +1341,7 @@ class RangeCasterTestCase(ConnectingTestCase):
         self.assert_(r.upper_inc)
 
     def test_adapt_number_range(self):
-        from psycopg2.extras import NumericRange
+        from psycopg2cffi.extras import NumericRange
         cur = self.conn.cursor()
 
         r = NumericRange(empty=True)
@@ -1367,7 +1369,7 @@ class RangeCasterTestCase(ConnectingTestCase):
         self.assert_(r1.upper_inc)
 
     def test_adapt_numeric_range(self):
-        from psycopg2.extras import NumericRange
+        from psycopg2cffi.extras import NumericRange
         cur = self.conn.cursor()
 
         r = NumericRange(empty=True)
@@ -1395,13 +1397,31 @@ class RangeCasterTestCase(ConnectingTestCase):
         self.assert_(r1.upper_inc)
 
     def test_adapt_date_range(self):
-        from psycopg2.extras import DateRange, DateTimeRange, DateTimeTZRange
-        from psycopg2.tz import FixedOffsetTimezone
+        from psycopg2cffi.extras import DateRange, DateTimeRange, DateTimeTZRange
+        from psycopg2cffi.tz import FixedOffsetTimezone
         cur = self.conn.cursor()
 
-        d1 = date(2012, 01, 01)
+        d1 = date(2012, 1, 1)
         d2 = date(2012, 12, 31)
         r = DateRange(d1, d2)
+        cur.execute("select %s", (r,))
+        r1 = cur.fetchone()[0]
+        self.assert_(isinstance(r1, DateRange))
+        self.assertEqual(r1.lower, d1)
+        self.assertEqual(r1.upper, d2)
+        self.assert_(r1.lower_inc)
+        self.assert_(not r1.upper_inc)
+
+        r = DateRange('2012-01-01', '2012-12-31')
+        cur.execute("select %s", (r,))
+        r1 = cur.fetchone()[0]
+        self.assert_(isinstance(r1, DateRange))
+        self.assertEqual(r1.lower, d1)
+        self.assertEqual(r1.upper, d2)
+        self.assert_(r1.lower_inc)
+        self.assert_(not r1.upper_inc)
+
+        r = DateRange(_u(b'2012-01-01'), _u(b'2012-12-31'))
         cur.execute("select %s", (r,))
         r1 = cur.fetchone()[0]
         self.assert_(isinstance(r1, DateRange))
@@ -1428,7 +1448,7 @@ class RangeCasterTestCase(ConnectingTestCase):
         self.assert_(r1.upper_inc)
 
     def test_register_range_adapter(self):
-        from psycopg2.extras import Range, register_range
+        from psycopg2cffi.extras import Range, register_range
         cur = self.conn.cursor()
         cur.execute("create type textrange as range (subtype=text)")
         rc = register_range('textrange', 'TextRange', cur)
@@ -1455,7 +1475,7 @@ class RangeCasterTestCase(ConnectingTestCase):
             self.assert_(r1.upper_inc)
 
     def test_range_escaping(self):
-        from psycopg2.extras import register_range
+        from psycopg2cffi.extras import register_range
         cur = self.conn.cursor()
         cur.execute("create type textrange as range (subtype=text)")
         rc = register_range('textrange', 'TextRange', cur)
@@ -1469,8 +1489,8 @@ class RangeCasterTestCase(ConnectingTestCase):
         bounds = [ '[)', '(]', '()', '[]' ]
         ranges = [ TextRange(low, up, bounds[i % 4])
             for i, (low, up) in enumerate(zip(
-                [None] + map(chr, range(1, 128)),
-                map(chr, range(1,128)) + [None],
+                [None] + list(map(chr, range(1, 128))),
+                list(map(chr, range(1,128))) + [None],
                 ))]
         ranges.append(TextRange())
         ranges.append(TextRange(empty=True))
@@ -1506,7 +1526,7 @@ class RangeCasterTestCase(ConnectingTestCase):
             self.assertEqual(ranges[i].upper_inf, r.upper_inf)
 
     def test_range_not_found(self):
-        from psycopg2.extras import register_range
+        from psycopg2cffi.extras import register_range
         cur = self.conn.cursor()
         self.assertRaises(psycopg2.ProgrammingError,
             register_range, 'nosuchrange', 'FailRange', cur)
@@ -1520,7 +1540,7 @@ class RangeCasterTestCase(ConnectingTestCase):
         cur.execute("create type rs.r3 as range (subtype=text)")
         cur.execute("savepoint x")
 
-        from psycopg2.extras import register_range
+        from psycopg2cffi.extras import register_range
         ra1 = register_range('r1', 'r1', cur)
         ra2 = register_range('r2', 'r2', cur)
         rars2 = register_range('rs.r2', 'r2', cur)

@@ -23,16 +23,17 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-from testutils import unittest, skip_before_postgres
+from psycopg2cffi.tests.psycopg2_tests.testutils import \
+        unittest, skip_before_postgres
 
-import psycopg2
-from psycopg2 import extensions
+import psycopg2cffi as psycopg2
+from psycopg2cffi import extensions
 
 import time
 import select
-import StringIO
+from six import StringIO
 
-from testutils import ConnectingTestCase
+from psycopg2cffi.tests.psycopg2_tests.testutils import ConnectingTestCase
 
 class PollableStub(object):
     """A 'pollable' wrapper allowing analysis of the `poll()` calls."""
@@ -250,7 +251,7 @@ class AsyncTests(ConnectingTestCase):
         # copy should fail
         self.assertRaises(psycopg2.ProgrammingError,
                           cur.copy_from,
-                          StringIO.StringIO("1\n3\n5\n\\.\n"), "table1")
+                          StringIO("1\n3\n5\n\\.\n"), "table1")
 
     def test_lobject_while_async(self):
         # large objects should be prohibited

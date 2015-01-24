@@ -1,12 +1,16 @@
+from __future__ import unicode_literals
+
 import threading
 import weakref
 from functools import wraps
+import six
 
 from psycopg2cffi._impl import consts
 from psycopg2cffi._impl import encodings as _enc
 from psycopg2cffi._impl import exceptions
 from psycopg2cffi._impl.libpq import libpq, ffi
 from psycopg2cffi._impl import util
+from psycopg2cffi._impl.adapters import bytes_to_ascii, ascii_to_bytes
 from psycopg2cffi._impl.cursor import Cursor
 from psycopg2cffi._impl.lobject import LargeObject
 from psycopg2cffi._impl.notify import Notify
@@ -23,7 +27,7 @@ _isolevels = {
     'default':         -1,
 }
 
-for k, v in _isolevels.items():
+for k, v in list(_isolevels.items()):
     _isolevels[v] = k
 
 del k, v
@@ -124,7 +128,7 @@ class Connection(object):
         self._notice_callback = ffi.callback(
             'void(void *, const char *)',
             lambda arg, message: self_ref()._process_notice(
-                arg, ffi.string(message)))
+                arg, bytes_to_ascii(ffi.string(message))))
 
         if not self._async:
             self._connect_sync()
@@ -154,7 +158,7 @@ class Connection(object):
         of self._setup().
 
         """
-        self._pgconn = libpq.PQconnectStart(self.dsn)
+        self._pgconn = libpq.PQconnectStart(ascii_to_bytes(self.dsn))
         if not self._pgconn:
             raise exceptions.OperationalError('PQconnectStart() failed')
         elif libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
@@ -210,11 +214,11 @@ class Connection(object):
             if _green_callback:
                 pgres = self._execute_green(query)
             else:
-                pgres = libpq.PQexec(self._pgconn, query)
+                pgres = libpq.PQexec(self._pgconn, ascii_to_bytes(query))
 
             if not pgres or libpq.PQresultStatus(pgres) != libpq.PGRES_TUPLES_OK:
                 raise exceptions.OperationalError("can't fetch %s" % name)
-            rv = ffi.string(libpq.PQgetvalue(pgres, 0, 0))
+            rv = bytes_to_ascii(ffi.string(libpq.PQgetvalue(pgres, 0, 0)))
             libpq.PQclear(pgres)
             return rv
 
@@ -222,17 +226,20 @@ class Connection(object):
         """Set the value of a configuration parameter."""
         if value.lower() != 'default':
             value = util.quote_string(self, value)
-        self._execute_command('SET %s TO %s' % (name, value))
+        else:
+            value = b'default'
+        self._execute_command(ascii_to_bytes('SET %s TO ' % name) + value)
 
     def _set_guc_onoff(self, name, value):
         """Set the value of a configuration parameter to a boolean.
 
         The string 'default' is accepted too.
         """
-        if isinstance(value, basestring) and value.lower() == 'default':
+        if isinstance(value, six.string_types) and \
+                value.lower() in (b'default', 'default'):
             value = 'default'
         else:
-            value = value and 'on' or 'off'
+            value = 'on' if value else 'off'
         self._set_guc(name, value)
 
     @property
@@ -268,7 +275,9 @@ class Connection(object):
                 if isolation_level < 1 or isolation_level > 4:
                     raise ValueError('isolation level must be between 1 and 4')
                 isolation_level = _isolevels[isolation_level]
-            elif isinstance(isolation_level, basestring):
+            elif isinstance(isolation_level, six.string_types):
+                if isinstance(isolation_level, six.binary_type):
+                    isolation_level = bytes_to_ascii(isolation_level)
                 isolation_level = isolation_level.lower()
                 if not isolation_level or isolation_level not in _isolevels:
                     raise ValueError("bad value for isolation level: '%s'" %
@@ -310,8 +319,8 @@ class Connection(object):
         return libpq.PQbackendPID(self._pgconn)
 
     def get_parameter_status(self, parameter):
-        p = libpq.PQparameterStatus(self._pgconn, parameter)
-        return ffi.string(p) if p != ffi.NULL else None
+        p = libpq.PQparameterStatus(self._pgconn, ascii_to_bytes(parameter))
+        return bytes_to_ascii(ffi.string(p)) if p != ffi.NULL else None
 
     def get_transaction_status(self):
         return libpq.PQtransactionStatus(self._pgconn)
@@ -581,7 +590,7 @@ class Connection(object):
             if not self._iso_compatible_datestyle():
                 self.status = consts.STATUS_DATESTYLE
 
-                if libpq.PQsendQuery(self._pgconn, "SET DATESTYLE TO 'ISO'"):
+                if libpq.PQsendQuery(self._pgconn, b"SET DATESTYLE TO 'ISO'"):
                     self._async_status = consts.ASYNC_WRITE
                     return consts.POLL_WRITE
                 else:
@@ -639,7 +648,7 @@ class Connection(object):
             if _green_callback:
                 pgres = self._execute_green(command)
             else:
-                pgres = libpq.PQexec(self._pgconn, command)
+                pgres = libpq.PQexec(self._pgconn, ascii_to_bytes(command))
 
             if not pgres:
                 raise self._create_exception()
@@ -654,7 +663,9 @@ class Connection(object):
                     libpq.PQclear(pgres)
 
     def _execute_tpc_command(self, command, xid):
-        cmd = '%s %s' % (command, util.quote_string(self, str(xid)))
+        cmd = b' '.join([
+            ascii_to_bytes(command), 
+            util.quote_string(self, str(xid))])
         self._execute_command(cmd)
         self._mark += 1
 
@@ -666,7 +677,7 @@ class Connection(object):
 
         self._async_cursor = True
 
-        if not libpq.PQsendQuery(self._pgconn, query):
+        if not libpq.PQsendQuery(self._pgconn, ascii_to_bytes(query)):
             self._async_cursor = None
             return
 
@@ -753,8 +764,8 @@ class Connection(object):
 
     def _get_equote(self):
         ret = libpq.PQparameterStatus(
-            self._pgconn, 'standard_conforming_strings')
-        return ret and ffi.string(ret) == 'off' or False
+                self._pgconn, b'standard_conforming_strings')
+        return ret and ffi.string(ret) == b'off' or False
 
     def _is_busy(self):
         with self._lock:
@@ -785,8 +796,8 @@ class Connection(object):
 
             notify = Notify(
                 pg_notify.be_pid,
-                ffi.string(pg_notify.relname),
-                ffi.string(pg_notify.extra))
+                ffi.string(pg_notify.relname).decode(self._py_enc),
+                ffi.string(pg_notify.extra).decode(self._py_enc))
             self._notifies.append(notify)
 
             libpq.PQfreemem(pg_notify)
@@ -814,12 +825,12 @@ class Connection(object):
         # last command, and then the error message for the connection
         if pgres:
             pgmsg = libpq.PQresultErrorMessage(pgres)
-            pgmsg = ffi.string(pgmsg) if pgmsg else None
+            pgmsg = bytes_to_ascii(ffi.string(pgmsg)) if pgmsg else None
 
             # Get the correct exception class based on the error code
             code = libpq.PQresultErrorField(pgres, libpq.PG_DIAG_SQLSTATE)
             if code != ffi.NULL:
-                code = ffi.string(code)
+                code = bytes_to_ascii(ffi.string(code))
                 exc_type = util.get_exception_for_sqlstate(code)
             else:
                 code = None
@@ -827,7 +838,7 @@ class Connection(object):
 
         if not pgmsg:
             pgmsg = libpq.PQerrorMessage(self._pgconn)
-            pgmsg = ffi.string(pgmsg) if pgmsg else None
+            pgmsg = bytes_to_ascii(ffi.string(pgmsg)) if pgmsg else None
 
         if msg is None and pgmsg:
             msg = pgmsg
@@ -854,9 +865,9 @@ class Connection(object):
     def _iso_compatible_datestyle(self):
         ''' Return whether connection DateStyle is ISO-compatible
         '''
-        datestyle = libpq.PQparameterStatus(self._pgconn, 'DateStyle')
+        datestyle = libpq.PQparameterStatus(self._pgconn, b'DateStyle')
         return datestyle != ffi.NULL and \
-                ffi.string(datestyle).startswith('ISO')
+                ffi.string(datestyle).startswith(b'ISO')
 
 
 def _connect(dsn, connection_factory=None, async=False):

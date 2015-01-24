@@ -1,6 +1,11 @@
+from __future__ import unicode_literals
+
+import six
+
 from psycopg2cffi._impl import exceptions
 from psycopg2cffi._impl.libpq import libpq
-from psycopg2cffi._impl.adapters import QuotedString
+from psycopg2cffi._impl.adapters import QuotedString, ascii_to_bytes, \
+        bytes_to_ascii
 
 
 def pq_set_non_blocking(pgconn, arg, raise_exception=False):
@@ -49,6 +54,8 @@ def get_exception_for_sqlstate(code):
     http://www.postgresql.org/docs/current/static/errcodes-appendix.html
 
     """
+    if isinstance(code, six.binary_type):
+        code = bytes_to_ascii(code)
     if code[0] == '0':
         # Class 0A - Feature Not Supported
         if code[1] == 'A':
@@ -140,4 +147,5 @@ def get_exception_for_sqlstate(code):
 
     # Fallback exception
     return exceptions.DatabaseError
+
 

@@ -24,6 +24,8 @@ This module implements thread-safe (and not) connection pools.
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
+from __future__ import unicode_literals
+
 import psycopg2cffi as psycopg2
 import psycopg2cffi.extensions as _ext
 

@@ -10,6 +10,9 @@ This module holds all the extensions to the DBAPI-2.0 provided by psycopg.
 
 .. _PEP-246: http://www.python.org/peps/pep-0246.html
 """
+
+from __future__ import unicode_literals
+
 # psycopg/extensions.py - DBAPI-2.0 extensions specific to psycopg
 #
 # Copyright (C) 2003-2010 Federico Di Gregorio  <fog@debian.org>
@@ -94,7 +97,7 @@ class SQL_IN(object):
                 if hasattr(obj, 'prepare'):
                     obj.prepare(self._conn)
         qobjs = [o.getquoted() for o in pobjs]
-        return b('(') + b(', ').join(qobjs) + b(')')
+        return b'(' + b', '.join(qobjs) + b')'
 
     def __str__(self):
         return str(self.getquoted())
@@ -109,7 +112,7 @@ class NoneAdapter(object):
     def __init__(self, obj):
         pass
 
-    def getquoted(self, _null=b("NULL")):
+    def getquoted(self, _null=b"NULL"):
         return _null
 
 

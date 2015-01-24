@@ -1,11 +1,18 @@
+from __future__ import unicode_literals
+
 import re
 import decimal
 import datetime
 from time import localtime
+import six
 
 from psycopg2cffi._impl.libpq import libpq, ffi
+from psycopg2cffi._impl.adapters import bytes_to_ascii, ascii_to_bytes
 from psycopg2cffi._impl.exceptions import DataError
 
+# Typecasters accept bytes and return python objects.
+# This only applies to our internal typecasers - user-defined ones
+# accept unicode, to mimic psycopg2 behaviour
 
 string_types = {}
 
@@ -24,6 +31,9 @@ class Type(object):
 
     def cast(self, value, cursor=None, length=None):
         if self.py_caster is not None:
+            # py_caster-s are part of external api and so accept unicode
+            if isinstance(value, six.binary_type):
+                value = value.decode(cursor._conn._py_enc)
             return self.py_caster(value, cursor)
         return self.caster(value, length, cursor)
 
@@ -63,16 +73,30 @@ def typecast(caster, value, length, cursor):
 def parse_unknown(value, length, cursor):
     if value is None:
         return None
+    if value != b'{}':
+        # FIXME hmm not sure
+        if six.PY3 and isinstance(value, six.binary_type):
+            return parse_unicode(value, length, cursor)
+        return value
+    else:
+        return []
 
-    return value if value != '{}' else []
+
+if six.PY3:
+    def parse_string(value, length, cursor):
+        return value.decode(cursor.connection._py_enc) \
+                if value is not None else None
+else:
+    def parse_string(value, length, cursor):
+        return value
 
 
-def parse_string(value, length, cursor):
-    return value
-
-
-def parse_longinteger(value, length, cursor):
-    return long(value) if value is not None else None
+if six.PY3:
+    def parse_longinteger(value, length, cursor):
+        return int(value) if value is not None else None
+else:
+    def parse_longinteger(value, length, cursor):
+        return long(value) if value is not None else None
 
 
 def parse_integer(value, length, cursor):
@@ -84,7 +108,11 @@ def parse_float(value, length, cursor):
 
 
 def parse_decimal(value, length, cursor):
-    return decimal.Decimal(value) if value is not None else None
+    if value is None:
+        return None
+    if isinstance(value, six.binary_type):
+        value = bytes_to_ascii(value)
+    return decimal.Decimal(value)
 
 
 def parse_binary(value, length, cursor):
@@ -93,12 +121,12 @@ def parse_binary(value, length, cursor):
 
     to_length = ffi.new('size_t *')
     s = libpq.PQunescapeBytea(
-            ffi.new('unsigned char[]', str(value)), to_length)
+            ffi.new('unsigned char[]', value), to_length)
     try:
-        res = buffer(ffi.buffer(s, to_length[0])[:])
+        res = ffi.buffer(s, to_length[0])[:]
     finally:
         libpq.PQfreemem(s)
-    return res
+    return memoryview(res) if six.PY3 else buffer(res)
 
 
 def parse_boolean(value, length, cursor):
@@ -107,7 +135,7 @@ def parse_boolean(value, length, cursor):
     Postgres returns the boolean as a string with 'true' or 'false'
 
     """
-    return value[0] == "t" if value is not None else None
+    return value[:1] == b"t" if value is not None else None
 
 
 class parse_array(object):
@@ -130,7 +158,7 @@ class parse_array(object):
             return None
 
         s = value
-        if not (len(s) >= 2 and  s[0] == "{" and s[-1] == "}"):
+        if not (len(s) >= 2 and  s[:1] == b"{" and s[-1:] == b"}"):
             raise DataError("malformed array")
 
         i = 1
@@ -138,7 +166,8 @@ class parse_array(object):
         stack = [array]
         value_length = len(s) - 1
         while i < value_length:
-            if s[i] == '{':
+            si = s[i:i+1]
+            if si == b'{':
                 sub_array = []
                 array.append(sub_array)
                 stack.append(sub_array)
@@ -147,13 +176,13 @@ class parse_array(object):
 
                 array = sub_array
                 i += 1
-            elif s[i] == '}':
+            elif si == b'}':
                 stack.pop()
                 if not stack:
                     raise DataError("unbalanced braces in array")
                 array = stack[-1]
                 i += 1
-            elif s[i] in ', ':
+            elif si in b', ':
                 i += 1
             else:
                 # Number of quotes, this will always be 0 or 2 (int vs str)
@@ -164,23 +193,24 @@ class parse_array(object):
 
                 buf = []
                 while i < value_length:
+                    si = s[i:i+1]
                     if not escape_char:
-                        if s[i] == '"':
+                        if si == b'"':
                             quotes += 1
-                        elif s[i] == '\\':
+                        elif si == b'\\':
                             escape_char = True
-                        elif quotes % 2 == 0 and (s[i] == '}' or s[i] == ','):
+                        elif quotes % 2 == 0 and (si == b'}' or si == b','):
                             break
                         else:
-                            buf.append(s[i])
+                            buf.append(si)
                     else:
                         escape_char = False
-                        buf.append(s[i])
+                        buf.append(si)
 
                     i += 1
 
-                str_buf = ''.join(buf)
-                if len(str_buf) == 4 and str_buf.lower() == 'null':
+                str_buf = b''.join(buf)
+                if len(str_buf) == 4 and str_buf.lower() == b'null':
                     val = typecast(self._caster, None, 0, cursor)
                 else:
                     val = typecast(self._caster, str_buf, len(str_buf), cursor)
@@ -200,20 +230,20 @@ def _parse_time_to_args(value, cursor):
     The given value is in the format of `16:28:09.506488+01`
 
     """
-    hour, minute, second = value.split(':', 2)
+    hour, minute, second = value.split(b':', 2)
 
     sign = 0
     tzinfo = None
     timezone = None
-    if '-' in second:
+    if b'-' in second:
         sign = -1
-        second, timezone = second.split('-')
-    elif '+' in second:
+        second, timezone = second.split(b'-')
+    elif b'+' in second:
         sign = 1
-        second, timezone = second.split('+')
+        second, timezone = second.split(b'+')
 
     if not cursor.tzinfo_factory is None and sign:
-        parts = timezone.split(':')
+        parts = timezone.split(b':')
         tz_min = 60 * int(parts[0])
         if len(parts) > 1:
             tz_min += int(parts[1])
@@ -221,9 +251,9 @@ def _parse_time_to_args(value, cursor):
             tz_min += 1
         tzinfo = cursor.tzinfo_factory(sign * tz_min)
 
-    if '.' in second:
-        second, frac = second.split('.')
-        micros = int((frac + ('0' * (6 - len(frac))))[:6])
+    if b'.' in second:
+        second, frac = second.split(b'.')
+        micros = int((frac + (b'0' * (6 - len(frac))))[:6])
     else:
         micros = 0
 
@@ -233,52 +263,57 @@ def _parse_time_to_args(value, cursor):
 def parse_datetime(value, length, cursor):
     if value is None:
         return None
-    elif value == 'infinity':
+    if isinstance(value, six.text_type):
+        value = ascii_to_bytes(value)
+    if value == b'infinity':
         return datetime.datetime.max
-    elif value == '-infinity':
+    elif value == b'-infinity':
         return datetime.datetime.min
 
     try:
-        date, time = value.split(' ')
-        date_args = date.split('-')
+        date, time = value.split(b' ')
+        date_args = date.split(b'-')
         return datetime.datetime(
                 int(date_args[0]),
                 int(date_args[1]),
                 int(date_args[2]),
                 *_parse_time_to_args(time, cursor))
     except (TypeError, ValueError):
-        if value.endswith('BC'):
+        if value.endswith(b'BC'):
             raise ValueError('BC dates not supported')
-        raise DataError("bad datetime: '%s'" % value)
+        raise DataError("bad datetime: '%s'" % bytes_to_ascii(value))
 
 
 def parse_date(value, length, cursor):
     if value is None:
         return None
-    elif value == 'infinity':
+    if isinstance(value, six.text_type):
+        value = ascii_to_bytes(value)
+    if value == b'infinity':
         return datetime.date.max
-    elif value == '-infinity':
+    elif value == b'-infinity':
         return datetime.date.min
 
     try:
-        return datetime.date(*[int(x) for x in value.split('-')])
+        return datetime.date(*[int(x) for x in value.split(b'-')])
     except (TypeError, ValueError):
-        if value.endswith('BC'):
+        if value.endswith(b'BC'):
             raise ValueError('BC dates not supported')
-        raise DataError("bad datetime: '%s'" % value)
+        raise DataError("bad datetime: '%s'" % bytes_to_ascii(value))
 
 
 def parse_time(value, length, cursor):
     if value is None:
         return None
-
+    if isinstance(value, six.text_type):
+        value = ascii_to_bytes(value)
     try:
         return datetime.time(*_parse_time_to_args(value, cursor))
     except (TypeError, ValueError):
         raise DataError("bad datetime: '%s'" % value)
 
 
-_re_interval = re.compile(r"""
+_re_interval = re.compile(br"""
     (?:(-?\+?\d+)\sy\w+\s?)?    # year
     (?:(-?\+?\d+)\sm\w+\s?)?    # month
     (?:(-?\+?\d+)\sd\w+\s?)?    # day
@@ -295,6 +330,8 @@ def parse_interval(value, length, cursor):
     """
     if value is None:
         return None
+    if isinstance(value, six.text_type):
+        value = ascii_to_bytes(value)
 
     m = _re_interval.match(value)
     if not m:
@@ -311,11 +348,11 @@ def parse_interval(value, length, cursor):
     if hours is not None:
         secs = int(hours) * 3600 + int(mins) * 60 + int(secs)
         if frac is not None:
-            micros = int((frac + ('0' * (6 - len(frac))))[:6])
+            micros = int((frac + (b'0' * (6 - len(frac))))[:6])
         else:
             micros = 0
 
-        if sign == '-':
+        if sign == b'-':
             secs = -secs
             micros = -micros
     else:

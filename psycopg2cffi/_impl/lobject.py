@@ -1,5 +1,8 @@
+from __future__ import unicode_literals
+
 import os
 from functools import wraps
+import six
 
 from psycopg2cffi._impl import exceptions
 from psycopg2cffi._impl import consts
@@ -61,24 +64,23 @@ class LargeObject(object):
             self.seek(where, os.SEEK_SET)
             size = end - where
 
+        binary_mode = self._mode & consts.LOBJECT_BINARY
         if size == 0:
-            return ''
+            return b'' if binary_mode else ''
 
         buf = ffi.new('char []', size)
         length = libpq.lo_read(self._conn._pgconn, self._fd, buf, size)
         if length < 0:
             return
 
-        if self._mode & consts.LOBJECT_BINARY:
-            return ffi.buffer(buf, length)[:]
-        else:
-            return ffi.string(buf).decode(self._conn._py_enc)
+        return ffi.buffer(buf, length)[:] if binary_mode else \
+               ffi.string(buf).decode(self._conn._py_enc)
 
     @check_closed
     @check_unmarked
     def write(self, value):
         """Write a string to the large object."""
-        if isinstance(value, unicode):
+        if isinstance(value, six.text_type):
             value = value.encode(self._conn._py_enc)
         length = libpq.lo_write(
             self._conn._pgconn, self._fd, value, len(value))
@@ -89,6 +91,8 @@ class LargeObject(object):
     def export(self, file_name):
         """Export large object to given file."""
         self._conn._begin_transaction()
+        if isinstance(file_name, six.text_type):
+            file_name = file_name.encode(self._conn._py_enc)
         if libpq.lo_export(self._conn._pgconn, self._oid, file_name) < 0:
             raise self._conn._create_exception()
 
@@ -142,7 +146,10 @@ class LargeObject(object):
 
         if self._oid == 0:
             if self._new_file:
-                self._oid = libpq.lo_import(conn._pgconn, self._new_file)
+                _new_file = self._new_file
+                if isinstance(self._new_file, six.text_type):
+                    _new_file = self._new_file.encode(conn._py_enc)
+                self._oid = libpq.lo_import(conn._pgconn, _new_file)
             else:
                 self._oid = libpq.lo_create(conn._pgconn, self._new_oid)
 
@@ -167,8 +174,10 @@ class LargeObject(object):
         mode = 0
         pos = 0
 
+        binary_default = consts.LOBJECT_TEXT if six.PY3 else \
+                consts.LOBJECT_BINARY
         if not smode:
-            return consts.LOBJECT_READ | consts.LOBJECT_BINARY
+            return consts.LOBJECT_READ | binary_default
 
         if smode[0:2] == 'rw':
             mode |= consts.LOBJECT_READ | consts.LOBJECT_WRITE
@@ -193,9 +202,9 @@ class LargeObject(object):
                 mode |= consts.LOBJECT_BINARY
                 pos += 1
             else:
-                mode |= consts.LOBJECT_BINARY
+                mode |= binary_default
         else:
-            mode |= consts.LOBJECT_BINARY
+            mode |= binary_default
 
         if len(smode) != pos:
             raise ValueError("bad mode for lobject: '%s'", smode)

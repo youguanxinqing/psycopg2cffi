@@ -164,8 +164,8 @@ def _create_json_typecasters(oid, array_oid, loads=None):
 
 def _get_json_oids(conn_or_curs):
     # lazy imports
-    from psycopg2.extensions import STATUS_IN_TRANSACTION
-    from psycopg2.extras import _solve_conn_curs
+    from psycopg2cffi.extensions import STATUS_IN_TRANSACTION
+    from psycopg2cffi.extras import _solve_conn_curs
 
     conn, curs = _solve_conn_curs(conn_or_curs)
 

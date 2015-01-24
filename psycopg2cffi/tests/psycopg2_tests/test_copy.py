@@ -24,14 +24,15 @@
 
 import sys
 import string
-from testutils import unittest, ConnectingTestCase, decorate_all_tests
-from testutils import skip_if_no_iobase
-from cStringIO import StringIO
-from itertools import cycle, izip
+from six.moves import cStringIO as StringIO
+from itertools import cycle
+from six.moves import xrange, zip as izip
 
-import psycopg2
-import psycopg2.extensions
-from testutils import skip_copy_if_green
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        decorate_all_tests, skip_if_no_iobase, skip_copy_if_green, \
+        ConnectingTestCase
+from psycopg2cffi import extensions
+
 
 if sys.version_info[0] < 3:
     _base = object
@@ -132,7 +133,8 @@ class CopyTests(ConnectingTestCase):
             about = abin.decode('latin1').replace('\\', '\\\\')
 
         else:
-            abin = bytes(range(32, 127) + range(160, 256)).decode('latin1')
+            abin = bytes(list(range(32, 127)) + list(range(160, 256)))\
+                    .decode('latin1')
             about = abin.replace('\\', '\\\\')
 
         curs = self.conn.cursor()
@@ -151,10 +153,11 @@ class CopyTests(ConnectingTestCase):
         self._create_temp_table()  # the above call closed the xn
 
         if sys.version_info[0] < 3:
-            abin = ''.join(map(chr, range(32, 127) + range(160, 255)))
-            about = abin.replace('\\', '\\\\')
+            abin = b''.join(map(chr, range(32, 127) + range(160, 255)))
+            about = abin.replace(b'\\', b'\\\\')
         else:
-            abin = bytes(range(32, 127) + range(160, 255)).decode('latin1')
+            abin = bytes(list(range(32, 127)) + list(range(160, 255)))\
+                    .decode('latin1')
             about = abin.replace('\\', '\\\\').encode('latin1')
 
         curs = self.conn.cursor()
@@ -173,12 +176,13 @@ class CopyTests(ConnectingTestCase):
         self._create_temp_table()  # the above call closed the xn
 
         if sys.version_info[0] < 3:
-            abin = ''.join(map(chr, range(32, 127) + range(160, 256)))
+            abin = b''.join(map(chr, range(32, 127) + range(160, 256)))
             abin = abin.decode('latin1')
             about = abin.replace('\\', '\\\\')
 
         else:
-            abin = bytes(range(32, 127) + range(160, 256)).decode('latin1')
+            abin = bytes(list(range(32, 127)) + list(range(160, 256)))\
+                    .decode('latin1')
             about = abin.replace('\\', '\\\\')
 
         import io
@@ -187,8 +191,7 @@ class CopyTests(ConnectingTestCase):
         f.seek(0)
 
         curs = self.conn.cursor()
-        psycopg2.extensions.register_type(
-            psycopg2.extensions.UNICODE, curs)
+        extensions.register_type(extensions.UNICODE, curs)
 
         curs.copy_expert('COPY tcopy (data) FROM STDIN', f)
         curs.execute("select data from tcopy;")

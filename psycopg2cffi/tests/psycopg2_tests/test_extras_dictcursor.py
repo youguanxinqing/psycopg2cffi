@@ -16,10 +16,12 @@
 
 import time
 from datetime import timedelta
-import psycopg2
-import psycopg2.extras
-from testutils import unittest, ConnectingTestCase, skip_before_postgres
-from testutils import skip_if_no_namedtuple
+import six
+
+import psycopg2cffi as psycopg2
+from psycopg2cffi import extras
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        skip_before_postgres, skip_if_no_namedtuple, ConnectingTestCase
 
 
 class ExtrasDictCursorTests(ConnectingTestCase):
@@ -131,7 +133,7 @@ class ExtrasDictCursorTests(ConnectingTestCase):
 
     @skip_before_postgres(8, 2)
     def testDictCursorWithNamedCursorNotGreedy(self):
-        curs = self.conn.cursor('tmp', cursor_factory=psycopg2.extras.DictCursor)
+        curs = self.conn.cursor('tmp', cursor_factory=extras.DictCursor)
         self._testNamedCursorNotGreedy(curs)
 
     @skip_before_postgres(8, 0)
@@ -167,16 +169,16 @@ class ExtrasDictCursorTests(ConnectingTestCase):
 
     @skip_before_postgres(8, 2)
     def testDictCursorRealWithNamedCursorNotGreedy(self):
-        curs = self.conn.cursor('tmp', cursor_factory=psycopg2.extras.RealDictCursor)
+        curs = self.conn.cursor('tmp', cursor_factory=extras.RealDictCursor)
         self._testNamedCursorNotGreedy(curs)
 
     @skip_before_postgres(8, 0)
     def testDictCursorRealWithNamedCursorIterRowNumber(self):
-        curs = self.conn.cursor('tmp', cursor_factory=psycopg2.extras.RealDictCursor)
+        curs = self.conn.cursor('tmp', cursor_factory=extras.RealDictCursor)
         self._testIterRowNumber(curs)
 
     def _testWithNamedCursorReal(self, getter):
-        curs = self.conn.cursor('aname', cursor_factory=psycopg2.extras.RealDictCursor)
+        curs = self.conn.cursor('aname', cursor_factory=extras.RealDictCursor)
         curs.execute("SELECT * FROM ExtrasDictCursorTests")
         row = getter(curs)
         self.failUnless(row['foo'] == 'bar')
@@ -232,7 +234,7 @@ class ExtrasDictCursorTests(ConnectingTestCase):
 class NamedTupleCursorTest(ConnectingTestCase):
     def setUp(self):
         ConnectingTestCase.setUp(self)
-        from psycopg2.extras import NamedTupleConnection
+        from psycopg2cffi.extras import NamedTupleConnection
 
         try:
             from collections import namedtuple
@@ -325,22 +327,22 @@ class NamedTupleCursorTest(ConnectingTestCase):
         i = iter(curs)
         self.assertEqual(curs.rownumber, 0)
 
-        t = i.next()
+        t = six.next(i)
         self.assertEqual(t.i, 1)
         self.assertEqual(t.s, 'foo')
         self.assertEqual(curs.rownumber, 1)
         self.assertEqual(curs.rowcount, 3)
 
-        t = i.next()
+        t = six.next(i)
         self.assertEqual(t.i, 2)
         self.assertEqual(t.s, 'bar')
         self.assertEqual(curs.rownumber, 2)
         self.assertEqual(curs.rowcount, 3)
 
-        t = i.next()
+        t = six.next(i)
         self.assertEqual(t.i, 3)
         self.assertEqual(t.s, 'baz')
-        self.assertRaises(StopIteration, i.next)
+        self.assertRaises(StopIteration, six.next, i)
         self.assertEqual(curs.rownumber, 3)
         self.assertEqual(curs.rowcount, 3)
 
@@ -349,7 +351,7 @@ class NamedTupleCursorTest(ConnectingTestCase):
             from collections import namedtuple
         except ImportError:
             # an import error somewhere
-            from psycopg2.extras import NamedTupleConnection
+            from psycopg2cffi.extras import NamedTupleConnection
             try:
                 self.conn = self.connect(
                     connection_factory=NamedTupleConnection)
@@ -387,7 +389,7 @@ class NamedTupleCursorTest(ConnectingTestCase):
     @skip_if_no_namedtuple
     def test_minimal_generation(self):
         # Instrument the class to verify it gets called the minimum number of times.
-        from psycopg2.extras import NamedTupleCursor
+        from psycopg2cffi.extras import NamedTupleCursor
         f_orig = NamedTupleCursor._make_nt
         calls = [0]
         def f_patched(self_):
@@ -426,7 +428,7 @@ class NamedTupleCursorTest(ConnectingTestCase):
         recs.extend(curs.fetchmany(5))
         recs.append(curs.fetchone())
         recs.extend(curs.fetchall())
-        self.assertEqual(range(10), [t.i for t in recs])
+        self.assertEqual(list(range(10)), [t.i for t in recs])
 
     @skip_if_no_namedtuple
     def test_named_fetchone(self):

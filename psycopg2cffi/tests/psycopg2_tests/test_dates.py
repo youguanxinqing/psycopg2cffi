@@ -23,9 +23,10 @@
 # License for more details.
 
 import math
-import psycopg2
-from psycopg2.tz import FixedOffsetTimezone, ZERO
-from testutils import unittest, ConnectingTestCase
+import psycopg2cffi as psycopg2
+from psycopg2cffi.tz import FixedOffsetTimezone, ZERO
+from psycopg2cffi.tests.psycopg2_tests.testutils import ConnectingTestCase, \
+        unittest
 
 class CommonDatetimeTestsMixin:
 
@@ -278,8 +279,8 @@ class DatetimeTests(ConnectingTestCase, CommonDatetimeTestsMixin):
 
     def test_type_roundtrip_datetimetz(self):
         from datetime import datetime
-        import psycopg2.tz
-        tz = psycopg2.tz.FixedOffsetTimezone(8*60)
+        from psycopg2cffi import tz
+        tz = tz.FixedOffsetTimezone(8*60)
         dt1 = datetime(2010,5,3,10,20,30, tzinfo=tz)
         dt2 = self._test_type_roundtrip(dt1)
         self.assertNotEqual(None, dt2.tzinfo)
@@ -500,21 +501,21 @@ class FromTicksTestCase(unittest.TestCase):
     # reported by Jozsef Szalay on 2010-05-06
     def test_timestamp_value_error_sec_59_99(self):
         from datetime import datetime
-        s = psycopg2.TimestampFromTicks(1273173119.99992)
+        s = psycopg2.TimestampFromTicks(1273173119.999921)
         self.assertEqual(s.adapted,
-            datetime(2010, 5, 6, 14, 11, 59, 999920,
+            datetime(2010, 5, 6, 14, 11, 59, 999921,
                 tzinfo=FixedOffsetTimezone(-5 * 60)))
 
     def test_date_value_error_sec_59_99(self):
         from datetime import date
-        s = psycopg2.DateFromTicks(1273173119.99992)
+        s = psycopg2.DateFromTicks(1273173119.999921)
         self.assertEqual(s.adapted, date(2010, 5, 6))
 
     def test_time_value_error_sec_59_99(self):
         from datetime import time
-        s = psycopg2.TimeFromTicks(1273173119.99992)
+        s = psycopg2.TimeFromTicks(1273173119.999921)
         self.assertEqual(s.adapted.replace(hour=0),
-            time(0, 11, 59, 999920))
+            time(0, 11, 59, 999921))
 
 
 class FixedOffsetTimezoneTests(unittest.TestCase):

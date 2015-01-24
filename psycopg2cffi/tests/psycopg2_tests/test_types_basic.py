@@ -25,12 +25,15 @@
 import decimal
 
 import sys
+import six
 from functools import wraps
-import testutils
-from testutils import unittest, ConnectingTestCase, decorate_all_tests
+from psycopg2cffi.tests.psycopg2_tests import testutils
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        decorate_all_tests, _u, ConnectingTestCase
 
-import psycopg2
-from psycopg2.extensions import b
+import psycopg2cffi as psycopg2
+from psycopg2cffi import extensions
+from psycopg2cffi.extensions import b
 
 
 class TypesBasicTests(ConnectingTestCase):
@@ -47,15 +50,16 @@ class TypesBasicTests(ConnectingTestCase):
                         "wrong quoting: " + s)
 
     def testUnicode(self):
-        s = u"Quote'this\\! ''ok?''"
+        s = _u(b"Quote'this\\! ''ok?''")
         self.failUnless(self.execute("SELECT %s AS foo", (s,)) == s,
                         "wrong unicode quoting: " + s)
 
     def testNumber(self):
         s = self.execute("SELECT %s AS foo", (1971,))
         self.failUnless(s == 1971, "wrong integer quoting: " + str(s))
-        s = self.execute("SELECT %s AS foo", (1971L,))
-        self.failUnless(s == 1971L, "wrong integer quoting: " + str(s))
+        if not six.PY3:
+            s = self.execute("SELECT %s AS foo", (long(1971),))
+            self.failUnless(s == long(1971), "wrong integer quoting: " + str(s))
 
     def testBoolean(self):
         x = self.execute("SELECT %s as foo", (False,))
@@ -235,14 +239,16 @@ class TypesBasicTests(ConnectingTestCase):
         o1 = bytearray(range(256))
         o2 = self.execute("select %s;", (o1,))
 
+        self.assertEqual(len(o1), len(o2))
         if sys.version_info[0] < 3:
             self.assertEqual(buffer, type(o2))
         else:
             self.assertEqual(memoryview, type(o2))
-
-        self.assertEqual(len(o1), len(o2))
-        for c1, c2 in zip(o1, o2):
-            self.assertEqual(c1, ord(c2))
+        if sys.version_info[:2] < (3, 3):
+            for c1, c2 in zip(o1, o2):
+                self.assertEqual(c1, ord(c2))
+        else:
+            self.assertEqual(list(o1), list(o2))
 
         # Test with an empty buffer
         o1 = bytearray([])
@@ -276,7 +282,10 @@ class TypesBasicTests(ConnectingTestCase):
         # may be fooled if the first char is really an 'x'
         o1 = psycopg2.Binary(b('x'))
         o2 = self.execute("SELECT %s::bytea AS foo", (o1,))
-        self.assertEqual(b('x'), o2[0])
+        if sys.version_info[:2] < (3, 3):
+            self.assertEqual(b('x'), o2[0])
+        else:
+            self.assertEqual(ord('x'), o2[0])
 
     def testNegNumber(self):
         d1 = self.execute("select -%s;", (decimal.Decimal('-1.0'),))
@@ -285,8 +294,9 @@ class TypesBasicTests(ConnectingTestCase):
         self.assertEqual(1, f1)
         i1 = self.execute("select -%s;", (-1,))
         self.assertEqual(1, i1)
-        l1 = self.execute("select -%s;", (-1L,))
-        self.assertEqual(1, l1)
+        if sys.version_info[0] < 3:
+            l1 = self.execute("select -%s;", (long(-1),))
+            self.assertEqual(1, l1)
 
     def testGenericArray(self):
         a = self.execute("select '{1,2,3}'::int4[]")
@@ -299,10 +309,10 @@ class TypesBasicTests(ConnectingTestCase):
         def caster(s, cur):
             if s is None: return "nada"
             return int(s) * 2
-        base = psycopg2.extensions.new_type((23,), "INT4", caster)
-        array = psycopg2.extensions.new_array_type((1007,), "INT4ARRAY", base)
+        base = extensions.new_type((23,), "INT4", caster)
+        array = extensions.new_array_type((1007,), "INT4ARRAY", base)
 
-        psycopg2.extensions.register_type(array, self.conn)
+        extensions.register_type(array, self.conn)
         a = self.execute("select '{1,2,3}'::int4[]")
         self.assertEqual(a, [2,4,6])
         a = self.execute("select '{1,2,NULL}'::int4[]")
@@ -311,14 +321,14 @@ class TypesBasicTests(ConnectingTestCase):
 
 class AdaptSubclassTest(unittest.TestCase):
     def test_adapt_subtype(self):
-        from psycopg2.extensions import adapt
+        from psycopg2cffi.extensions import adapt
         class Sub(str): pass
         s1 = "hel'lo"
         s2 = Sub(s1)
         self.assertEqual(adapt(s1).getquoted(), adapt(s2).getquoted())
 
     def test_adapt_most_specific(self):
-        from psycopg2.extensions import adapt, register_adapter, AsIs
+        from psycopg2cffi.extensions import adapt, register_adapter, AsIs
 
         class A(object): pass
         class B(A): pass
@@ -329,12 +339,12 @@ class AdaptSubclassTest(unittest.TestCase):
         try:
             self.assertEqual(b('b'), adapt(C()).getquoted())
         finally:
-           del psycopg2.extensions.adapters[A, psycopg2.extensions.ISQLQuote]
-           del psycopg2.extensions.adapters[B, psycopg2.extensions.ISQLQuote]
+           del extensions.adapters[A, extensions.ISQLQuote]
+           del extensions.adapters[B, extensions.ISQLQuote]
 
     @testutils.skip_from_python(3)
     def test_no_mro_no_joy(self):
-        from psycopg2.extensions import adapt, register_adapter, AsIs
+        from psycopg2cffi.extensions import adapt, register_adapter, AsIs
 
         class A: pass
         class B(A): pass
@@ -343,12 +353,12 @@ class AdaptSubclassTest(unittest.TestCase):
         try:
             self.assertRaises(psycopg2.ProgrammingError, adapt, B())
         finally:
-           del psycopg2.extensions.adapters[A, psycopg2.extensions.ISQLQuote]
+           del extensions.adapters[A, extensions.ISQLQuote]
 
 
     @testutils.skip_before_python(3)
     def test_adapt_subtype_3(self):
-        from psycopg2.extensions import adapt, register_adapter, AsIs
+        from psycopg2cffi.extensions import adapt, register_adapter, AsIs
 
         class A: pass
         class B(A): pass
@@ -357,7 +367,7 @@ class AdaptSubclassTest(unittest.TestCase):
         try:
             self.assertEqual(b("a"), adapt(B()).getquoted())
         finally:
-           del psycopg2.extensions.adapters[A, psycopg2.extensions.ISQLQuote]
+           del extensions.adapters[A, extensions.ISQLQuote]
 
 
 class ByteaParserTest(unittest.TestCase):
@@ -365,7 +375,7 @@ class ByteaParserTest(unittest.TestCase):
     def setUp(self):
         try:
             self._cast = self._import_cast()
-        except Exception, e:
+        except Exception as e:
             self._cast = None
             self._exc = e
 

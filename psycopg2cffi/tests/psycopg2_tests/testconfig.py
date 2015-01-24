@@ -34,3 +34,30 @@ if dbpass is not None:
     dsn += ' password=%s' % dbpass
 
 
+# ===== Django settings ======================================================
+
+DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': dbname,
+            'USER': dbuser,
+            'PASSWORD': dbpass,
+            'HOST': dbhost,
+            'PORT': dbport,
+            },
+        'other': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': dbname + '_other',
+            'USER': dbuser,
+            'PASSWORD': dbpass,
+            'HOST': dbhost,
+            'PORT': dbport,
+            },
+        }
+
+SECRET_KEY = "django_tests_secret_key"
+
+# Use a fast hasher to speed up tests.
+PASSWORD_HASHERS = (
+    'django.contrib.auth.hashers.MD5PasswordHasher',
+)

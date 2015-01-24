@@ -22,13 +22,11 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-import dbapi20
-import dbapi20_tpc
-from testutils import skip_if_tpc_disabled
-from testutils import unittest, decorate_all_tests
-import psycopg2
-
-from testconfig import dsn
+from psycopg2cffi.tests.psycopg2_tests import dbapi20, dbapi20_tpc
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        skip_if_tpc_disabled, decorate_all_tests
+import psycopg2cffi as psycopg2
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 
 class Psycopg2Tests(dbapi20.DatabaseAPI20Test):
     driver = psycopg2

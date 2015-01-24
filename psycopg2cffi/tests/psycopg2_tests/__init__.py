@@ -22,42 +22,47 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-import sys
-from testconfig import dsn
-from testutils import unittest
+from __future__ import print_function
 
-import test_async
-import test_bugX000
-import test_bug_gc
-import test_cancel
-import test_connection
-import test_copy
-import test_cursor
-import test_dates
-import test_extras_dictcursor
-import test_green
-import test_lobject
-import test_module
-import test_notify
-import test_psycopg2_dbapi20
-import test_quote
-import test_transaction
-import test_types_basic
-import test_types_extras
+import sys
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest
+
+from psycopg2cffi.tests.psycopg2_tests import (
+        test_async,
+        test_bugX000,
+        test_bug_gc,
+        test_bug_inf_fetch_loop,
+        test_cancel,
+        test_connection,
+        test_copy,
+        test_cursor,
+        test_dates,
+        test_extras_dictcursor,
+        test_green,
+        test_lobject,
+        test_module,
+        test_notify,
+        test_psycopg2_dbapi20,
+        test_quote,
+        test_transaction,
+        test_types_basic,
+        test_types_extras,
+        )
 
 if sys.version_info[:2] >= (2, 5):
-    import test_with
+    from psycopg2cffi.tests.psycopg2_tests import test_with
 else:
     test_with = None
 
 def test_suite():
     # If connection to test db fails, bail out early.
-    import psycopg2
+    import psycopg2cffi
     try:
-        cnn = psycopg2.connect(dsn)
-    except Exception, e:
-        print "Failed connection to test db:", e.__class__.__name__, e
-        print "Please set env vars 'PSYCOPG2_TESTDB*' to valid values."
+        cnn = psycopg2cffi.connect(dsn)
+    except Exception as e:
+        print("Failed connection to test db:", e.__class__.__name__, e)
+        print("Please set env vars 'PSYCOPG2_TESTDB*' to valid values.")
         sys.exit(1)
     else:
         cnn.close()

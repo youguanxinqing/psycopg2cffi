@@ -22,12 +22,13 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-from testutils import unittest
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest
 
-import psycopg2
-from psycopg2 import extensions
-from testutils import ConnectingTestCase, script_to_py3
-from testconfig import dsn
+import psycopg2cffi as psycopg2
+from psycopg2cffi import extensions
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
+from psycopg2cffi.tests.psycopg2_tests.testutils import script_to_py3, \
+        ConnectingTestCase
 
 import sys
 import time
@@ -126,7 +127,7 @@ conn.close()
         time.sleep(0.5)
         self.conn.poll()
         notify = self.conn.notifies[0]
-        self.assert_(isinstance(notify, psycopg2.extensions.Notify))
+        self.assert_(isinstance(notify, extensions.Notify))
 
     def test_notify_attributes(self):
         self.autocommit(self.conn)
@@ -156,14 +157,14 @@ conn.close()
         self.assertEqual('Hello, world!', notify.payload)
 
     def test_notify_init(self):
-        n = psycopg2.extensions.Notify(10, 'foo')
+        n = extensions.Notify(10, 'foo')
         self.assertEqual(10, n.pid)
         self.assertEqual('foo', n.channel)
         self.assertEqual('', n.payload)
         (pid, channel) = n
         self.assertEqual((pid, channel), (10, 'foo'))
 
-        n = psycopg2.extensions.Notify(42, 'bar', 'baz')
+        n = extensions.Notify(42, 'bar', 'baz')
         self.assertEqual(42, n.pid)
         self.assertEqual('bar', n.channel)
         self.assertEqual('baz', n.payload)
@@ -174,20 +175,20 @@ conn.close()
         data = [(10, 'foo'), (20, 'foo'), (10, 'foo', 'bar'), (10, 'foo', 'baz')]
         for d1 in data:
             for d2 in data:
-                n1 = psycopg2.extensions.Notify(*d1)
-                n2 = psycopg2.extensions.Notify(*d2)
+                n1 = extensions.Notify(*d1)
+                n2 = extensions.Notify(*d2)
                 self.assertEqual((n1 == n2), (d1 == d2))
                 self.assertEqual((n1 != n2), (d1 != d2))
 
     def test_compare_tuple(self):
-        from psycopg2.extensions import Notify
+        from psycopg2cffi.extensions import Notify
         self.assertEqual((10, 'foo'), Notify(10, 'foo'))
         self.assertEqual((10, 'foo'), Notify(10, 'foo', 'bar'))
         self.assertNotEqual((10, 'foo'), Notify(20, 'foo'))
         self.assertNotEqual((10, 'foo'), Notify(10, 'bar'))
 
     def test_hash(self):
-        from psycopg2.extensions import Notify
+        from psycopg2cffi.extensions import Notify
         self.assertEqual(hash((10, 'foo')), hash(Notify(10, 'foo')))
         self.assertNotEqual(hash(Notify(10, 'foo', 'bar')),
             hash(Notify(10, 'foo')))

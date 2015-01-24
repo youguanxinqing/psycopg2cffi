@@ -26,8 +26,9 @@
 
 import os
 import sys
+import six
 from functools import wraps
-from testconfig import dsn
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn
 
 try:
     import unittest2
@@ -96,12 +97,12 @@ class ConnectingTestCase(unittest.TestCase):
     def connect(self, **kwargs):
         try:
             self._conns
-        except AttributeError, e:
+        except AttributeError as e:
             raise AttributeError(
                 "%s (did you remember calling ConnectingTestCase.setUp()?)"
                 % e)
 
-        import psycopg2
+        import psycopg2cffi as psycopg2
         conn = psycopg2.connect(dsn, **kwargs)
         self._conns.append(conn)
         return conn
@@ -156,7 +157,7 @@ def skip_if_tpc_disabled(f):
     """Skip a test if the server has tpc support disabled."""
     @wraps(f)
     def skip_if_tpc_disabled_(self):
-        from psycopg2 import ProgrammingError
+        from psycopg2cffi import ProgrammingError
         cnn = self.connect()
         cur = cnn.cursor()
         try:
@@ -266,12 +267,12 @@ def skip_if_no_superuser(f):
     """Skip a test if the database user running the test is not a superuser"""
     @wraps(f)
     def skip_if_no_superuser_(self):
-        from psycopg2 import ProgrammingError
+        from psycopg2cffi import ProgrammingError
         try:
             return f(self)
-        except ProgrammingError, e:
-            import psycopg2.errorcodes
-            if e.pgcode == psycopg2.errorcodes.INSUFFICIENT_PRIVILEGE:
+        except ProgrammingError as e:
+            from psycopg2cffi import errorcodes
+            if e.pgcode == errorcodes.INSUFFICIENT_PRIVILEGE:
                 self.skipTest("skipped because not superuser")
             else:
                 raise
@@ -282,7 +283,7 @@ def skip_if_green(reason):
     def skip_if_green_(f):
         @wraps(f)
         def skip_if_green__(self):
-            from testconfig import green
+            from psycopg2cffi.tests.psycopg2_tests.testconfig import green
             if green:
                 return self.skipTest(reason)
             else:
@@ -329,3 +330,7 @@ def script_to_py3(script):
         f2.close()
         os.remove(filename)
 
+
+def _u(s):
+    assert isinstance(s, six.binary_type)
+    return s.decode('utf-8')

@@ -25,10 +25,13 @@ and classes untill a better place in the distribution is found.
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
+from __future__ import unicode_literals
+
 import os as _os
 import sys as _sys
 import time as _time
 import re as _re
+import six
 
 try:
     import logging as _logging
@@ -40,7 +43,7 @@ from psycopg2cffi import extensions as _ext
 from psycopg2cffi.extensions import cursor as _cursor
 from psycopg2cffi.extensions import connection as _connection
 from psycopg2cffi.extensions import adapt as _A
-from psycopg2cffi.extensions import b
+from psycopg2cffi._impl.adapters import ascii_to_bytes, bytes_to_ascii
 
 
 class DictCursorBase(_cursor):
@@ -88,16 +91,16 @@ class DictCursorBase(_cursor):
     def __iter__(self):
         if self._prefetch:
             res = super(DictCursorBase, self).__iter__()
-            first = res.next()
+            first = six.next(res)
         if self._query_executed:
             self._build_index()
         if not self._prefetch:
             res = super(DictCursorBase, self).__iter__()
-            first = res.next()
+            first = six.next(res)
 
         yield first
         while 1:
-            yield res.next()
+            yield six.next(res)
 
 
 class DictConnection(_connection):
@@ -308,18 +311,18 @@ class NamedTupleCursor(_cursor):
         nt = self.Record
         if nt is None:
             nt = self.Record = self._make_nt()
-        return map(nt._make, ts)
+        return [nt._make(x) for x in ts]
 
     def fetchall(self):
         ts = super(NamedTupleCursor, self).fetchall()
         nt = self.Record
         if nt is None:
             nt = self.Record = self._make_nt()
-        return map(nt._make, ts)
+        return [nt._make(x) for x in ts]
 
     def __iter__(self):
         it = super(NamedTupleCursor, self).__iter__()
-        t = it.next()
+        t = six.next(it)
 
         nt = self.Record
         if nt is None:
@@ -328,11 +331,11 @@ class NamedTupleCursor(_cursor):
         yield nt._make(t)
 
         while 1:
-            yield nt._make(it.next())
+            yield nt._make(six.next(it))
 
     try:
         from collections import namedtuple
-    except ImportError, _exc:
+    except ImportError as _exc:
         def _make_nt(self):
             raise self._exc
     else:
@@ -454,10 +457,14 @@ class UUID_adapter(object):
             return self
 
     def getquoted(self):
-        return b("'%s'::uuid" % self._uuid)
+        return b''.join([b"'", ascii_to_bytes(str(self._uuid)), b"'::uuid"])
+
+    def __bytes__(self):
+        return self.getquoted()
 
     def __str__(self):
         return "'%s'::uuid" % self._uuid
+
 
 def register_uuid(oids=None, conn_or_curs=None):
     """Create the UUID type and an uuid.UUID adapter.
@@ -514,7 +521,7 @@ class Inet(object):
         obj = _A(self.addr)
         if hasattr(obj, 'prepare'):
             obj.prepare(self._conn)
-        return obj.getquoted() + b("::inet")
+        return obj.getquoted() + b"::inet"
 
     def __conform__(self, proto):
         if proto is _ext.ISQLQuote:
@@ -616,7 +623,7 @@ class HstoreAdapter(object):
     def _getquoted_8(self):
         """Use the operators available in PG pre-9.0."""
         if not self.wrapped:
-            return b("''::hstore")
+            return b"''::hstore"
 
         adapt = _ext.adapt
         rv = []
@@ -630,23 +637,22 @@ class HstoreAdapter(object):
                 v.prepare(self.conn)
                 v = v.getquoted()
             else:
-                v = b('NULL')
+                v = b'NULL'
 
-            # XXX this b'ing is painfully inefficient!
-            rv.append(b("(") + k + b(" => ") + v + b(")"))
+            rv.append(b"(" + k + b" => " + v + b")")
 
-        return b("(") + b('||').join(rv) + b(")")
+        return b"(" + b'||'.join(rv) + b")"
 
     def _getquoted_9(self):
         """Use the hstore(text[], text[]) function."""
         if not self.wrapped:
-            return b("''::hstore")
+            return b"''::hstore"
 
-        k = _ext.adapt(self.wrapped.keys())
+        k = _ext.adapt(list(self.wrapped.keys()))
         k.prepare(self.conn)
-        v = _ext.adapt(self.wrapped.values())
+        v = _ext.adapt(list(self.wrapped.values()))
         v.prepare(self.conn)
-        return b("hstore(") + k.getquoted() + b(", ") + v.getquoted() + b(")")
+        return b"hstore(" + k.getquoted() + b", " + v.getquoted() + b")"
 
     getquoted = _getquoted_9
 
@@ -695,6 +701,14 @@ class HstoreAdapter(object):
                 "error parsing hstore: unparsed data after char %d" % start)
 
         return rv
+
+    @classmethod
+    def _to_unicode(self, s, cur):
+        if s is None:
+            return None
+        else:
+            return s.decode(_ext.encodings[cur.connection.encoding]) \
+                    if cur else bytes_to_ascii(s)
 
     @classmethod
     def parse_unicode(self, s, cur):
@@ -864,17 +878,18 @@ class CompositeCaster(object):
 
     @classmethod
     def tokenize(self, s):
+        ''' Gets bytestring, returns list of bytestrings
+        '''
         rv = []
         for m in self._re_tokenize.finditer(s):
             if m is None:
-                raise psycopg2.InterfaceError("can't parse type: %r" % s)
+                raise psycopg2.InterfaceError("can't parse type: %r", s)
             if m.group(1) is not None:
                 rv.append(None)
             elif m.group(2) is not None:
                 rv.append(self._re_undouble.sub(r"\1", m.group(2)))
             else:
                 rv.append(m.group(3))
-
         return rv
 
     def _create_type(self, name, attnames):

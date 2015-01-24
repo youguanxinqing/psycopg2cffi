@@ -27,14 +27,15 @@ import time
 import threading
 from operator import attrgetter
 
-import psycopg2
-import psycopg2.errorcodes
-import psycopg2.extensions
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        decorate_all_tests, skip_before_postgres, skip_after_postgres, _u, \
+        ConnectingTestCase, skip_if_tpc_disabled, skip_if_no_superuser, \
+        skip_from_python
+import psycopg2cffi as psycopg2
+from psycopg2cffi import errorcodes
+from psycopg2cffi import extensions
+from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn, dbname
 
-from testutils import unittest, decorate_all_tests, skip_if_no_superuser
-from testutils import skip_before_postgres, skip_after_postgres
-from testutils import ConnectingTestCase, skip_if_tpc_disabled
-from testconfig import dsn, dbname
 
 
 class ConnectionTests(ConnectingTestCase):
@@ -70,10 +71,10 @@ class ConnectionTests(ConnectingTestCase):
         cur = conn.cursor()
         try:
             cur.execute("select pg_terminate_backend(pg_backend_pid())")
-        except psycopg2.OperationalError, e:
-            if e.pgcode != psycopg2.errorcodes.ADMIN_SHUTDOWN:
+        except psycopg2.OperationalError as e:
+            if e.pgcode != errorcodes.ADMIN_SHUTDOWN:
                 raise
-        except psycopg2.DatabaseError, e:
+        except psycopg2.DatabaseError as e:
             # curiously when disconnected in green mode we get a DatabaseError
             # without pgcode.
             if e.pgcode is not None:
@@ -168,9 +169,9 @@ class ConnectionTests(ConnectingTestCase):
         self.conn.set_client_encoding("EUC_JP")
         # conn.encoding is 'EUCJP' now.
         cur = self.conn.cursor()
-        psycopg2.extensions.register_type(psycopg2.extensions.UNICODE, cur)
+        extensions.register_type(extensions.UNICODE, cur)
         cur.execute("select 'foo'::text;")
-        self.assertEqual(cur.fetchone()[0], u'foo')
+        self.assertEqual(cur.fetchone()[0], _u(b'foo'))
 
     def test_connect_nonnormal_envvar(self):
         # We must perform encoding normalization at connection time
@@ -225,8 +226,8 @@ class ConnectionTests(ConnectingTestCase):
         self.assert_(not notices, "%d notices raised" % len(notices))
 
     def test_connect_cursor_factory(self):
-        import psycopg2.extras
-        conn = self.connect(cursor_factory=psycopg2.extras.DictCursor)
+        from psycopg2cffi import extras
+        conn = self.connect(cursor_factory=extras.DictCursor)
         cur = conn.cursor()
         cur.execute("select 1 as a")
         self.assertEqual(cur.fetchone()['a'], 1)
@@ -249,10 +250,11 @@ class ConnectionTests(ConnectingTestCase):
         cur.execute("select 1 as a")
         self.assertRaises(TypeError, (lambda r: r['a']), cur.fetchone())
 
-    def test_connect_non_unicode_dsn(self):
+    def test_connect_non_unicode_dsn(self): # non-unicode only on python 2
         conn = psycopg2.connect(str(dsn))
         conn.close()
 
+    @skip_from_python(3)
     def test_connect_unicode_dsn(self):
         conn = psycopg2.connect(unicode(dsn))
         conn.close()
@@ -277,22 +279,22 @@ class IsolationLevelsTestCase(ConnectingTestCase):
         conn = self.connect()
         self.assertEqual(
             conn.isolation_level,
-            psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
+            extensions.ISOLATION_LEVEL_READ_COMMITTED)
 
     def test_encoding(self):
         conn = self.connect()
-        self.assert_(conn.encoding in psycopg2.extensions.encodings)
+        self.assert_(conn.encoding in extensions.encodings)
 
     def test_set_isolation_level(self):
         conn = self.connect()
         curs = conn.cursor()
 
         levels = [
-            (None, psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT),
-            ('read uncommitted', psycopg2.extensions.ISOLATION_LEVEL_READ_UNCOMMITTED),
-            ('read committed', psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED),
-            ('repeatable read', psycopg2.extensions.ISOLATION_LEVEL_REPEATABLE_READ),
-            ('serializable', psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE),
+            (None, extensions.ISOLATION_LEVEL_AUTOCOMMIT),
+            ('read uncommitted', extensions.ISOLATION_LEVEL_READ_UNCOMMITTED),
+            ('read committed', extensions.ISOLATION_LEVEL_READ_COMMITTED),
+            ('repeatable read', extensions.ISOLATION_LEVEL_REPEATABLE_READ),
+            ('serializable', extensions.ISOLATION_LEVEL_SERIALIZABLE),
         ]
         for name, level in levels:
             conn.set_isolation_level(level)
@@ -300,8 +302,8 @@ class IsolationLevelsTestCase(ConnectingTestCase):
             # the only values available on prehistoric PG versions
             if conn.server_version < 80000:
                 if level in (
-                        psycopg2.extensions.ISOLATION_LEVEL_READ_UNCOMMITTED,
-                        psycopg2.extensions.ISOLATION_LEVEL_REPEATABLE_READ):
+                        extensions.ISOLATION_LEVEL_READ_UNCOMMITTED,
+                        extensions.ISOLATION_LEVEL_REPEATABLE_READ):
                     name, level = levels[levels.index((name, level)) + 1]
 
             self.assertEqual(conn.isolation_level, level)
@@ -323,35 +325,35 @@ class IsolationLevelsTestCase(ConnectingTestCase):
         conn = self.connect()
         cur = conn.cursor()
 
-        self.assertEqual(psycopg2.extensions.TRANSACTION_STATUS_IDLE,
+        self.assertEqual(extensions.TRANSACTION_STATUS_IDLE,
             conn.get_transaction_status())
         cur.execute("insert into isolevel values (10);")
-        self.assertEqual(psycopg2.extensions.TRANSACTION_STATUS_INTRANS,
+        self.assertEqual(extensions.TRANSACTION_STATUS_INTRANS,
             conn.get_transaction_status())
 
         conn.set_isolation_level(
-            psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
-        self.assertEqual(psycopg2.extensions.TRANSACTION_STATUS_IDLE,
+            extensions.ISOLATION_LEVEL_SERIALIZABLE)
+        self.assertEqual(extensions.TRANSACTION_STATUS_IDLE,
             conn.get_transaction_status())
         cur.execute("select count(*) from isolevel;")
         self.assertEqual(0, cur.fetchone()[0])
 
         cur.execute("insert into isolevel values (10);")
-        self.assertEqual(psycopg2.extensions.TRANSACTION_STATUS_INTRANS,
+        self.assertEqual(extensions.TRANSACTION_STATUS_INTRANS,
             conn.get_transaction_status())
         conn.set_isolation_level(
-            psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-        self.assertEqual(psycopg2.extensions.TRANSACTION_STATUS_IDLE,
+            extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+        self.assertEqual(extensions.TRANSACTION_STATUS_IDLE,
             conn.get_transaction_status())
         cur.execute("select count(*) from isolevel;")
         self.assertEqual(0, cur.fetchone()[0])
 
         cur.execute("insert into isolevel values (10);")
-        self.assertEqual(psycopg2.extensions.TRANSACTION_STATUS_IDLE,
+        self.assertEqual(extensions.TRANSACTION_STATUS_IDLE,
             conn.get_transaction_status())
         conn.set_isolation_level(
-            psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
-        self.assertEqual(psycopg2.extensions.TRANSACTION_STATUS_IDLE,
+            extensions.ISOLATION_LEVEL_READ_COMMITTED)
+        self.assertEqual(extensions.TRANSACTION_STATUS_IDLE,
             conn.get_transaction_status())
         cur.execute("select count(*) from isolevel;")
         self.assertEqual(1, cur.fetchone()[0])
@@ -359,7 +361,7 @@ class IsolationLevelsTestCase(ConnectingTestCase):
     def test_isolation_level_autocommit(self):
         cnn1 = self.connect()
         cnn2 = self.connect()
-        cnn2.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+        cnn2.set_isolation_level(extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 
         cur1 = cnn1.cursor()
         cur1.execute("select count(*) from isolevel;")
@@ -375,7 +377,7 @@ class IsolationLevelsTestCase(ConnectingTestCase):
     def test_isolation_level_read_committed(self):
         cnn1 = self.connect()
         cnn2 = self.connect()
-        cnn2.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
+        cnn2.set_isolation_level(extensions.ISOLATION_LEVEL_READ_COMMITTED)
 
         cur1 = cnn1.cursor()
         cur1.execute("select count(*) from isolevel;")
@@ -401,7 +403,7 @@ class IsolationLevelsTestCase(ConnectingTestCase):
     def test_isolation_level_serializable(self):
         cnn1 = self.connect()
         cnn2 = self.connect()
-        cnn2.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
+        cnn2.set_isolation_level(extensions.ISOLATION_LEVEL_SERIALIZABLE)
 
         cur1 = cnn1.cursor()
         cur1.execute("select count(*) from isolevel;")
@@ -503,10 +505,10 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
     def test_tpc_commit(self):
         cnn = self.connect()
         xid = cnn.xid(1, "gtrid", "bqual")
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
 
         cnn.tpc_begin(xid)
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_BEGIN)
+        self.assertEqual(cnn.status, extensions.STATUS_BEGIN)
 
         cur = cnn.cursor()
         cur.execute("insert into test_tpc values ('test_tpc_commit');")
@@ -514,22 +516,22 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
         self.assertEqual(0, self.count_test_records())
 
         cnn.tpc_prepare()
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_PREPARED)
+        self.assertEqual(cnn.status, extensions.STATUS_PREPARED)
         self.assertEqual(1, self.count_xacts())
         self.assertEqual(0, self.count_test_records())
 
         cnn.tpc_commit()
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
         self.assertEqual(0, self.count_xacts())
         self.assertEqual(1, self.count_test_records())
 
     def test_tpc_commit_one_phase(self):
         cnn = self.connect()
         xid = cnn.xid(1, "gtrid", "bqual")
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
 
         cnn.tpc_begin(xid)
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_BEGIN)
+        self.assertEqual(cnn.status, extensions.STATUS_BEGIN)
 
         cur = cnn.cursor()
         cur.execute("insert into test_tpc values ('test_tpc_commit_1p');")
@@ -537,17 +539,17 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
         self.assertEqual(0, self.count_test_records())
 
         cnn.tpc_commit()
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
         self.assertEqual(0, self.count_xacts())
         self.assertEqual(1, self.count_test_records())
 
     def test_tpc_commit_recovered(self):
         cnn = self.connect()
         xid = cnn.xid(1, "gtrid", "bqual")
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
 
         cnn.tpc_begin(xid)
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_BEGIN)
+        self.assertEqual(cnn.status, extensions.STATUS_BEGIN)
 
         cur = cnn.cursor()
         cur.execute("insert into test_tpc values ('test_tpc_commit_rec');")
@@ -563,17 +565,17 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
         xid = cnn.xid(1, "gtrid", "bqual")
         cnn.tpc_commit(xid)
 
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
         self.assertEqual(0, self.count_xacts())
         self.assertEqual(1, self.count_test_records())
 
     def test_tpc_rollback(self):
         cnn = self.connect()
         xid = cnn.xid(1, "gtrid", "bqual")
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
 
         cnn.tpc_begin(xid)
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_BEGIN)
+        self.assertEqual(cnn.status, extensions.STATUS_BEGIN)
 
         cur = cnn.cursor()
         cur.execute("insert into test_tpc values ('test_tpc_rollback');")
@@ -581,22 +583,22 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
         self.assertEqual(0, self.count_test_records())
 
         cnn.tpc_prepare()
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_PREPARED)
+        self.assertEqual(cnn.status, extensions.STATUS_PREPARED)
         self.assertEqual(1, self.count_xacts())
         self.assertEqual(0, self.count_test_records())
 
         cnn.tpc_rollback()
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
         self.assertEqual(0, self.count_xacts())
         self.assertEqual(0, self.count_test_records())
 
     def test_tpc_rollback_one_phase(self):
         cnn = self.connect()
         xid = cnn.xid(1, "gtrid", "bqual")
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
 
         cnn.tpc_begin(xid)
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_BEGIN)
+        self.assertEqual(cnn.status, extensions.STATUS_BEGIN)
 
         cur = cnn.cursor()
         cur.execute("insert into test_tpc values ('test_tpc_rollback_1p');")
@@ -604,17 +606,17 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
         self.assertEqual(0, self.count_test_records())
 
         cnn.tpc_rollback()
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
         self.assertEqual(0, self.count_xacts())
         self.assertEqual(0, self.count_test_records())
 
     def test_tpc_rollback_recovered(self):
         cnn = self.connect()
         xid = cnn.xid(1, "gtrid", "bqual")
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
 
         cnn.tpc_begin(xid)
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_BEGIN)
+        self.assertEqual(cnn.status, extensions.STATUS_BEGIN)
 
         cur = cnn.cursor()
         cur.execute("insert into test_tpc values ('test_tpc_commit_rec');")
@@ -630,21 +632,21 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
         xid = cnn.xid(1, "gtrid", "bqual")
         cnn.tpc_rollback(xid)
 
-        self.assertEqual(cnn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(cnn.status, extensions.STATUS_READY)
         self.assertEqual(0, self.count_xacts())
         self.assertEqual(0, self.count_test_records())
 
     def test_status_after_recover(self):
         cnn = self.connect()
-        self.assertEqual(psycopg2.extensions.STATUS_READY, cnn.status)
+        self.assertEqual(extensions.STATUS_READY, cnn.status)
         xns = cnn.tpc_recover()
-        self.assertEqual(psycopg2.extensions.STATUS_READY, cnn.status)
+        self.assertEqual(extensions.STATUS_READY, cnn.status)
 
         cur = cnn.cursor()
         cur.execute("select 1")
-        self.assertEqual(psycopg2.extensions.STATUS_BEGIN, cnn.status)
+        self.assertEqual(extensions.STATUS_BEGIN, cnn.status)
         xns = cnn.tpc_recover()
-        self.assertEqual(psycopg2.extensions.STATUS_BEGIN, cnn.status)
+        self.assertEqual(extensions.STATUS_BEGIN, cnn.status)
 
     def test_recovered_xids(self):
         # insert a few test xns
@@ -734,7 +736,7 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
             cnn.tpc_rollback(xid)
 
     def test_xid_construction(self):
-        from psycopg2.extensions import Xid
+        from extensions import Xid
 
         x1 = Xid(74, 'foo', 'bar')
         self.assertEqual(74, x1.format_id)
@@ -742,7 +744,7 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
         self.assertEqual('bar', x1.bqual)
 
     def test_xid_from_string(self):
-        from psycopg2.extensions import Xid
+        from extensions import Xid
 
         x2 = Xid.from_string('42_Z3RyaWQ=_YnF1YWw=')
         self.assertEqual(42, x2.format_id)
@@ -755,7 +757,7 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
         self.assertEqual(None, x3.bqual)
 
     def test_xid_to_string(self):
-        from psycopg2.extensions import Xid
+        from extensions import Xid
 
         x1 = Xid.from_string('42_Z3RyaWQ=_YnF1YWw=')
         self.assertEqual(str(x1), '42_Z3RyaWQ=_YnF1YWw=')
@@ -765,7 +767,7 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
 
     def test_xid_unicode(self):
         cnn = self.connect()
-        x1 = cnn.xid(10, u'uni', u'code')
+        x1 = cnn.xid(10, _u(b'uni'), _u(b'code'))
         cnn.tpc_begin(x1)
         cnn.tpc_prepare()
         cnn.reset()
@@ -779,9 +781,10 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
         # We don't expect people shooting snowmen as transaction ids,
         # so if something explodes in an encode error I don't mind.
         # Let's just check uniconde is accepted as type.
+
         cnn = self.connect()
         cnn.set_client_encoding('utf8')
-        cnn.tpc_begin(u"transaction-id")
+        cnn.tpc_begin(_u(b"transaction-id"))
         cnn.tpc_prepare()
         cnn.reset()
 
@@ -798,7 +801,7 @@ class ConnectionTwoPhaseTests(ConnectingTestCase):
         self.assertRaises(psycopg2.ProgrammingError, cnn.cancel)
 
     def test_tpc_recover_non_dbapi_connection(self):
-        from psycopg2.extras import RealDictConnection
+        from psycopg2cffi.extras import RealDictConnection
         cnn = self.connect(connection_factory=RealDictConnection)
         cnn.tpc_begin('dict-connection')
         cnn.tpc_prepare()
@@ -819,25 +822,25 @@ class TransactionControlTests(ConnectingTestCase):
         self.conn.close()
         self.assertRaises(psycopg2.InterfaceError,
             self.conn.set_session,
-            psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
+            extensions.ISOLATION_LEVEL_SERIALIZABLE)
 
     def test_not_in_transaction(self):
         cur = self.conn.cursor()
         cur.execute("select 1")
         self.assertRaises(psycopg2.ProgrammingError,
             self.conn.set_session,
-            psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
+            extensions.ISOLATION_LEVEL_SERIALIZABLE)
 
     def test_set_isolation_level(self):
         cur = self.conn.cursor()
         self.conn.set_session(
-            psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
+            extensions.ISOLATION_LEVEL_SERIALIZABLE)
         cur.execute("SHOW default_transaction_isolation;")
         self.assertEqual(cur.fetchone()[0], 'serializable')
         self.conn.rollback()
 
         self.conn.set_session(
-            psycopg2.extensions.ISOLATION_LEVEL_REPEATABLE_READ)
+            extensions.ISOLATION_LEVEL_REPEATABLE_READ)
         cur.execute("SHOW default_transaction_isolation;")
         if self.conn.server_version > 80000:
             self.assertEqual(cur.fetchone()[0], 'repeatable read')
@@ -846,13 +849,13 @@ class TransactionControlTests(ConnectingTestCase):
         self.conn.rollback()
 
         self.conn.set_session(
-            isolation_level=psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
+            isolation_level=extensions.ISOLATION_LEVEL_READ_COMMITTED)
         cur.execute("SHOW default_transaction_isolation;")
         self.assertEqual(cur.fetchone()[0], 'read committed')
         self.conn.rollback()
 
         self.conn.set_session(
-            isolation_level=psycopg2.extensions.ISOLATION_LEVEL_READ_UNCOMMITTED)
+            isolation_level=extensions.ISOLATION_LEVEL_READ_UNCOMMITTED)
         cur.execute("SHOW default_transaction_isolation;")
         if self.conn.server_version > 80000:
             self.assertEqual(cur.fetchone()[0], 'read uncommitted')
@@ -972,44 +975,44 @@ class AutocommitTests(ConnectingTestCase):
 
     def test_default_no_autocommit(self):
         self.assert_(not self.conn.autocommit)
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(self.conn.status, extensions.STATUS_READY)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_IDLE)
+            extensions.TRANSACTION_STATUS_IDLE)
 
         cur = self.conn.cursor()
         cur.execute('select 1;')
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_BEGIN)
+        self.assertEqual(self.conn.status, extensions.STATUS_BEGIN)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_INTRANS)
+            extensions.TRANSACTION_STATUS_INTRANS)
 
         self.conn.rollback()
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(self.conn.status, extensions.STATUS_READY)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_IDLE)
+            extensions.TRANSACTION_STATUS_IDLE)
 
     def test_set_autocommit(self):
         self.conn.autocommit = True
         self.assert_(self.conn.autocommit)
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(self.conn.status, extensions.STATUS_READY)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_IDLE)
+            extensions.TRANSACTION_STATUS_IDLE)
 
         cur = self.conn.cursor()
         cur.execute('select 1;')
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(self.conn.status, extensions.STATUS_READY)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_IDLE)
+            extensions.TRANSACTION_STATUS_IDLE)
 
         self.conn.autocommit = False
         self.assert_(not self.conn.autocommit)
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(self.conn.status, extensions.STATUS_READY)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_IDLE)
+            extensions.TRANSACTION_STATUS_IDLE)
 
         cur.execute('select 1;')
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_BEGIN)
+        self.assertEqual(self.conn.status, extensions.STATUS_BEGIN)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_INTRANS)
+            extensions.TRANSACTION_STATUS_INTRANS)
 
     def test_set_intrans_error(self):
         cur = self.conn.cursor()
@@ -1020,34 +1023,34 @@ class AutocommitTests(ConnectingTestCase):
     def test_set_session_autocommit(self):
         self.conn.set_session(autocommit=True)
         self.assert_(self.conn.autocommit)
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(self.conn.status, extensions.STATUS_READY)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_IDLE)
+            extensions.TRANSACTION_STATUS_IDLE)
 
         cur = self.conn.cursor()
         cur.execute('select 1;')
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(self.conn.status, extensions.STATUS_READY)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_IDLE)
+            extensions.TRANSACTION_STATUS_IDLE)
 
         self.conn.set_session(autocommit=False)
         self.assert_(not self.conn.autocommit)
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(self.conn.status, extensions.STATUS_READY)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_IDLE)
+            extensions.TRANSACTION_STATUS_IDLE)
 
         cur.execute('select 1;')
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_BEGIN)
+        self.assertEqual(self.conn.status, extensions.STATUS_BEGIN)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_INTRANS)
+            extensions.TRANSACTION_STATUS_INTRANS)
         self.conn.rollback()
 
         self.conn.set_session('serializable', readonly=True, autocommit=True)
         self.assert_(self.conn.autocommit)
         cur.execute('select 1;')
-        self.assertEqual(self.conn.status, psycopg2.extensions.STATUS_READY)
+        self.assertEqual(self.conn.status, extensions.STATUS_READY)
         self.assertEqual(self.conn.get_transaction_status(),
-            psycopg2.extensions.TRANSACTION_STATUS_IDLE)
+            extensions.TRANSACTION_STATUS_IDLE)
         cur.execute("SHOW default_transaction_isolation;")
         self.assertEqual(cur.fetchone()[0], 'serializable')
         cur.execute("SHOW default_transaction_read_only;")

@@ -1,6 +1,10 @@
+from __future__ import unicode_literals
+
 import datetime
 import decimal
 import math
+import six
+from six.moves import xrange
 
 from psycopg2cffi._impl.libpq import libpq, ffi
 from psycopg2cffi._impl.exceptions import ProgrammingError
@@ -10,18 +14,30 @@ from psycopg2cffi.tz import LOCAL as TZ_LOCAL
 
 adapters = {}
 
+# Adapters assept python objects and always return bytes, as described in 
+# http://initd.org/psycopg/articles/2011/01/24/psycopg2-porting-python-3-report/
+
 
 class _BaseAdapter(object):
     def __init__(self, wrapped_object):
         self._wrapped = wrapped_object
         self._conn = None
 
-    def __str__(self):
-        return self.getquoted()
+    if six.PY3:
+        def __bytes__(self):
+            return self.getquoted()
+        def __str__(self): # huh?
+            return bytes_to_ascii(self.getquoted())
+    else:
+        def __str__(self):
+            return self.getquoted()
 
     @property
     def adapted(self):
         return self._wrapped
+
+    def getquoted(self):
+        raise NotImplementedError
 
 
 class ISQLQuote(_BaseAdapter):
@@ -31,7 +47,12 @@ class ISQLQuote(_BaseAdapter):
 
 class AsIs(_BaseAdapter):
     def getquoted(self):
-        return str(self._wrapped)
+        return ascii_to_bytes(self._wrapped)
+
+
+_bytearray_types = (bytearray,)
+try: _bytearray_types += (memoryview,)
+except NameError: pass # python 2.6
 
 
 class Binary(_BaseAdapter):
@@ -43,10 +64,18 @@ class Binary(_BaseAdapter):
 
     def getquoted(self):
         if self._wrapped is None:
-            return 'NULL'
+            return b'NULL'
 
         to_length = ffi.new('size_t *')
-        _wrapped = ffi.new('unsigned char[]', str(self._wrapped))
+        _wrapped = self._wrapped
+        if isinstance(_wrapped, six.text_type):
+            _wrapped = ascii_to_bytes(_wrapped)
+        elif isinstance(_wrapped, _bytearray_types):
+            _wrapped = six.binary_type(_wrapped)
+        elif not six.PY3 and isinstance(_wrapped, buffer):
+            _wrapped = bytes(_wrapped)
+        _wrapped = ffi.new('unsigned char[]', _wrapped)
+
         if self._conn:
             data_pointer = libpq.PQescapeByteaConn(
                 self._conn._pgconn, _wrapped, len(self._wrapped), to_length)
@@ -58,35 +87,37 @@ class Binary(_BaseAdapter):
         libpq.PQfreemem(data_pointer)
 
         if self._conn and self._conn._equote:
-            return r"E'%s'::bytea" % data
+            return b''.join([b"E'", data,  b"'::bytea"])
 
-        return r"'%s'::bytea" % data
+        return b''.join([b"'", data,  b"'::bytea"])
 
 
 class Boolean(_BaseAdapter):
     def getquoted(self):
-        return 'true' if self._wrapped else 'false'
+        return b'true' if self._wrapped else b'false'
 
 
 class DateTime(_BaseAdapter):
     def getquoted(self):
         obj = self._wrapped
         if isinstance(obj, datetime.timedelta):
-            us = str(obj.microseconds)
-            us = '0' * (6 - len(us)) + us
-            return "'%d days %d.%s seconds'::interval" % (
-                obj.days, obj.seconds, us)
+            us = ascii_to_bytes(str(obj.microseconds))
+            us = b'0' * (6 - len(us)) + us
+            return b''.join([b"'", 
+                ascii_to_bytes(str(int(obj.days))), b" days ",
+                ascii_to_bytes(str(int(obj.seconds))), b".",
+                ascii_to_bytes(str(int(us))), b" seconds'::interval"])
         else:
             iso = obj.isoformat()
             if isinstance(obj, datetime.datetime):
-                format = 'timestamp'
+                _format = b'timestamp'
                 if getattr(obj, 'tzinfo', None):
-                    format = 'timestamptz'
+                    _format = b'timestamptz'
             elif isinstance(obj, datetime.time):
-                format = 'time'
+                _format = b'time'
             else:
-                format = 'date'
-            return "'%s'::%s" % (str(iso), format)
+                _format = b'date'
+            return b''.join([b"'", ascii_to_bytes(iso), b"'::", _format])
 
 
 def Date(year, month, day):
@@ -107,27 +138,27 @@ class Decimal(_BaseAdapter):
             # Prepend a space in front of negative numbers
             if value.startswith('-'):
                 value = ' ' + value
-            return value
-        return "'NaN'::numeric"
+            return ascii_to_bytes(value)
+        return b"'NaN'::numeric"
 
 
 class Float(ISQLQuote):
     def getquoted(self):
         n = float(self._wrapped)
         if math.isnan(n):
-            return "'NaN'::float"
+            return b"'NaN'::float"
         elif math.isinf(n):
             if n > 0:
-                return "'Infinity'::float"
+                return b"'Infinity'::float"
             else:
-                return "'-Infinity'::float"
+                return b"'-Infinity'::float"
         else:
             value = repr(self._wrapped)
 
             # Prepend a space in front of negative numbers
             if value.startswith('-'):
                 value = ' ' + value
-            return value
+            return ascii_to_bytes(value)
 
 
 class Int(_BaseAdapter):
@@ -137,7 +168,7 @@ class Int(_BaseAdapter):
         # Prepend a space in front of negative numbers
         if value.startswith('-'):
             value = ' ' + value
-        return value
+        return ascii_to_bytes(value)
 
 
 class List(_BaseAdapter):
@@ -148,13 +179,13 @@ class List(_BaseAdapter):
     def getquoted(self):
         length = len(self._wrapped)
         if length == 0:
-            return "'{}'"
+            return b"'{}'"
 
         quoted = [None] * length
         for i in xrange(length):
             obj = self._wrapped[i]
-            quoted[i] = str(_getquoted(obj, self._conn))
-        return "ARRAY[%s]" % ", ".join(quoted)
+            quoted[i] = _getquoted(obj, self._conn)
+        return b''.join([b'ARRAY[', b', '.join(quoted), b']'])
 
 
 class Long(_BaseAdapter):
@@ -164,7 +195,7 @@ class Long(_BaseAdapter):
         # Prepend a space in front of negative numbers
         if value.startswith('-'):
             value = ' ' + value
-        return value
+        return ascii_to_bytes(value)
 
 
 def Time(hour, minutes, seconds, tzinfo=None):
@@ -205,25 +236,27 @@ class QuotedString(_BaseAdapter):
 
     def getquoted(self):
         obj = self._wrapped
-        if isinstance(self._wrapped, unicode):
+        if isinstance(obj, six.text_type):
             obj = obj.encode(self.encoding)
-        string = str(obj)
+        else:
+            assert isinstance(obj, six.binary_type)
+        string = obj
         length = len(string)
 
+        to_length = (length * 2) + 1
+        to = ffi.new('char []', to_length)
+
         if not self._conn:
-            to = ffi.new('char []', ((length * 2) + 1))
             libpq.PQescapeString(to, string, length)
-            return "'%s'" % ffi.string(to)
+            return b''.join([b"'", ffi.string(to), b"'"])
 
         if PG_VERSION < 0x090000:
-            to = ffi.new('char []', ((length * 2) + 1))
             err = ffi.new('int *')
             libpq.PQescapeStringConn(
                 self._conn._pgconn, to, string, length, err)
-
             if self._conn and self._conn._equote:
-                return "E'%s'" % ffi.string(to)
-            return "'%s'" % ffi.string(to)
+                return b''.join([b"E'", ffi.string(to), b"'"])
+            return b''.join([b"'", ffi.string(to), b"'"])
 
         data_pointer = libpq.PQescapeLiteral(
             self._conn._pgconn, string, length)
@@ -253,7 +286,7 @@ def adapt(value, proto=ISQLQuote, alt=None):
 def _getquoted(param, conn):
     """Helper method"""
     if param is None:
-        return 'NULL'
+        return b'NULL'
     adapter = adapt(param)
     try:
         adapter.prepare(conn)
@@ -262,15 +295,29 @@ def _getquoted(param, conn):
     return adapter.getquoted()
 
 
+def ascii_to_bytes(s):
+    ''' Convert ascii string to bytes
+    '''
+    if isinstance(s, six.text_type):
+        return s.encode('ascii')
+    else:
+        assert isinstance(s, six.binary_type)
+        return s
+
+
+def bytes_to_ascii(b):
+    ''' Convert ascii bytestring to string
+    '''
+    assert isinstance(b, six.binary_type)
+    return b.decode('ascii')
+
+
 built_in_adapters = {
     bool: Boolean,
     str: QuotedString,
-    unicode: QuotedString,
     list: List,
     bytearray: Binary,
-    buffer: Binary,
     int: Int,
-    long: Long,
     float: Float,
     datetime.date: DateTime, # DateFromPY
     datetime.datetime: DateTime, # TimestampFromPy
@@ -279,11 +326,21 @@ built_in_adapters = {
     decimal.Decimal: Decimal,
 }
 
-try:
-    built_in_adapters[memoryview] = Binary
-except NameError:
-    # Python 2.6
-    pass
+try: built_in_adapters[memoryview] = Binary
+except NameError: pass # Python 2.6
 
-for k, v in built_in_adapters.iteritems():
+try: built_in_adapters[buffer] = Binary
+except NameError: pass # Python 3
+
+try: built_in_adapters[unicode] = QuotedString
+except NameError: pass # Python 3
+
+try: built_in_adapters[long] = Long
+except NameError: pass # Python 3 - Int handles all numbers fine
+
+if six.PY3:
+    built_in_adapters[bytes] = Binary
+
+
+for k, v in built_in_adapters.items():
     adapters[(k, ISQLQuote)] = v

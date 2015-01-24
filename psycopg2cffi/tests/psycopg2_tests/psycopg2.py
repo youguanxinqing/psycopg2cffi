@@ -1,3 +1,5 @@
+# TODO - remove this hack?
+
 import sys, os.path
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))

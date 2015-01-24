@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 encodings = {
     'ABC': 'cp1258',
     'ALT': 'cp866',
@@ -80,7 +82,7 @@ def normalize(name):
 
 # Include a normalized version of the encodings above
 # (all uppercase, no - or _)
-for k, v in encodings.items():
+for k, v in list(encodings.items()):
     encodings[normalize(k)] = v
 
 del k, v

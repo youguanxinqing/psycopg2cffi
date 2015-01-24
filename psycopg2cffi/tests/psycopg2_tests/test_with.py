@@ -25,10 +25,11 @@
 
 from __future__ import with_statement
 
-import psycopg2
-import psycopg2.extensions as ext
+import psycopg2cffi as psycopg2
+import psycopg2cffi.extensions as ext
 
-from testutils import unittest, ConnectingTestCase
+from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
+        ConnectingTestCase
 
 class WithTestCase(ConnectingTestCase):
     def setUp(self):

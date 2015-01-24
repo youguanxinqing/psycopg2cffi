@@ -1,7 +1,11 @@
+from __future__ import unicode_literals
+
 from collections import namedtuple
 from functools import wraps
 from io import TextIOBase
 import weakref
+import six
+from six.moves import xrange
 
 from psycopg2cffi import tz
 from psycopg2cffi._impl import consts
@@ -229,7 +233,7 @@ class Cursor(object):
                 raise ProgrammingError(
                     "can't use a named cursor outside of transactions")
 
-        if isinstance(query, unicode):
+        if isinstance(query, six.text_type):
             query = query.encode(self._conn._py_enc)
 
         if parameters is not None:
@@ -245,14 +249,14 @@ class Cursor(object):
         self._clear_pgres()
 
         if self._name:
-            self._query = 'DECLARE "%s" %sCURSOR %s HOLD FOR %s' % (
-                self._name,
-                scroll,
-                self._withhold and "WITH" or "WITHOUT", # youuuuu
-                self._query)
+            self._query = \
+                util.ascii_to_bytes(
+                        'DECLARE "%s" %sCURSOR %s HOLD FOR ' % (
+                            self._name, scroll,
+                            "WITH" if self._withhold else "WITHOUT")) \
+                + self._query
 
         self._pq_execute(self._query, conn._async)
-
 
     @check_closed
     @check_async
@@ -304,9 +308,7 @@ class Cursor(object):
         if self._rownumber >= self._rowcount:
             return None
 
-        row = self._build_row(self._rownumber)
-        self._rownumber += 1
-        return row
+        return self._build_row()
 
     @check_closed
     @check_no_tuples
@@ -346,11 +348,7 @@ class Cursor(object):
         if size <= 0:
             return []
 
-        rows = []
-        for i in xrange(size):
-            rows.append(self._build_row(self._rownumber))
-            self._rownumber += 1
-        return rows
+        return [self._build_row() for _ in xrange(size)]
 
     @check_closed
     @check_no_tuples
@@ -372,11 +370,7 @@ class Cursor(object):
         if size <= 0:
             return []
 
-        result = []
-        for row in xrange(size):
-            result.append(self._build_row(self._rownumber))
-            self._rownumber += 1
-        return result
+        return [self._build_row() for _ in xrange(size)]
 
     def nextset(self):
         """This method will make the cursor skip to the next available set,
@@ -403,6 +397,8 @@ class Cursor(object):
 
         """
         cast = self._get_cast(oid)
+        if isinstance(s, six.text_type):
+            s = s.encode(self._conn._py_enc)
         return cast.cast(s, self, None)
 
     def mogrify(self, query, vars=None):
@@ -411,7 +407,7 @@ class Cursor(object):
         This is not part of the dbapi 2 standard, but a psycopg2 extension.
 
         """
-        if isinstance(query, unicode):
+        if isinstance(query, six.text_type):
             query = query.encode(self._conn._py_enc)
 
         return _combine_cmd_params(query, vars, self._conn)
@@ -433,10 +429,11 @@ class Cursor(object):
         else:
             columns_str = ''
 
-        query = "COPY %s%s FROM stdin WITH DELIMITER AS %s NULL AS %s" % (
-            table, columns_str,
-            util.quote_string(self._conn, sep),
-            util.quote_string(self._conn, null))
+        query = util.ascii_to_bytes(
+                "COPY %s%s FROM stdin WITH DELIMITER AS " % (
+                    table, columns_str)) + \
+                util.quote_string(self._conn, sep) + b' NULL AS ' + \
+                util.quote_string(self._conn, null)
 
         self._copysize = size
         self._copyfile = file
@@ -462,10 +459,11 @@ class Cursor(object):
         else:
             columns_str = ''
 
-        query = "COPY %s%s TO stdout WITH DELIMITER AS %s NULL AS %s" % (
-            table, columns_str,
-            util.quote_string(self._conn, sep),
-            util.quote_string(self._conn, null))
+        query = util.ascii_to_bytes(
+                "COPY %s%s TO stdout WITH DELIMITER AS " % (
+                    table, columns_str)) + \
+                util.quote_string(self._conn, sep) + b' NULL AS ' + \
+                util.quote_string(self._conn, null)
 
         self._copyfile = file
         try:
@@ -684,7 +682,8 @@ class Cursor(object):
             if not async:
                 with self._conn._lock:
                     if not self._conn._have_wait_callback():
-                        self._pgres = libpq.PQexec(pgconn, query)
+                        self._pgres = libpq.PQexec(
+                                pgconn, util.ascii_to_bytes(query))
                     else:
                         self._pgres = self._conn._execute_green(query)
                     if not self._pgres:
@@ -719,7 +718,8 @@ class Cursor(object):
     def _pq_fetch(self):
         pgstatus = libpq.PQresultStatus(self._pgres)
         if pgstatus != libpq.PGRES_FATAL_ERROR:
-            self._statusmessage = ffi.string(libpq.PQcmdStatus(self._pgres))
+            self._statusmessage = util.bytes_to_ascii(
+                    ffi.string(libpq.PQcmdStatus(self._pgres)))
         else:
             self._statusmessage = None
 
@@ -758,6 +758,7 @@ class Cursor(object):
             self._no_tuples = False
             description = []
             casts = []
+            fast_parsers = []
             for i in xrange(self._nfields):
                 ftype = libpq.PQftype(self._pgres, i)
                 fsize = libpq.PQfsize(self._pgres, i)
@@ -781,7 +782,8 @@ class Cursor(object):
 
                 casts.append(self._get_cast(ftype))
                 description.append(Column(
-                    name=ffi.string(libpq.PQfname(self._pgres, i)),
+                    name=ffi.string(libpq.PQfname(self._pgres, i))\
+                            .decode(self._conn._py_enc),
                     type_code=ftype,
                     display_size=None,
                     internal_size=isize,
@@ -790,8 +792,21 @@ class Cursor(object):
                     null_ok=None,
                 ))
 
+                fast_parser = None
+                if ftype == 21 or ftype == 23:
+                    fast_parser = libpq.PQEgetint
+                elif ftype == 20:
+                    fast_parser = libpq.PQEgetlong
+                elif ftype == 700:
+                    fast_parser = libpq.PQEgetfloat
+                elif ftype == 701:
+                    fast_parser = libpq.PQEgetdouble
+                fast_parsers.append(fast_parser)
+
+
             self._description = tuple(description)
             self._casts = casts
+            self._fast_parsers = fast_parsers
 
     def _pq_fetch_copy_in(self):
         pgconn = self._conn._pgconn
@@ -841,7 +856,8 @@ class Cursor(object):
         self._clear_pgres()
         util.pq_clear_async(pgconn)
 
-    def _build_row(self, row_num):
+    def _build_row(self):
+        row_num = self._rownumber
 
         # Create the row
         if self.row_factory:
@@ -857,10 +873,17 @@ class Cursor(object):
             if libpq.PQgetisnull(self._pgres, row_num, i):
                 row[i] = None
             else:
-                length = libpq.PQgetlength(self._pgres, row_num, i)
-                val = ffi.buffer(
-                        libpq.PQgetvalue(self._pgres, row_num, i), length)[:]
-                row[i] = typecasts.typecast(self._casts[i], val, length, self)
+                fast_parser = self._fast_parsers[i]
+                if fast_parser:
+                    row[i] = fast_parser(self._pgres, row_num, i)
+                else:
+                    length = libpq.PQgetlength(self._pgres, row_num, i)
+                    val = ffi.buffer(libpq.PQgetvalue(
+                        self._pgres, row_num, i), length)[:]
+                    row[i] = typecasts.typecast(
+                            self._casts[i], val, length, self)
+
+        self._rownumber += 1
 
         if is_tuple:
             return tuple(row)
@@ -882,32 +905,34 @@ class Cursor(object):
 def _combine_cmd_params(cmd, params, conn):
     """Combine the command string and params"""
 
+    if isinstance(cmd, six.text_type):
+        cmd = cmd.encode(conn._py_enc)
+
     # Return when no argument binding is required.  Note that this method is
     # not called from .execute() if `params` is None.
-    if '%' not in cmd:
+    if b'%' not in cmd:
         return cmd
 
     idx = 0
+    next_start = 0
     param_num = 0
+    n_arg_values = 0
     arg_values = None
     named_args_format = None
-
-    def check_format_char(format_char, pos):
-        """Raise an exception when the format_char is unsupported"""
-        if format_char not in 's ':
-            raise ValueError(
-                "unsupported format character '%s' (0x%x) at index %d" %
-                (format_char, ord(format_char), pos))
+    parts = []
 
     cmd_length = len(cmd)
     while idx < cmd_length:
 
         # Escape
-        if cmd[idx] == '%' and cmd[idx + 1] == '%':
+        if cmd[idx:idx+2] == b'%%':
+            parts.append(cmd[next_start:idx])
+            parts.append(b'%')
             idx += 1
+            next_start = idx + 1
 
         # Named parameters
-        elif cmd[idx] == '%' and cmd[idx + 1] == '(':
+        elif cmd[idx:idx+2] == b'%(':
 
             # Validate that we don't mix formats
             if named_args_format is False:
@@ -916,22 +941,26 @@ def _combine_cmd_params(cmd, params, conn):
                 named_args_format = True
 
             # Check for incomplate placeholder
-            max_lookahead = cmd.find('%', idx + 2)
-            end = cmd.find(')', idx + 2, max_lookahead)
+            max_lookahead = cmd.find(b'%', idx + 2)
+            end = cmd.find(b')', idx + 2, max_lookahead)
             if end < 0:
                 raise ProgrammingError(
                     "incomplete placeholder: '%(' without ')'")
 
-            key = cmd[idx + 2:end]
+            key = cmd[idx + 2:end].decode(conn._py_enc)
             if arg_values is None:
                 arg_values = {}
             if key not in arg_values:
                 arg_values[key] = _getquoted(params[key], conn)
+            parts.append(cmd[next_start:idx])
+            parts.append(arg_values[key])
+            n_arg_values += 1
+            next_start = end + 2
 
-            check_format_char(cmd[end + 1], idx)
+            _check_format_char(cmd[end + 1], idx)
 
         # Indexed parameters
-        elif cmd[idx] == '%':
+        elif cmd[idx:idx+1] == b'%':
 
             # Validate that we don't mix formats
             if named_args_format is True:
@@ -939,26 +968,38 @@ def _combine_cmd_params(cmd, params, conn):
             elif named_args_format is None:
                 named_args_format = False
 
-            check_format_char(cmd[idx + 1], idx)
-
-            if arg_values is None:
-                arg_values = []
+            _check_format_char(cmd[idx + 1], idx)
 
             value = _getquoted(params[param_num], conn)
-            arg_values.append(value)
+            n_arg_values += 1
+            parts.append(cmd[next_start:idx])
+            parts.append(value)
+            next_start = idx + 2
 
             param_num += 1
             idx += 1
 
         idx += 1
 
+    parts.append(cmd[next_start:cmd_length])
+
     if named_args_format is False:
-        if len(arg_values) != len(params):
+        if n_arg_values != len(params):
             raise TypeError(
                 "not all arguments converted during string formatting")
-        arg_values = tuple(arg_values)
 
-    if not arg_values:
-        return cmd % tuple()  # Required to unescape % chars
-    return cmd % arg_values
+    return b''.join(parts)
+
+
+_s_ord = ord(b's')
+
+def _check_format_char(format_char_ord, pos):
+    """Raise an exception when the format_char is unsupported"""
+    if not six.PY3:
+        format_char_ord = ord(format_char_ord)
+    if format_char_ord != _s_ord:
+        raise ValueError(
+            "unsupported format character 0x%x at index %d" %
+            (format_char_ord, pos))
+
 
