@@ -145,7 +145,7 @@ or with the pg_config option in 'setup.cfg'.
         # Support unicode paths, if this version of Python provides the
         # necessary infrastructure:
         if sys.version_info[0] < 3 \
-        and hasattr(sys, 'getfilesystemencoding'):
+                and hasattr(sys, 'getfilesystemencoding'):
             pg_config_path = pg_config_path.encode(
                 sys.getfilesystemencoding())
 
