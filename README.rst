@@ -59,4 +59,24 @@ psycopg2 compat as described above, and, from the root of the django checkout::
 In case of problems with django tests, see official django docs
 https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/#running-the-unit-tests
 
+Release notes
+-------------
 
+2.6.0 (24 Jan 2015)
++++++++++++++++++++
+
+- Python 3 support
+- A bit faster reading of int, long, float, double fields
+
+2.5.1 (14 May 2014)
++++++++++++++++++++
+
+- Little bufixes
+
+2.5.0 (3 Sep 2013)
++++++++++++++++++++
+
+- Bufixes and a lot of compatability work by Daniele Varrazzo
+
+
+Older releases lack release notes, first release of psycopg2cffi around Nov 2012.
