@@ -16,11 +16,11 @@ have ``libpq`` headers, ``pg_config`` somewhere on your ``$PATH``.
 Installation was tested on Ubuntu 12.04 and CentOS (RHEL 5.0).
 It should be possible to make it work on Windows, but I did not even test it.
 
-This module is only tested with python 2.6+, python 3.2+  and PyPy 2.x (and will 
-definityly not work on PyPy 1.9).
+This module works under CPython 2.6+, CPython 3.2+, PyPy 2 and PyPy 3
+(PyPy version should be at least 2.0, which is ancient history now).
 
 To use this package with Django or SQLAlchemy invoke a compatability
-hook (for example, from ``settings.py`` in case of django, or 
+hook (for example, from ``settings.py`` in case of django, or
 from a ``psycopg2.py`` file in site-packages of your virtual env)::
 
     from psycopg2cffi import compat
@@ -28,14 +28,14 @@ from a ``psycopg2.py`` file in site-packages of your virtual env)::
 
 This will map ``psycopg2cffi`` to ``psycopg2``.
 
-Submit issues to https://github.com/chtd/psycopg2cffi/issues 
+Submit issues to https://github.com/chtd/psycopg2cffi/issues
 
-If you notice that ``psycopg2cffi`` under PyPy is noticably slower than 
-``psycopg2`` under CPython, submit this to the issues too - it should 
+If you notice that ``psycopg2cffi`` under PyPy is noticably slower than
+``psycopg2`` under CPython, submit this to the issues too - it should
 not be the case.
 
-This is a port of (Michael van Tellingen port 
-https://github.com/mvantellingen/psycopg2-ctypes 
+This is a port of (Michael van Tellingen port
+https://github.com/mvantellingen/psycopg2-ctypes
 of Alex Gaynor's rpython port
 (https://bitbucket.org/alex_gaynor/pypy-postgresql/overview) of psycopg2 to
 python + ctypes) to cffi.
@@ -56,7 +56,7 @@ psycopg2 compat as described above, and, from the root of the django checkout::
     PYTHONPATH=`pwd` ./tests/runtests.py \
         --settings=psycopg2cffi.tests.psycopg2_tests.testconfig
 
-In case of problems with django tests, see official django docs 
+In case of problems with django tests, see official django docs
 https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-tests/#running-the-unit-tests
 
 
