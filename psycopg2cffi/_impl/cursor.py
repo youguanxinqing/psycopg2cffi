@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import sys
 from collections import namedtuple
 from functools import wraps
 from io import TextIOBase
@@ -15,6 +16,9 @@ from psycopg2cffi._impl import typecasts
 from psycopg2cffi._impl import util
 from psycopg2cffi._impl.adapters import _getquoted
 from psycopg2cffi._impl.exceptions import InterfaceError, ProgrammingError
+
+
+is_32bits = sys.maxsize < 2**32
 
 
 def check_closed(func):
@@ -793,7 +797,10 @@ class Cursor(object):
                 ))
 
                 fast_parser = None
-                if ftype == 21 or ftype == 23:
+                if is_32bits:
+                    # disable all fast parsers to avoid portability problems
+                    pass
+                elif ftype == 21 or ftype == 23:
                     fast_parser = libpq.PQEgetint
                 elif ftype == 20:
                     fast_parser = libpq.PQEgetlong
