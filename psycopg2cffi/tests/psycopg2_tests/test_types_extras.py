@@ -501,12 +501,23 @@ class AdaptTypeTestCase(ConnectingTestCase):
            '@,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,[,"\\\\",],'
            '^,_,`,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,{,|,},'
            '~,\x7f)',
-           bytelist) 
+           bytelist)
         ok('(,"\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
            '\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !'
            '""#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\\\]'
            '^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f")',
            [None, ''.join(bytelist)])
+
+    def test_register_unicode(self):
+        cur = self.conn.cursor()
+        extensions.register_type(
+            extensions.new_type((705,), "UNKNOWN", extensions.UNICODE))
+        cur.execute(_u(b"SELECT '\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e' AS japanese;"))
+        res = cur.fetchall()
+        assert res == [(_u(b'\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e'),)]
+        cur.execute(b"SELECT '\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e' AS japanese;")
+        res = cur.fetchall()
+        assert res == [(_u(b'\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e'),)]
 
     @skip_if_no_composite
     def test_cast_composite(self):

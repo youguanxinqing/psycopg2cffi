@@ -219,9 +219,17 @@ class parse_array(object):
 
     __call__ = cast
 
+
 def parse_unicode(value, length, cursor):
     """Decode the given value with the connection encoding"""
-    return value.decode(cursor._conn._py_enc) if value is not None else None
+    if value is None:
+        return None
+    elif isinstance(value, six.string_types):
+        # This can occur when we use our internal typecaster
+        # in register_type, so it accepts unicode, not bytes.
+        return value
+    else:
+        return value.decode(cursor._conn._py_enc)
 
 
 def _parse_time_to_args(value, cursor):
