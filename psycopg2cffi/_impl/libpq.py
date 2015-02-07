@@ -133,8 +133,8 @@ extern char *PQgetvalue(const PGresult *res, int tup_num, int field_num);
 
 // direct parsers - not part of libpq
 
-long PQEgetlong(const PGresult *res, int tup_num, int field_num);
-int PQEgetint(const PGresult *res, int tup_num, int field_num);
+int64_t PQEgetlong(const PGresult *res, int tup_num, int field_num);
+int32_t PQEgetint(const PGresult *res, int tup_num, int field_num);
 float PQEgetfloat(const PGresult *res, int tup_num, int field_num);
 double PQEgetdouble(const PGresult *res, int tup_num, int field_num);
 
@@ -217,17 +217,18 @@ extern int lo_truncate(PGconn *conn, int fd, size_t len);
 
 
 libpq = ffi.verify('''
+#include <stdint.h>
 #include <postgres_ext.h>
 #include <libpq-fe.h>
 
-long PQEgetlong(const PGresult *res, int tup_num, int field_num) {
+int64_t PQEgetlong(const PGresult *res, int tup_num, int field_num) {
     long raw_res;
     char *val = PQgetvalue(res, tup_num, field_num);
     sscanf(val, "%ld", &raw_res);
     return raw_res;
 }
 
-int PQEgetint(const PGresult *res, int tup_num, int field_num) {
+int32_t PQEgetint(const PGresult *res, int tup_num, int field_num) {
     int raw_res;
     char *val = PQgetvalue(res, tup_num, field_num);
     sscanf(val, "%d", &raw_res);
