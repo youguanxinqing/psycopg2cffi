@@ -196,6 +196,14 @@ class TypesBasicTests(ConnectingTestCase):
             self.assertRaises(psycopg2.DataError,
                 psycopg2.extensions.STRINGARRAY, b(s), curs)
 
+    def testBigInt(self):
+        curs = self.conn.cursor()
+        curs.execute("create table bigint_test (id integer, x bigint)")
+        x = 9223372036854775801
+        curs.execute("insert into bigint_test values (%s, %s)", (1, x))
+        curs.execute("select x from bigint_test where id = 1")
+        self.assertEqual(curs.fetchone()[0], x)
+
     @testutils.skip_from_python(3)
     def testTypeRoundtripBuffer(self):
         o1 = buffer("".join(map(chr, range(256))))
