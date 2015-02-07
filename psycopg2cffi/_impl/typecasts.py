@@ -224,7 +224,7 @@ def parse_unicode(value, length, cursor):
     """Decode the given value with the connection encoding"""
     if value is None:
         return None
-    elif isinstance(value, six.string_types):
+    elif isinstance(value, six.text_type):
         # This can occur when we use our internal typecaster
         # in register_type, so it accepts unicode, not bytes.
         return value
