@@ -62,6 +62,15 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 Release notes
 -------------
 
+2.6.1 (08 Feb 2015)
++++++++++++++++++++
+
+Fixing things that were broken in 2.6.0:
+
+- Fix issue #31 - bigint on 32-bit
+- Fix issue #32 - register_type and unicode
+
+
 2.6.0 (24 Jan 2015)
 +++++++++++++++++++
 
