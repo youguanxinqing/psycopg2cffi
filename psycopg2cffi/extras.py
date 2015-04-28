@@ -612,6 +612,7 @@ class HstoreAdapter(object):
     """Adapt a Python dict to the hstore syntax."""
     def __init__(self, wrapped):
         self.wrapped = wrapped
+        self.unicode = False
 
     def prepare(self, conn):
         self.conn = conn
@@ -667,10 +668,10 @@ class HstoreAdapter(object):
             | "((?: [^"\\] | \\. )*)"
         )
         (?:\s*,\s*|$) # pairs separated by comma or end of string.
-    """, _re.VERBOSE)
+    """, _re.VERBOSE | _re.UNICODE)
 
     @classmethod
-    def parse(self, s, cur, _bsdec=_re.compile(r"\\(.)")):
+    def parse(self, s, cur, _bsdec=_re.compile(r"\\(.)", _re.UNICODE)):
         """Parse an hstore representation in a Python string.
 
         The hstore is represented as something like::
@@ -684,14 +685,17 @@ class HstoreAdapter(object):
 
         rv = {}
         start = 0
+        if six.PY3 and isinstance(s, six.binary_type):
+            s = s.decode(_ext.encodings[cur.connection.encoding]) \
+                    if cur else bytes_to_ascii(s)
         for m in self._re_hstore.finditer(s):
             if m is None or m.start() != start:
                 raise psycopg2.InterfaceError(
                     "error parsing hstore pair at char %d" % start)
-            k = _bsdec.sub(r'\1', m.group(1))
+            k = _bsdec.sub(r'\1', m.group(1), _re.UNICODE)
             v = m.group(2)
             if v is not None:
-                v = _bsdec.sub(r'\1', v)
+                v = _bsdec.sub(r'\1', v, _re.UNICODE)
 
             rv[k] = v
             start = m.end()
@@ -716,7 +720,9 @@ class HstoreAdapter(object):
         if s is None:
             return None
 
-        s = s.decode(_ext.encodings[cur.connection.encoding])
+        if not isinstance(s, unicode):
+            s = s.decode(_ext.encodings[cur.connection.encoding])
+
         return self.parse(s, cur)
 
     @classmethod
@@ -807,7 +813,7 @@ def register_hstore(conn_or_curs, globally=False, unicode=False,
     else:
         cast = HstoreAdapter.parse
 
-    HSTORE = _ext.new_type(oid, "HSTORE", cast)
+    HSTORE = _ext.new_type(oid, "HSTORE", cast, unicode)
     _ext.register_type(HSTORE, not globally and conn_or_curs or None)
     _ext.register_adapter(dict, HstoreAdapter)
 
