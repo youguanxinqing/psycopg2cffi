@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
 
 import re
+import six
+import base64
 
 from psycopg2cffi._impl import consts
 from psycopg2cffi._impl.cursor import Cursor
@@ -35,9 +37,9 @@ class Xid(object):
 
     def as_tid(self):
         if self.format_id is not None:
-            gtrid = self.gtrid.encode('base64')[:-1]
-            bqual = self.bqual.encode('base64')[:-1]
-            return "%d_%s_%s" % (int(self.format_id), gtrid, bqual)
+            gtrid = base64.b64encode(six.b(self.gtrid))
+            bqual = base64.b64encode(six.b(self.bqual))
+            return "%d_%s_%s" % (int(self.format_id), gtrid.decode(), bqual.decode())
         else:
             return self.gtrid
 
@@ -50,9 +52,9 @@ class Xid(object):
         if m is not None:
             try:
                 format_id = int(m.group(1))
-                gtrid = m.group(2).decode('base64')
-                bqual = m.group(3).decode('base64')
-                return Xid(format_id, gtrid, bqual)
+                gtrid = base64.b64decode(six.b(m.group(2)))
+                bqual = base64.b64decode(six.b(m.group(3)))
+                return Xid(format_id, gtrid.decode(), bqual.decode())
             except Exception:
                 pass
 
