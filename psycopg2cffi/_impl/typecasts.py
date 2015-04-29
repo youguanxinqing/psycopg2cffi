@@ -20,11 +20,12 @@ binary_types = {}
 
 
 class Type(object):
-    def __init__(self, name, values, caster=None, py_caster=None):
+    def __init__(self, name, values, caster=None, py_caster=None, accept_unicode=True):
         self.name = name
         self.values = values
         self.caster = caster
         self.py_caster = py_caster
+        self.accept_unicode = accept_unicode
 
     def __eq__(self, other):
         return other in self.values
@@ -32,7 +33,7 @@ class Type(object):
     def cast(self, value, cursor=None, length=None):
         if self.py_caster is not None:
             # py_caster-s are part of external api and so accept unicode
-            if isinstance(value, six.binary_type):
+            if isinstance(value, six.binary_type) and self.accept_unicode:
                 value = value.decode(cursor._conn._py_enc)
             return self.py_caster(value, cursor)
         return self.caster(value, length, cursor)
@@ -57,8 +58,8 @@ def register_type(type_obj, scope=None):
         typecasts[value] = type_obj
 
 
-def new_type(values, name, castobj):
-    return Type(name, values, py_caster=castobj)
+def new_type(values, name, castobj, accept_unicode=True):
+    return Type(name, values, py_caster=castobj, accept_unicode=accept_unicode)
 
 
 def new_array_type(values, name, baseobj):
