@@ -411,7 +411,7 @@ extern int lo_truncate(PGconn *conn, int fd, size_t len);
 _or_empty = lambda x: [x] if x else []
 
 
-ffi.set_source('psycopg2cffi._impl._libpq', '''
+ffi.set_source('_libpq', '''
 #include <stdint.h>
 #include <postgres_ext.h>
 #include <libpq-fe.h>
