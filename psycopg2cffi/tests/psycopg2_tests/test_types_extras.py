@@ -16,6 +16,7 @@
 
 import re
 import sys
+import six
 from decimal import Decimal
 from datetime import date, datetime
 from functools import wraps
@@ -152,7 +153,7 @@ class HstoreTestCase(ConnectingTestCase):
         self.assertEqual(ii[2], filter_scs(self.conn, b"(E'c' => NULL)"))
         if 'd' in o:
             encc = _u(b'\xc3\xa0').encode(extensions.encodings[self.conn.encoding])
-            self.assertEqual(ii[3], 
+            self.assertEqual(ii[3],
                     filter_scs(self.conn, b"(E'd' => E'" + encc + b"')"))
 
     def test_adapt_9(self):
@@ -253,8 +254,8 @@ class HstoreTestCase(ConnectingTestCase):
         self.assert_(t[0] is None)
         self.assertEqual(t[1], {})
         self.assertEqual(t[2], {_u(b'a'): _u(b'b')})
-        self.assert_(isinstance(t[2].keys()[0], unicode))
-        self.assert_(isinstance(t[2].values()[0], unicode))
+        self.assert_(isinstance(list(t[2].keys())[0], six.text_type))
+        self.assert_(isinstance(list(t[2].values())[0], six.text_type))
 
     @skip_if_no_hstore
     def test_register_globally(self):
@@ -305,7 +306,7 @@ class HstoreTestCase(ConnectingTestCase):
         if sys.version_info[0] < 3:
             ab = map(chr, range(32, 127) + range(160, 255))
         else:
-            ab = bytes(range(32, 127) + range(160, 255)).decode('latin1')
+            ab = bytes(list(range(32, 127)) + list(range(160, 255))).decode('latin1')
 
         ok({''.join(ab): ''.join(ab)})
         ok(dict(zip(ab, ab)))
@@ -320,16 +321,16 @@ class HstoreTestCase(ConnectingTestCase):
             cur.execute("select %s", (d,))
             d1 = cur.fetchone()[0]
             self.assertEqual(len(d), len(d1))
-            for k, v in d1.iteritems():
+            for k, v in d1.items():
                 self.assert_(k in d, k)
                 self.assertEqual(d[k], v)
-                self.assert_(isinstance(k, unicode))
-                self.assert_(v is None or isinstance(v, unicode))
+                self.assert_(isinstance(k, six.text_type))
+                self.assert_(v is None or isinstance(v, six.text_type))
 
         ok({})
         ok({'a': 'b', 'c': None, 'd': _u(b'\xe2\x82\xac'), _u(b'\xe2\x98\x83'): 'e'})
 
-        ab = map(unichr, range(1, 1024))
+        ab = map(six.unichr, range(1, 1024))
         ok({_u(b'').join(ab): _u(b'').join(ab)})
         ok(dict(zip(ab, ab)))
 
@@ -371,7 +372,7 @@ class HstoreTestCase(ConnectingTestCase):
         if sys.version_info[0] < 3:
             ab = map(chr, range(32, 127) + range(160, 255))
         else:
-            ab = bytes(range(32, 127) + range(160, 255)).decode('latin1')
+            ab = bytes(list(range(32, 127)) + list(range(160, 255))).decode('latin1')
 
         ds.append({''.join(ab): ''.join(ab)})
         ds.append(dict(zip(ab, ab)))
@@ -509,6 +510,7 @@ class AdaptTypeTestCase(ConnectingTestCase):
            [None, ''.join(bytelist)])
 
     def test_register_unicode(self):
+        from psycopg2cffi._impl import typecasts
         cur = self.conn.cursor()
         extensions.register_type(
             extensions.new_type((705,), "UNKNOWN", extensions.UNICODE))
@@ -518,6 +520,8 @@ class AdaptTypeTestCase(ConnectingTestCase):
         cur.execute(b"SELECT '\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e' AS japanese;")
         res = cur.fetchall()
         assert res == [(_u(b'\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e'),)]
+        # Restore to default
+        extensions.register_type(typecasts.UNKNOWN)
 
     @skip_if_no_composite
     def test_cast_composite(self):

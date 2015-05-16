@@ -1,4 +1,5 @@
-.. image:: https://travis-ci.org/chtd/psycopg2cffi.svg
+.. image:: https://travis-ci.org/chtd/psycopg2cffi.svg?branch=master
+    :target: https://travis-ci.org/chtd/psycopg2cffi
 
 An implementation of the psycopg2 module using cffi.
 The module is currently compatible with Psycopg 2.5.
