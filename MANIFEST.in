@@ -1,1 +1,1 @@
-include README.rst LICENSE
+include README.rst LICENSE _build_libpq.py
