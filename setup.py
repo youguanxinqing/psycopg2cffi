@@ -50,7 +50,6 @@ setup(
     long_description=''.join(README),
     test_suite='psycopg2cffi.tests.suite',
 
-    py_modules=['_build_libpq'],  # FIXME - only for config
     packages=['psycopg2cffi', 'psycopg2cffi._impl', 'psycopg2cffi.tests'],
     setup_requires=['cffi>=1.0.dev0'],
     cffi_modules=['_build_libpq:ffi'],

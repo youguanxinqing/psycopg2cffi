@@ -6,14 +6,8 @@ import math
 import six
 from six.moves import xrange
 
-from psycopg2cffi._impl.libpq import libpq, ffi
+from psycopg2cffi._impl.libpq import libpq, ffi, PG_VERSION
 from psycopg2cffi._impl.exceptions import ProgrammingError
-
-# FIXME - figure out later
-# from psycopg2cffi._config import PG_VERSION
-from _build_libpq import _config
-PG_VERSION = _config.libpq_version
-
 from psycopg2cffi.tz import LOCAL as TZ_LOCAL
 
 

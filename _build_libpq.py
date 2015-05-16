@@ -205,6 +205,8 @@ ffi = FFI()
 
 ffi.cdef('''
 
+static int const _PG_VERSION;
+
 // postgres_ext.h
 
 typedef unsigned int Oid;
@@ -468,7 +470,9 @@ static int const PG_DIAG_CONSTRAINT_NAME = 'n';
 static int const PG_DIAG_DATATYPE_NAME  = 'd';
 static int const PG_DIAG_SCHEMA_NAME = 's';
 static int const PG_DIAG_TABLE_NAME = 't';
-    ''',
+    ''' + '''
+static int const _PG_VERSION = {libpq_version};
+    '''.format(libpq_version=_config.libpq_version),
     libraries=['pq'],
     library_dirs=_or_empty(os.path.dirname(_config.libpq_path)),
     include_dirs=_or_empty(_config.libpq_include_dir),
