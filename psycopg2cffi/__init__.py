@@ -19,11 +19,6 @@ import psycopg2cffi.extensions as _ext
 _ext.register_adapter(tuple, _ext.SQL_IN)
 _ext.register_adapter(type(None), _ext.NoneAdapter)
 
-# check for a more up-to-date version number generated at install time
-try:
-    from psycopg2cffi._config import VERSION as __version__
-except ImportError:
-    pass
 
 import re
 
