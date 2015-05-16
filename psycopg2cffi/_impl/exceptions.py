@@ -9,7 +9,7 @@ except NameError:
 class OperationError(Exception):
     pass
 
-from psycopg2cffi._impl.libpq import libpq, libpq_const, ffi
+from psycopg2cffi._impl.libpq import libpq, ffi
 
 
 class Warning(StandardError):
@@ -106,69 +106,69 @@ class Diagnostics(object):
 
     @property
     def severity(self):
-        return self._get_field(libpq_const.PG_DIAG_SEVERITY)
+        return self._get_field(libpq.PG_DIAG_SEVERITY)
 
     @property
     def sqlstate(self):
-        return self._get_field(libpq_const.PG_DIAG_SQLSTATE)
+        return self._get_field(libpq.PG_DIAG_SQLSTATE)
 
     @property
     def message_primary(self):
-        return self._get_field(libpq_const.PG_DIAG_MESSAGE_PRIMARY)
+        return self._get_field(libpq.PG_DIAG_MESSAGE_PRIMARY)
 
     @property
     def message_detail(self):
-        return self._get_field(libpq_const.PG_DIAG_MESSAGE_DETAIL)
+        return self._get_field(libpq.PG_DIAG_MESSAGE_DETAIL)
 
     @property
     def message_hint(self):
-        return self._get_field(libpq_const.PG_DIAG_MESSAGE_HINT)
+        return self._get_field(libpq.PG_DIAG_MESSAGE_HINT)
 
     @property
     def statement_position(self):
-        return self._get_field(libpq_const.PG_DIAG_STATEMENT_POSITION)
+        return self._get_field(libpq.PG_DIAG_STATEMENT_POSITION)
 
     @property
     def internal_position(self):
-        return self._get_field(libpq_const.PG_DIAG_INTERNAL_POSITION)
+        return self._get_field(libpq.PG_DIAG_INTERNAL_POSITION)
 
     @property
     def internal_query(self):
-        return self._get_field(libpq_const.PG_DIAG_INTERNAL_QUERY)
+        return self._get_field(libpq.PG_DIAG_INTERNAL_QUERY)
 
     @property
     def context(self):
-        return self._get_field(libpq_const.PG_DIAG_CONTEXT)
+        return self._get_field(libpq.PG_DIAG_CONTEXT)
 
     @property
     def schema_name(self):
-        return self._get_field(libpq_const.PG_DIAG_SCHEMA_NAME)
+        return self._get_field(libpq.PG_DIAG_SCHEMA_NAME)
 
     @property
     def table_name(self):
-        return self._get_field(libpq_const.PG_DIAG_TABLE_NAME)
+        return self._get_field(libpq.PG_DIAG_TABLE_NAME)
 
     @property
     def column_name(self):
-        return self._get_field(libpq_const.PG_DIAG_COLUMN_NAME)
+        return self._get_field(libpq.PG_DIAG_COLUMN_NAME)
 
     @property
     def datatype_name(self):
-        return self._get_field(libpq_const.PG_DIAG_DATATYPE_NAME)
+        return self._get_field(libpq.PG_DIAG_DATATYPE_NAME)
 
     @property
     def constraint_name(self):
-        return self._get_field(libpq_const.PG_DIAG_CONSTRAINT_NAME)
+        return self._get_field(libpq.PG_DIAG_CONSTRAINT_NAME)
 
     @property
     def source_file(self):
-        return self._get_field(libpq_const.PG_DIAG_SOURCE_FILE)
+        return self._get_field(libpq.PG_DIAG_SOURCE_FILE)
 
     @property
     def source_line(self):
-        return self._get_field(libpq_const.PG_DIAG_SOURCE_LINE)
+        return self._get_field(libpq.PG_DIAG_SOURCE_LINE)
 
     @property
     def source_function(self):
-        return self._get_field(libpq_const.PG_DIAG_SOURCE_FUNCTION)
+        return self._get_field(libpq.PG_DIAG_SOURCE_FUNCTION)
 

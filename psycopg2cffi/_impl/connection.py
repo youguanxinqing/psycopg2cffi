@@ -8,7 +8,7 @@ import six
 from psycopg2cffi._impl import consts
 from psycopg2cffi._impl import encodings as _enc
 from psycopg2cffi._impl import exceptions
-from psycopg2cffi._impl.libpq import libpq, libpq_const, ffi
+from psycopg2cffi._impl.libpq import libpq, ffi
 from psycopg2cffi._impl import util
 from psycopg2cffi._impl.adapters import bytes_to_ascii, ascii_to_bytes
 from psycopg2cffi._impl.cursor import Cursor
@@ -828,7 +828,7 @@ class Connection(object):
             pgmsg = bytes_to_ascii(ffi.string(pgmsg)) if pgmsg else None
 
             # Get the correct exception class based on the error code
-            code = libpq.PQresultErrorField(pgres, libpq_const.PG_DIAG_SQLSTATE)
+            code = libpq.PQresultErrorField(pgres, libpq.PG_DIAG_SQLSTATE)
             if code != ffi.NULL:
                 code = bytes_to_ascii(ffi.string(code))
                 exc_type = util.get_exception_for_sqlstate(code)

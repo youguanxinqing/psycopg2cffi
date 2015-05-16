@@ -209,6 +209,24 @@ ffi.cdef('''
 
 typedef unsigned int Oid;
 
+static int const PG_DIAG_SEVERITY;
+static int const PG_DIAG_SQLSTATE;
+static int const PG_DIAG_MESSAGE_PRIMARY;
+static int const PG_DIAG_MESSAGE_DETAIL;
+static int const PG_DIAG_MESSAGE_HINT;
+static int const PG_DIAG_STATEMENT_POSITION;
+static int const PG_DIAG_INTERNAL_POSITION;
+static int const PG_DIAG_INTERNAL_QUERY;
+static int const PG_DIAG_CONTEXT;
+static int const PG_DIAG_SOURCE_FILE;
+static int const PG_DIAG_SCHEMA_NAME;
+static int const PG_DIAG_TABLE_NAME;
+static int const PG_DIAG_COLUMN_NAME;
+static int const PG_DIAG_DATATYPE_NAME ;
+static int const PG_DIAG_CONSTRAINT_NAME;
+static int const PG_DIAG_SOURCE_LINE;
+static int const PG_DIAG_SOURCE_FUNCTION;
+
 // libpq-fe.h
 
 typedef enum
@@ -443,6 +461,13 @@ double PQEgetdouble(const PGresult *res, int tup_num, int field_num) {
     sscanf(val, "%lf", &raw_res);
     return raw_res;
 }
+
+// others are defined as macros
+static int const PG_DIAG_COLUMN_NAME = 'c';
+static int const PG_DIAG_CONSTRAINT_NAME = 'n';
+static int const PG_DIAG_DATATYPE_NAME  = 'd';
+static int const PG_DIAG_SCHEMA_NAME = 's';
+static int const PG_DIAG_TABLE_NAME = 't';
     ''',
     libraries=['pq'],
     library_dirs=_or_empty(os.path.dirname(_config.libpq_path)),
