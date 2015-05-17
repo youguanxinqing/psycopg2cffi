@@ -428,10 +428,7 @@ extern int lo_truncate(PGconn *conn, int fd, size_t len);
 ''')
 
 
-_or_empty = lambda x: [x] if x else []
-
-
-ffi.set_source('_libpq', '''
+C_SOURCE = '''
 #include <stdint.h>
 #include <postgres_ext.h>
 #include <libpq-fe.h>
@@ -470,13 +467,24 @@ static int const PG_DIAG_CONSTRAINT_NAME = 'n';
 static int const PG_DIAG_DATATYPE_NAME  = 'd';
 static int const PG_DIAG_SCHEMA_NAME = 's';
 static int const PG_DIAG_TABLE_NAME = 't';
-    ''' + '''
+''' + '''
+
 static int const _PG_VERSION = {libpq_version};
-    '''.format(libpq_version=_config.libpq_version),
+'''.format(libpq_version=_config.libpq_version)
+
+
+_or_empty = lambda x: [x] if x else []
+
+
+C_SOURCE_KWARGS = dict(
     libraries=['pq'],
     library_dirs=_or_empty(os.path.dirname(_config.libpq_path)),
     include_dirs=_or_empty(_config.libpq_include_dir),
     )
+
+
+if hasattr(ffi, 'set_source'):
+    ffi.set_source('_libpq', C_SOURCE, **C_SOURCE_KWARGS)
 
 
 if __name__ == '__main__':

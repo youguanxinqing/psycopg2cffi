@@ -1,6 +1,7 @@
 # setup.py
 
 import os
+import sys
 
 from setuptools import setup
 
@@ -23,7 +24,14 @@ with open('README.rst', 'r') as fh:
     README = fh.readlines()
 
 
-setup(
+if '_cffi_backend' in sys.builtin_module_names:   # pypy
+    import _cffi_backend
+    new_cffi = _cffi_backend.__version__ >= "1"
+else:
+    new_cffi = True   # assume at least 1.0.0 will be installed
+
+
+setup_kwargs = dict(
     name='psycopg2cffi',
     author='Konstantin Lopuhin',
     author_email='konstantin.lopuhin@chtd.ru',
@@ -49,12 +57,36 @@ setup(
     description=README[0].strip(),
     long_description=''.join(README),
     test_suite='psycopg2cffi.tests.suite',
-
     packages=['psycopg2cffi', 'psycopg2cffi._impl', 'psycopg2cffi.tests'],
-    setup_requires=['cffi>=1.0.dev0'],
-    cffi_modules=['_build_libpq:ffi'],
-    install_requires=[
-        'six',
-        'cffi>=1.0.dev0',  # TODO - cffi-runtime
-        ],
+    install_requires=['six'],
 )
+
+if new_cffi:
+    setup_kwargs.update(dict(
+        setup_requires=[
+            'cffi>=1.0.dev0',
+            ],
+        cffi_modules=['_build_libpq.py:ffi'],
+        install_requires=setup_kwargs['install_requires'] + [
+            'cffi>=1.0.dev0',  # TODO - cffi-runtime
+            ],
+        ))
+else:
+    try:
+        import cffi
+    except ImportError:
+        ext_modules = []  # TODO - check if it can happen
+    else:
+        from psycopg2cffi._impl.libpq import ffi
+        ext_modules = [ffi.verifier.get_extension()]
+    setup_kwargs.update(dict(
+        install_requires=setup_kwargs['install_requires'] + [
+            'cffi<1.0',
+            ],
+        setup_requires=[
+            'cffi<1.0',
+            ],
+        ext_package='psycopg2cffi',
+        ext_modules=ext_modules))
+
+setup(**setup_kwargs)
