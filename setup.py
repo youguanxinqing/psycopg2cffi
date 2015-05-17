@@ -64,18 +64,18 @@ setup_kwargs = dict(
 if new_cffi:
     setup_kwargs.update(dict(
         setup_requires=[
-            'cffi>=1.0.dev0',
+            'cffi>=1.0',
             ],
         cffi_modules=['psycopg2cffi/_impl/_build_libpq.py:ffi'],
         install_requires=setup_kwargs['install_requires'] + [
-            'cffi>=1.0.dev0',  # TODO - cffi-runtime
+            'cffi>=1.0',
             ],
         ))
 else:
     try:
         import cffi
     except ImportError:
-        ext_modules = []  # TODO - check if it can happen
+        ext_modules = []
     else:
         from psycopg2cffi._impl.libpq import ffi
         ext_modules = [ffi.verifier.get_extension()]
@@ -87,6 +87,7 @@ else:
             'cffi<1.0',
             ],
         ext_package='psycopg2cffi',
-        ext_modules=ext_modules))
+        ext_modules=ext_modules,
+        ))
 
 setup(**setup_kwargs)
