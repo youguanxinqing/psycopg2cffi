@@ -66,7 +66,7 @@ if new_cffi:
         setup_requires=[
             'cffi>=1.0.dev0',
             ],
-        cffi_modules=['_build_libpq.py:ffi'],
+        cffi_modules=['psycopg2cffi/_impl/_build_libpq.py:ffi'],
         install_requires=setup_kwargs['install_requires'] + [
             'cffi>=1.0.dev0',  # TODO - cffi-runtime
             ],
