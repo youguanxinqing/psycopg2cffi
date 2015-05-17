@@ -73,11 +73,10 @@ if new_cffi:
         ))
 else:
     try:
-        import cffi
+        from psycopg2cffi._impl.libpq import ffi
     except ImportError:
         ext_modules = []
     else:
-        from psycopg2cffi._impl.libpq import ffi
         ext_modules = [ffi.verifier.get_extension()]
     setup_kwargs.update(dict(
         install_requires=setup_kwargs['install_requires'] + [
