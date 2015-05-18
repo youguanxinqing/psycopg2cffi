@@ -484,7 +484,7 @@ C_SOURCE_KWARGS = dict(
 
 
 if hasattr(ffi, 'set_source'):
-    ffi.set_source('_libpq', C_SOURCE, **C_SOURCE_KWARGS)
+    ffi.set_source('psycopg2cffi._impl._libpq', C_SOURCE, **C_SOURCE_KWARGS)
 
 
 if __name__ == '__main__':
