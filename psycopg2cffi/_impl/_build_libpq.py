@@ -211,23 +211,25 @@ static int const _PG_VERSION;
 
 typedef unsigned int Oid;
 
-static int const PG_DIAG_SEVERITY;
-static int const PG_DIAG_SQLSTATE;
-static int const PG_DIAG_MESSAGE_PRIMARY;
-static int const PG_DIAG_MESSAGE_DETAIL;
-static int const PG_DIAG_MESSAGE_HINT;
-static int const PG_DIAG_STATEMENT_POSITION;
-static int const PG_DIAG_INTERNAL_POSITION;
-static int const PG_DIAG_INTERNAL_QUERY;
-static int const PG_DIAG_CONTEXT;
-static int const PG_DIAG_SOURCE_FILE;
-static int const PG_DIAG_SCHEMA_NAME;
-static int const PG_DIAG_TABLE_NAME;
-static int const PG_DIAG_COLUMN_NAME;
-static int const PG_DIAG_DATATYPE_NAME ;
-static int const PG_DIAG_CONSTRAINT_NAME;
-static int const PG_DIAG_SOURCE_LINE;
-static int const PG_DIAG_SOURCE_FUNCTION;
+// See comment below.
+
+static int const LIBPQ_DIAG_SEVERITY;
+static int const LIBPQ_DIAG_SQLSTATE;
+static int const LIBPQ_DIAG_MESSAGE_PRIMARY;
+static int const LIBPQ_DIAG_MESSAGE_DETAIL;
+static int const LIBPQ_DIAG_MESSAGE_HINT;
+static int const LIBPQ_DIAG_STATEMENT_POSITION;
+static int const LIBPQ_DIAG_INTERNAL_POSITION;
+static int const LIBPQ_DIAG_INTERNAL_QUERY;
+static int const LIBPQ_DIAG_CONTEXT;
+static int const LIBPQ_DIAG_SOURCE_FILE;
+static int const LIBPQ_DIAG_SCHEMA_NAME;
+static int const LIBPQ_DIAG_TABLE_NAME;
+static int const LIBPQ_DIAG_COLUMN_NAME;
+static int const LIBPQ_DIAG_DATATYPE_NAME ;
+static int const LIBPQ_DIAG_CONSTRAINT_NAME;
+static int const LIBPQ_DIAG_SOURCE_LINE;
+static int const LIBPQ_DIAG_SOURCE_FUNCTION;
 
 // libpq-fe.h
 
@@ -461,12 +463,26 @@ double PQEgetdouble(const PGresult *res, int tup_num, int field_num) {
     return raw_res;
 }
 
-// others are defined as macros
-static int const PG_DIAG_COLUMN_NAME = 'c';
-static int const PG_DIAG_CONSTRAINT_NAME = 'n';
-static int const PG_DIAG_DATATYPE_NAME  = 'd';
-static int const PG_DIAG_SCHEMA_NAME = 's';
-static int const PG_DIAG_TABLE_NAME = 't';
+// Real names start with PG_DIAG_, but here we define our prefixes,
+// because some are defined and some are not depending on pg version.
+
+static int const LIBPQ_DIAG_SEVERITY = 'S';
+static int const LIBPQ_DIAG_SQLSTATE = 'C';
+static int const LIBPQ_DIAG_MESSAGE_PRIMARY = 'M';
+static int const LIBPQ_DIAG_MESSAGE_DETAIL = 'D';
+static int const LIBPQ_DIAG_MESSAGE_HINT = 'H';
+static int const LIBPQ_DIAG_STATEMENT_POSITION = 'P';
+static int const LIBPQ_DIAG_INTERNAL_POSITION = 'p';
+static int const LIBPQ_DIAG_INTERNAL_QUERY = 'q';
+static int const LIBPQ_DIAG_CONTEXT = 'W';
+static int const LIBPQ_DIAG_SCHEMA_NAME = 's';
+static int const LIBPQ_DIAG_TABLE_NAME = 't';
+static int const LIBPQ_DIAG_COLUMN_NAME = 'c';
+static int const LIBPQ_DIAG_DATATYPE_NAME  = 'd';
+static int const LIBPQ_DIAG_CONSTRAINT_NAME = 'n';
+static int const LIBPQ_DIAG_SOURCE_FILE = 'F';
+static int const LIBPQ_DIAG_SOURCE_LINE = 'L';
+static int const LIBPQ_DIAG_SOURCE_FUNCTION = 'R';
 ''' + '''
 
 static int const _PG_VERSION = {libpq_version};
