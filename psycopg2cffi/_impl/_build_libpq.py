@@ -168,33 +168,11 @@ Please add the directory containing pg_config to the PATH.
             if sys.platform in ['linux', 'linux2', 'linux3']:
                 fname = os.path.join(path, 'libpq.so')
 
-        if fname:
-            print()
-            print('=' * 80)
-            print()
-            print('Found libpq at:')
-            print(' -> %s' %  fname)
-            print()
-            print('=' * 80)
-            return fname
-        else:
+        if not fname:
             fname = ctypes.util.find_library('pq')
-            print()
-            print('=' * 80)
-            print()
-            print('Unable to find the libpq for your platform in:')
-            print(' -> %s' %  path)
-            print()
-            print('Ignoring pg_config, trying ctypes.util.find_library()')
-            if fname:
-                print(' -> OK (%s)' % fname)
-            else:
-                print(' -> FAILED')
-            print()
-            print('=' * 80)
             if not fname:
                 sys.exit(1)
-            return fname
+        return fname
 
 
 _config = PostgresConfig()
