@@ -6,15 +6,14 @@ import math
 import six
 from six.moves import xrange
 
-from psycopg2cffi._impl.libpq import libpq, ffi
+from psycopg2cffi._impl.libpq import libpq, ffi, PG_VERSION
 from psycopg2cffi._impl.exceptions import ProgrammingError
-from psycopg2cffi._config import PG_VERSION
 from psycopg2cffi.tz import LOCAL as TZ_LOCAL
 
 
 adapters = {}
 
-# Adapters assept python objects and always return bytes, as described in 
+# Adapters assept python objects and always return bytes, as described in
 # http://initd.org/psycopg/articles/2011/01/24/psycopg2-porting-python-3-report/
 
 

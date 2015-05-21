@@ -10,7 +10,7 @@ from psycopg2cffi._impl.connection import _connect
 from psycopg2cffi._impl.exceptions import *
 from psycopg2cffi._impl.typecasts import BINARY, DATETIME, NUMBER, ROWID, STRING
 
-__version__ = '2.6.1'
+__version__ = '2.7.0'
 apilevel = '2.0'
 paramstyle = 'pyformat'
 threadsafety = 2
@@ -19,11 +19,6 @@ import psycopg2cffi.extensions as _ext
 _ext.register_adapter(tuple, _ext.SQL_IN)
 _ext.register_adapter(type(None), _ext.NoneAdapter)
 
-# check for a more up-to-date version number generated at install time
-try:
-    from psycopg2cffi._config import VERSION as __version__
-except ImportError:
-    pass
 
 import re
 

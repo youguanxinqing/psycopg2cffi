@@ -828,7 +828,7 @@ class Connection(object):
             pgmsg = bytes_to_ascii(ffi.string(pgmsg)) if pgmsg else None
 
             # Get the correct exception class based on the error code
-            code = libpq.PQresultErrorField(pgres, libpq.PG_DIAG_SQLSTATE)
+            code = libpq.PQresultErrorField(pgres, libpq.LIBPQ_DIAG_SQLSTATE)
             if code != ffi.NULL:
                 code = bytes_to_ascii(ffi.string(code))
                 exc_type = util.get_exception_for_sqlstate(code)

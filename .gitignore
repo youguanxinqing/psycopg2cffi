@@ -8,3 +8,5 @@ __pycache__
 env
 *.swp
 psycopg2cffi/_cffi__*.so
+psycopg2cffi/_config.py
+psycopg2cffi/_impl/_libpq.so
