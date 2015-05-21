@@ -10,7 +10,7 @@ You can  install ``psycopg2cffi`` from pypi::
 
 Or from source::
 
-    python setup.py develop
+    python setup.py install
 
 Installation requirements are the same as for ``psycopg2`` - you must
 have ``libpq`` headers, ``pg_config`` somewhere on your ``$PATH``.
@@ -51,6 +51,12 @@ To run tests, install ``pytest`` and run them with::
 
     py.test psycopg2cffi
 
+Note that for ``cffi>=1.0`` you need to run ``python setup.py develop``
+to rebuild ``_libpq.so`` (if you changed bindings).
+And for ``cffi<1.0`` (only PyPy 2.5 and below) you need to run
+``python setup.py install`` once to generate ``psycopg2cffi/_config.py``,
+otherwise each import will run config and notify tests will fail.
+
 You can also run Django tests. You need to checkout django source, add
 psycopg2 compat as described above, and, from the root of the django checkout::
 
@@ -62,6 +68,13 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 
 Release notes
 -------------
+
+2.7.0 (21 May 2015)
++++++++++++++++++++
+
+Use cffi 1.0, which makes installation more robust, and import is faster.
+cffi<1.0 is used now only for PyPy 2.5 or below.
+
 
 2.6.1 (08 Feb 2015)
 +++++++++++++++++++

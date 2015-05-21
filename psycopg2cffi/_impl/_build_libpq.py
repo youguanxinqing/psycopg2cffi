@@ -17,19 +17,26 @@ PLATFORM_IS_WINDOWS = sys.platform.lower().startswith('win')
 class PostgresConfig:
 
     def __init__(self):
-        self.pg_config_exe = None
-        if not self.pg_config_exe:
-            self.pg_config_exe = self.autodetect_pg_config_path()
-        if self.pg_config_exe is None:
-            # FIXME - do we need some way to set it?
-            sys.stderr.write("""\
+        try:
+            from psycopg2cffi import _config
+        except ImportError:
+            self.pg_config_exe = None
+            if not self.pg_config_exe:
+                self.pg_config_exe = self.autodetect_pg_config_path()
+            if self.pg_config_exe is None:
+                # FIXME - do we need some way to set it?
+                sys.stderr.write("""\
 Error: pg_config executable not found.
 Please add the directory containing pg_config to the PATH.
 """)
-            sys.exit(1)
-        self.libpq_path = self.find_libpq()
-        self.libpq_version = self.find_version()
-        self.libpq_include_dir = self.query('includedir') or None
+                sys.exit(1)
+            self.libpq_path = self.find_libpq()
+            self.libpq_version = self.find_version()
+            self.libpq_include_dir = self.query('includedir') or None
+        else:
+            self.libpq_path = _config.PG_LIBRARY
+            self.libpq_version = _config.PG_VERSION
+            self.libpq_include_dir = _config.PG_INCLUDE_DIR
 
     def query(self, attr_name):
         """Spawn the pg_config executable, querying for the given config
