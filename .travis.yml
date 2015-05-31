@@ -1,6 +1,6 @@
 language: python
 addons:
-  postgresql: "9.3"
+  postgresql: "9.4"
 before_script:
  - "psql -c 'create database psycopg2_test;' -U postgres"
  - "psql psycopg2_test -c 'create extension hstore;' -U postgres"
