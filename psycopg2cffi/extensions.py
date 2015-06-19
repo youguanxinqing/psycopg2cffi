@@ -117,14 +117,15 @@ class NoneAdapter(object):
 
 
 # Create default json typecasters for PostgreSQL 9.2 oids
-from psycopg2cffi._json import register_default_json
+from psycopg2cffi._json import register_default_json, register_default_jsonb
 
 try:
     JSON, JSONARRAY = register_default_json()
+    JSONB, JSONBARRAY = register_default_jsonb()
 except ImportError:
     pass
 
-del register_default_json
+del register_default_json, register_default_jsonb
 
 
 # Create default Range typecasters
