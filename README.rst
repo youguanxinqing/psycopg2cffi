@@ -72,6 +72,12 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 Release notes
 -------------
 
+2.7.1 (20 June 2015)
+++++++++++++++++++++
+
+JSONB support
+
+
 2.7.0 (21 May 2015)
 +++++++++++++++++++
 
