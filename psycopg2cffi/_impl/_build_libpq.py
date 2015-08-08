@@ -185,6 +185,7 @@ Please add the directory containing pg_config to the PATH.
             print('=' * 80)
             return fname
         else:
+            import ctypes.util
             fname = ctypes.util.find_library('pq')
             print()
             print('=' * 80)
