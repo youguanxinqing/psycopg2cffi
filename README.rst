@@ -72,6 +72,12 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 Release notes
 -------------
 
+2.7.2 (06 August 2015)
+++++++++++++++++++++++
+
+Fixes for FreeBSD support by Andrew Coleman
+
+
 2.7.1 (20 June 2015)
 ++++++++++++++++++++
 
