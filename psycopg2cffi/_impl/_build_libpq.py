@@ -174,7 +174,8 @@ Please add the directory containing pg_config to the PATH.
                 fname = os.path.join(path, 'libpq.dylib')
             if sys.platform in ['linux', 'linux2', 'linux3']:
                 fname = os.path.join(path, 'libpq.so')
-
+            if sys.platform.startswith('freebsd'):
+                fname = os.path.join(path, 'libpq.so')
         if fname:
             print()
             print('=' * 80)
