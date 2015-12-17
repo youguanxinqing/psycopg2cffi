@@ -960,6 +960,8 @@ def _combine_cmd_params(cmd, params, conn):
             if key not in arg_values:
                 arg_values[key] = _getquoted(params[key], conn)
             parts.append(cmd[next_start:idx])
+            if isinstance(arg_values[key], six.text_type):
+                arg_values[key] = arg_values[key].encode(conn._py_enc)
             parts.append(arg_values[key])
             n_arg_values += 1
             next_start = end + 2
@@ -978,6 +980,8 @@ def _combine_cmd_params(cmd, params, conn):
             _check_format_char(cmd[idx + 1], idx)
 
             value = _getquoted(params[param_num], conn)
+            if isinstance(value, six.text_type):
+                value = value.encode(conn._py_enc)
             n_arg_values += 1
             parts.append(cmd[next_start:idx])
             parts.append(value)
