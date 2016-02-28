@@ -34,6 +34,7 @@ from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
 import psycopg2cffi as psycopg2
 from psycopg2cffi import errorcodes
 from psycopg2cffi import extensions
+from psycopg2cffi.extensions import b
 from psycopg2cffi.tests.psycopg2_tests.testconfig import dsn, dbname
 
 
@@ -255,6 +256,35 @@ class ConnectionTests(ConnectingTestCase):
     def test_connect_unicode_dsn(self):
         conn = psycopg2.connect(unicode(dsn))
         conn.close()
+
+
+class CreateExceptionTestCase(ConnectingTestCase):
+    def test_create_exception_utf8(self):
+        self._test_create_exception('utf-8', _u(b'\xe2\x98\x83'))
+
+    def test_create_exception_None(self):
+        self._test_create_exception(None, _u(b'\xe2\x98\x83'))
+
+    def test_create_exception_other(self):
+        self._test_create_exception('EUC_JP', _u(b'\xe6\x83\x85\xe5\xa0\xb1'))
+
+    def _test_create_exception(self, encoding, value):
+        conn = self.conn
+        if encoding is not None:
+            conn.set_client_encoding(encoding)
+        cur = conn.cursor()
+        query = _u(b"SLECT '%s';") % value
+        try:
+            cur.execute(query)
+        except Exception as e:
+            if hasattr(self, 'assertIsInstance'):
+                self.assertIsInstance(e, psycopg2.ProgrammingError)
+                self.assertIn(query, e.args[0])
+            else:
+                self.assert_(isinstance(e, psycopg2.ProgrammingError))
+                self.assert_(query in e.args[0])
+        else:
+            assert False, 'expected exception'
 
 
 class IsolationLevelsTestCase(ConnectingTestCase):
