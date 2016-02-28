@@ -825,7 +825,7 @@ class Connection(object):
         # last command, and then the error message for the connection
         if pgres:
             pgmsg = libpq.PQresultErrorMessage(pgres)
-            pgmsg = bytes_to_ascii(ffi.string(pgmsg)) if pgmsg else None
+            pgmsg = ffi.string(pgmsg).decode(self._py_enc) if pgmsg else None
 
             # Get the correct exception class based on the error code
             code = libpq.PQresultErrorField(pgres, libpq.LIBPQ_DIAG_SQLSTATE)
@@ -838,7 +838,7 @@ class Connection(object):
 
         if not pgmsg:
             pgmsg = libpq.PQerrorMessage(self._pgconn)
-            pgmsg = bytes_to_ascii(ffi.string(pgmsg)) if pgmsg else None
+            pgmsg = ffi.string(pgmsg).decode(self._py_enc) if pgmsg else None
 
         if msg is None and pgmsg:
             msg = pgmsg
