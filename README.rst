@@ -72,6 +72,12 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 Release notes
 -------------
 
+2.7.3 (29 February 2015)
+++++++++++++++++++++++++
+
+Fix a bug with non-ascii error messages (#56)
+
+
 2.7.2 (06 August 2015)
 ++++++++++++++++++++++
 
