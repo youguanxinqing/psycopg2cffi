@@ -30,7 +30,8 @@ from a ``psycopg2.py`` file in site-packages of your virtual env)::
     from psycopg2cffi import compat
     compat.register()
 
-This will map ``psycopg2cffi`` to ``psycopg2``.
+This will map ``psycopg2cffi`` to ``psycopg2``, so now any code that
+does ``import psycopg2`` will use ``psycopg2cffi``.
 
 Submit issues to https://github.com/chtd/psycopg2cffi/issues
 
