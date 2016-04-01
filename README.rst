@@ -73,7 +73,13 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 Release notes
 -------------
 
-2.7.3 (29 February 2015)
+2.7.4 (01 April 2016)
+++++++++++++++++++++++++
+
+Fix a regression with error hanlding when establishing the connection (#61)
+
+
+2.7.3 (29 February 2016)
 ++++++++++++++++++++++++
 
 Fix a bug with non-ascii error messages (#56)
