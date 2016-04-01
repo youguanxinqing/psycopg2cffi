@@ -258,6 +258,14 @@ class ConnectionTests(ConnectingTestCase):
         conn.close()
 
 
+class TestWrongDSN(unittest.TestCase):
+    def test(self):
+        self.assertRaises(
+            psycopg2.OperationalError,
+            psycopg2.connect,
+            'dbname=theresnosuchdbhereimprettysureforsomereason')
+
+
 class CreateExceptionTestCase(ConnectingTestCase):
     def test_create_exception_utf8(self):
         self._test_create_exception('utf-8', _u(b'\xe2\x98\x83'))

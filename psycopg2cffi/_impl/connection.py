@@ -104,6 +104,7 @@ class Connection(object):
         self.dsn = dsn
         self.status = consts.STATUS_SETUP
         self._encoding = None
+        self._py_enc = None
 
         self._closed = 0
         self._cancel = ffi.NULL
@@ -819,13 +820,17 @@ class Connection(object):
 
         exc_type = exceptions.OperationalError
         code = pgmsg = None
+        # _py_enc can be not initialized yet in case of errors when
+        # establishing the connection
+        err_enc = self._py_enc or 'utf-8'
 
         # If no custom message is passed then get the message from postgres.
         # If pgres is available then we first try to get the message for the
         # last command, and then the error message for the connection
         if pgres:
             pgmsg = libpq.PQresultErrorMessage(pgres)
-            pgmsg = ffi.string(pgmsg).decode(self._py_enc) if pgmsg else None
+            pgmsg = ffi.string(pgmsg).decode(err_enc, 'replace') \
+                    if pgmsg else None
 
             # Get the correct exception class based on the error code
             code = libpq.PQresultErrorField(pgres, libpq.LIBPQ_DIAG_SQLSTATE)
@@ -838,7 +843,8 @@ class Connection(object):
 
         if not pgmsg:
             pgmsg = libpq.PQerrorMessage(self._pgconn)
-            pgmsg = ffi.string(pgmsg).decode(self._py_enc) if pgmsg else None
+            pgmsg = ffi.string(pgmsg).decode(err_enc, 'replace') \
+                    if pgmsg else None
 
         if msg is None and pgmsg:
             msg = pgmsg
