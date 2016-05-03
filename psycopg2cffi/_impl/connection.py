@@ -485,7 +485,7 @@ class Connection(object):
                 # Get the cursor object from the weakref
                 curs = self._async_cursor()
                 if curs is None:
-                    util.pq_clear_async(self._pgconn)
+                    util.pq_clear_async(self)
                     raise exceptions.InterfaceError(
                         "the asynchronous cursor has disappeared")
 

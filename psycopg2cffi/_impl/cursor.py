@@ -838,7 +838,7 @@ class Cursor(object):
 
         libpq.PQputCopyEnd(pgconn, errmsg)
         self._clear_pgres()
-        util.pq_clear_async(pgconn)
+        util.pq_clear_async(self._conn)
 
     def _pq_fetch_copy_out(self):
         is_text = isinstance(self._copyfile, TextIOBase)
@@ -861,7 +861,7 @@ class Cursor(object):
                 break
 
         self._clear_pgres()
-        util.pq_clear_async(pgconn)
+        util.pq_clear_async(self._conn)
 
     def _build_row(self):
         row_num = self._rownumber

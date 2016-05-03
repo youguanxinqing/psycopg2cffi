@@ -32,6 +32,7 @@ from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
         decorate_all_tests, skip_if_no_iobase, skip_copy_if_green, \
         ConnectingTestCase
 from psycopg2cffi import extensions
+from psycopg2cffi._impl import exceptions
 
 
 if sys.version_info[0] < 3:
@@ -114,6 +115,28 @@ class CopyTests(ConnectingTestCase):
 
         self.assertRaises(ZeroDivisionError,
             curs.copy_from, MinimalRead(f), "tcopy", columns=cols())
+
+    def test_copy_from_with_fks(self):
+        curs = self.conn.cursor()
+        curs.execute('''
+        CREATE TEMPORARY TABLE tcopy_ref (
+            id serial,
+            FOREIGN KEY(id) REFERENCES tcopy
+        )
+        ''')
+
+        f = StringIO()
+        f.write("%s\t%s\n" % (1, 'b'))
+        f.seek(0)
+
+        curs.copy_from(MinimalRead(f), "tcopy")
+
+        g = StringIO()
+        g.write("%s\n" % (2))
+        g.seek(0)
+
+        self.assertRaises(exceptions.OperationalError,
+            curs.copy_from, MinimalRead(g), "tcopy_ref")
 
     def test_copy_to(self):
         curs = self.conn.cursor()
