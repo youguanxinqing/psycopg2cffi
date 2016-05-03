@@ -15,11 +15,16 @@ def pq_set_non_blocking(pgconn, arg, raise_exception=False):
     return ret
 
 
-def pq_clear_async(pgconn):
+def pq_clear_async(conn):
+    pgconn = conn._pgconn
     while True:
         pgres = libpq.PQgetResult(pgconn)
         if not pgres:
             break
+
+        if libpq.PQresultStatus(pgres) == libpq.PGRES_FATAL_ERROR:
+            raise conn._create_exception()
+
         libpq.PQclear(pgres)
 
 
