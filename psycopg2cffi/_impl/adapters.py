@@ -46,7 +46,10 @@ class ISQLQuote(_BaseAdapter):
 
 class AsIs(_BaseAdapter):
     def getquoted(self):
-        return ascii_to_bytes(self._wrapped)
+        s = self._wrapped
+        if not isinstance(s, (six.binary_type, six.text_type)):
+            s = six.text_type(s)
+        return ascii_to_bytes(s)
 
 
 _bytearray_types = (bytearray,)
