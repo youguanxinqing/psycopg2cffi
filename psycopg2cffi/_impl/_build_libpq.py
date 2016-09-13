@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+from distutils import sysconfig
 import os.path
 import re
 import sys
@@ -11,6 +12,7 @@ from cffi import FFI
 
 
 PLATFORM_IS_WINDOWS = sys.platform.lower().startswith('win')
+LIBRARY_NAME = 'pq' if not PLATFORM_IS_WINDOWS else 'libpq'
 
 
 class PostgresConfig:
@@ -29,13 +31,13 @@ Error: pg_config executable not found.
 Please add the directory containing pg_config to the PATH.
 """)
                 sys.exit(1)
-            self.libpq_path = self.find_libpq()
-            self.libpq_version = self.find_version()
             self.libpq_include_dir = self.query('includedir') or None
+            self.libpq_lib_dir = self.query('libdir') or None
+            self.libpq_version = self.find_version()
         else:
-            self.libpq_path = _config.PG_LIBRARY
-            self.libpq_version = _config.PG_VERSION
             self.libpq_include_dir = _config.PG_INCLUDE_DIR
+            self.libpq_lib_dir = _config.PG_LIB_DIR
+            self.libpq_version = _config.PG_VERSION
 
     def query(self, attr_name):
         """Spawn the pg_config executable, querying for the given config
@@ -164,45 +166,6 @@ Please add the directory containing pg_config to the PATH.
 
         return int(
             '%02X%02X%02X' % (int(pgmajor), int(pgminor), int(pgpatch)), 16)
-
-    def find_libpq(self):
-        path = self.query('libdir')
-        fname = None
-        if os.name == 'posix':
-            if sys.platform == 'darwin':
-                fname = os.path.join(path, 'libpq.dylib')
-            if sys.platform in ['linux', 'linux2', 'linux3']:
-                fname = os.path.join(path, 'libpq.so')
-            if sys.platform.startswith('freebsd'):
-                fname = os.path.join(path, 'libpq.so')
-        if fname:
-            print()
-            print('=' * 80)
-            print()
-            print('Found libpq at:')
-            print(' -> %s' %  fname)
-            print()
-            print('=' * 80)
-            return fname
-        else:
-            import ctypes.util
-            fname = ctypes.util.find_library('pq')
-            print()
-            print('=' * 80)
-            print()
-            print('Unable to find the libpq for your platform in:')
-            print(' -> %s' %  path)
-            print()
-            print('Ignoring pg_config, trying ctypes.util.find_library()')
-            if fname:
-                print(' -> OK (%s)' % fname)
-            else:
-                print(' -> FAILED')
-            print()
-            print('=' * 80)
-            if not fname:
-                sys.exit(1)
-            return fname
 
 
 _config = PostgresConfig()
@@ -438,8 +401,14 @@ extern int lo_truncate(PGconn *conn, int fd, size_t len);
 ''')
 
 
+
 C_SOURCE = '''
-#include <stdint.h>
+#if (defined(_MSC_VER) && _MSC_VER < 1600)
+    typedef __int32  int32_t;
+    typedef __int64  int64_t;
+#else
+    #include <stdint.h>
+#endif
 #include <postgres_ext.h>
 #include <libpq-fe.h>
 
@@ -501,9 +470,15 @@ _or_empty = lambda x: [x] if x else []
 
 
 C_SOURCE_KWARGS = dict(
-    libraries=['pq'],
-    library_dirs=_or_empty(os.path.dirname(_config.libpq_path)),
-    include_dirs=_or_empty(_config.libpq_include_dir),
+    libraries=[LIBRARY_NAME],
+    library_dirs=(
+        _or_empty(sysconfig.get_config_var('LIBDIR')) +
+        _or_empty(_config.libpq_lib_dir)
+        ),
+    include_dirs=(
+        _or_empty(sysconfig.get_python_inc()) +
+        _or_empty(_config.libpq_include_dir)
+        )
     )
 
 
