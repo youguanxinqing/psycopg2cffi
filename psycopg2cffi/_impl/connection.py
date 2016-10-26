@@ -129,7 +129,8 @@ class Connection(object):
         self._notice_callback = ffi.callback(
             'void(void *, const char *)',
             lambda arg, message: self_ref()._process_notice(
-                arg, bytes_to_ascii(ffi.string(message))))
+                arg,
+                ffi.string(message).decode(self._py_enc or 'utf-8', 'replace')))
 
         if not self._async:
             self._connect_sync()
