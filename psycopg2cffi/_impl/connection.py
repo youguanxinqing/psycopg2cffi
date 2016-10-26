@@ -130,7 +130,7 @@ class Connection(object):
             'void(void *, const char *)',
             lambda arg, message: self_ref()._process_notice(
                 arg,
-                ffi.string(message).decode(self._py_enc or 'utf-8', 'replace')))
+                ffi.string(message).decode(self_ref()._py_enc or 'utf-8', 'replace')))
 
         if not self._async:
             self._connect_sync()
