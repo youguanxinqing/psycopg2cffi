@@ -2,6 +2,7 @@
 *.egg-info
 MANIFEST
 .tox/
+.cache
 build/
 dist/
 __pycache__
