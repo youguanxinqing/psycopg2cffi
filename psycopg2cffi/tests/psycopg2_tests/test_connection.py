@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# encoding: utf8
 
 # test_connection.py - unit test for connection attributes
 #
@@ -103,6 +104,16 @@ class ConnectionTests(ConnectingTestCase):
         cur.execute("create temp table chatty (id serial primary key);")
         self.assertEqual("CREATE TABLE", cur.statusmessage)
         self.assert_(conn.notices)
+
+    def test_notices_utf8(self):
+        conn = self.conn
+        cur = conn.cursor()
+        if self.conn.server_version >= 90300:
+            cur.execute("set client_min_messages=debug1")
+        cur.execute(_u(b("create temp table мыыchatty (id serial primary key);")))
+        self.assertEqual("CREATE TABLE", cur.statusmessage)
+        self.assert_(conn.notices)
+        self.assert_(_u(b('мыыchatty')) in conn.notices[0])
 
     def test_notices_consistent_order(self):
         conn = self.conn
