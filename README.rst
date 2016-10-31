@@ -6,6 +6,9 @@
 An implementation of the psycopg2 module using cffi.
 The module is currently compatible with Psycopg 2.5.
 
+Installation
+------------
+
 You can  install ``psycopg2cffi`` from PyPI::
 
     pip install psycopg2cffi
