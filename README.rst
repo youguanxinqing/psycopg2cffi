@@ -1,6 +1,8 @@
 .. image:: https://travis-ci.org/chtd/psycopg2cffi.svg?branch=master
     :target: https://travis-ci.org/chtd/psycopg2cffi
 
+.. contents::
+
 An implementation of the psycopg2 module using cffi.
 The module is currently compatible with Psycopg 2.5.
 
@@ -73,8 +75,22 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 Release notes
 -------------
 
+2.7.5 (31 October 2016)
++++++++++++++++++++++++
+
+Windows wheels support added by ryoyoko (#69).
+
+Bugfixes:
+
+- Non-ascii notice messages fixed by asterite3 (#72)
+- AsIs with non-text/bytes fixed by jinty (#64)
+- Silent failures in copy_from and copy_to fixed by gobbledygook88 (#62)
+- Infinite recursion error fixed in errorcodes.lookup (#68)
+- Typos in README fixed by PavloKapyshin (#66)
+
+
 2.7.4 (01 April 2016)
-++++++++++++++++++++++++
++++++++++++++++++++++
 
 Fix a regression with error handling when establishing the connection (#61)
 
@@ -125,7 +141,7 @@ Fixing things that were broken in 2.6.0:
 - Small bugfixes
 
 2.5.0 (3 Sep 2013)
-+++++++++++++++++++
+++++++++++++++++++
 
 - Bugfixes and a lot of compatibility work by Daniele Varrazzo
 
