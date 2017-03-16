@@ -801,13 +801,13 @@ class Cursor(object):
                     # disable all fast parsers to avoid portability problems
                     pass
                 elif ftype == 21 or ftype == 23:
-                    fast_parser = libpq.PQEgetint
+                    fast_parser = libpq.PQEgetint, ffi.new("int32_t*")
                 elif ftype == 20:
-                    fast_parser = libpq.PQEgetlong
+                    fast_parser = libpq.PQEgetlong, ffi.new("int64_t*")
                 elif ftype == 700:
-                    fast_parser = libpq.PQEgetfloat
+                    fast_parser = libpq.PQEgetfloat, ffi.new("float*")
                 elif ftype == 701:
-                    fast_parser = libpq.PQEgetdouble
+                    fast_parser = libpq.PQEgetdouble, ffi.new("double*")
                 fast_parsers.append(fast_parser)
 
 
@@ -881,8 +881,10 @@ class Cursor(object):
                 row[i] = None
             else:
                 fast_parser = self._fast_parsers[i]
-                if fast_parser:
-                    row[i] = fast_parser(self._pgres, row_num, i)
+                if fast_parser is not None:
+                    p = fast_parser[1]
+                    error = fast_parser[0](p, self._pgres, row_num, i)
+                    row[i] = None if error else p[0]
                 else:
                     length = libpq.PQgetlength(self._pgres, row_num, i)
                     val = ffi.buffer(libpq.PQgetvalue(
