@@ -318,10 +318,10 @@ extern char *PQgetvalue(const PGresult *res, int tup_num, int field_num);
 
 // direct parsers - not part of libpq
 
-int64_t PQEgetlong(const PGresult *res, int tup_num, int field_num);
-int32_t PQEgetint(const PGresult *res, int tup_num, int field_num);
-float PQEgetfloat(const PGresult *res, int tup_num, int field_num);
-double PQEgetdouble(const PGresult *res, int tup_num, int field_num);
+int PQEgetlong(int64_t *val, const PGresult *res, int tup_num, int field_num);
+int PQEgetint(int32_t *val, const PGresult *res, int tup_num, int field_num);
+int PQEgetfloat(float *val, const PGresult *res, int tup_num, int field_num);
+int PQEgetdouble(double *val, const PGresult *res, int tup_num, int field_num);
 
 // Retrieving other result information
 
@@ -412,32 +412,32 @@ C_SOURCE = '''
 #include <postgres_ext.h>
 #include <libpq-fe.h>
 
-int64_t PQEgetlong(const PGresult *res, int tup_num, int field_num) {
-    long raw_res;
+int PQEgetlong(int64_t *raw_res, const PGresult *res, int tup_num, int field_num) {
     char *val = PQgetvalue(res, tup_num, field_num);
-    sscanf(val, "%ld", &raw_res);
-    return raw_res;
+    if (!val) return -1;
+    sscanf(val, "%ld", (long *)raw_res);
+    return 0;
 }
 
-int32_t PQEgetint(const PGresult *res, int tup_num, int field_num) {
-    int raw_res;
+int PQEgetint(int32_t *raw_res, const PGresult *res, int tup_num, int field_num) {
     char *val = PQgetvalue(res, tup_num, field_num);
-    sscanf(val, "%d", &raw_res);
-    return raw_res;
+    if (!val) return -1;
+    sscanf(val, "%d", (int *)raw_res);
+    return 0;
 }
 
-float PQEgetfloat(const PGresult *res, int tup_num, int field_num) {
-    float raw_res = -1;
+int PQEgetfloat(float *raw_res, const PGresult *res, int tup_num, int field_num) {
     char *val = PQgetvalue(res, tup_num, field_num);
-    sscanf(val, "%f", &raw_res);
-    return raw_res;
+    if (!val) return -1;
+    sscanf(val, "%f", raw_res);
+    return 0;
 }
 
-double PQEgetdouble(const PGresult *res, int tup_num, int field_num) {
-    double raw_res = -1;
+int PQEgetdouble(double *raw_res, const PGresult *res, int tup_num, int field_num) {
     char *val = PQgetvalue(res, tup_num, field_num);
-    sscanf(val, "%lf", &raw_res);
-    return raw_res;
+    if (!val) return -1;
+    sscanf(val, "%lf", raw_res);
+    return 0;
 }
 
 // Real names start with PG_DIAG_, but here we define our prefixes,
