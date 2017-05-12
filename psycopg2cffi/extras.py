@@ -171,11 +171,11 @@ class DictRow(list):
             return default
 
     def iteritems(self):
-        for n, v in self._index.iteritems():
+        for n, v in six.iteritems(self._index):
             yield n, list.__getitem__(self, v)
 
     def iterkeys(self):
-        return self._index.iterkeys()
+        return six.iterkeys(self._index)
 
     def itervalues(self):
         return list.__iter__(self)
@@ -628,7 +628,7 @@ class HstoreAdapter(object):
 
         adapt = _ext.adapt
         rv = []
-        for k, v in self.wrapped.iteritems():
+        for k, v in six.iteritems(self.wrapped):
             k = adapt(k)
             k.prepare(self.conn)
             k = k.getquoted()
