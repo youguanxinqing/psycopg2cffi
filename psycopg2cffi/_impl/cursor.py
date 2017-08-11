@@ -233,7 +233,7 @@ class Cursor(object):
             if self._query:
                 raise ProgrammingError(
                     "can't call .execute() on named cursors more than once")
-            if self._conn.autocommit:
+            if self._conn.autocommit and not self._withhold:
                 raise ProgrammingError(
                     "can't use a named cursor outside of transactions")
 
