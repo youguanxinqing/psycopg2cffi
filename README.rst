@@ -78,6 +78,16 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 Release notes
 -------------
 
+2.7.6 (11 August 2017)
+++++++++++++++++++++++
+
+Bugfixes:
+
+- Named cursors fix (affects newer Django) by danchr (#81)
+- Python 3 fixes in extras by avanov (#83)
+- Null check added in fast parser utils by malthe (#79)
+
+
 2.7.5 (31 October 2016)
 +++++++++++++++++++++++
 
