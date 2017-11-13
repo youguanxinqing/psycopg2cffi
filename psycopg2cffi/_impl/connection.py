@@ -883,8 +883,8 @@ def _connect(dsn, connection_factory=None, async_=False):
 
     # Mimic the construction method as used by psycopg2, which notes:
     # Here we are breaking the connection.__init__ interface defined
-    # by psycopg2. So, if not requiring an asynchronous conn, avoid passing
-    # the asynchronous parameter.
+    # by psycopg2. So, if not requiring an async conn, avoid passing
+    # the async_ parameter.
     if async_:
         return connection_factory(dsn, async_=True)
     else:

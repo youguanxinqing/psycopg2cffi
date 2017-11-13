@@ -69,7 +69,7 @@ def connect(dsn=None,
     Using the *cursor_factory* parameter, a new default cursor factory will be
     used by cursor().
 
-    Using *async_*=True an async connection will be created.
+    Using *async_*=True an asynchronous connection will be created.
 
     Any other keyword parameter will be passed to the underlying client
     library: the list of supported parameters depends on the library version.
