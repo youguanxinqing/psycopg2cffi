@@ -41,7 +41,7 @@ del re
 
 def connect(dsn=None,
         database=None, user=None, password=None, host=None, port=None,
-        connection_factory=None, cursor_factory=None, async=False, **kwargs):
+        connection_factory=None, cursor_factory=None, async_=False, **kwargs):
     """
     Create a new database connection.
 
@@ -69,7 +69,7 @@ def connect(dsn=None,
     Using the *cursor_factory* parameter, a new default cursor factory will be
     used by cursor().
 
-    Using *async*=True an asynchronous connection will be created.
+    Using *async_*=True an async connection will be created.
 
     Any other keyword parameter will be passed to the underlying client
     library: the list of supported parameters depends on the library version.
@@ -101,7 +101,7 @@ def connect(dsn=None,
             dsn = " ".join(["%s=%s" % (k, _param_escape(str(v)))
                 for (k, v) in items])
 
-    conn = _connect(dsn, connection_factory=connection_factory, async=async)
+    conn = _connect(dsn, connection_factory=connection_factory, async_=async_)
     if cursor_factory is not None:
         conn.cursor_factory = cursor_factory
 

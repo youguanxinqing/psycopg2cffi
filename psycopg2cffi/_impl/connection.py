@@ -99,7 +99,7 @@ class Connection(object):
     ProgrammingError = exceptions.ProgrammingError
     Warning = exceptions.Warning
 
-    def __init__(self, dsn, async=False):
+    def __init__(self, dsn, async_=False):
 
         self.dsn = dsn
         self.status = consts.STATUS_SETUP
@@ -121,7 +121,7 @@ class Connection(object):
         # The number of commits/rollbacks done so far
         self._mark = 0
 
-        self._async = async
+        self._async = async_
         self._async_status = consts.ASYNC_DONE
         self._async_cursor = None
 
@@ -666,7 +666,7 @@ class Connection(object):
 
     def _execute_tpc_command(self, command, xid):
         cmd = b' '.join([
-            ascii_to_bytes(command), 
+            ascii_to_bytes(command),
             util.quote_string(self, str(xid))])
         self._execute_command(cmd)
         self._mark += 1
@@ -877,16 +877,15 @@ class Connection(object):
                 ffi.string(datestyle).startswith(b'ISO')
 
 
-def _connect(dsn, connection_factory=None, async=False):
+def _connect(dsn, connection_factory=None, async_=False):
     if connection_factory is None:
         connection_factory = Connection
 
     # Mimic the construction method as used by psycopg2, which notes:
     # Here we are breaking the connection.__init__ interface defined
-    # by psycopg2. So, if not requiring an async conn, avoid passing
-    # the async parameter.
-    if async:
-        return connection_factory(dsn, async=True)
+    # by psycopg2. So, if not requiring an asynchronous conn, avoid passing
+    # the asynchronous parameter.
+    if async_:
+        return connection_factory(dsn, async_=True)
     else:
         return connection_factory(dsn)
-

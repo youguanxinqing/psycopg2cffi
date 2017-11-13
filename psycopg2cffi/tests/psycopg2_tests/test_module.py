@@ -31,8 +31,8 @@ from psycopg2cffi.tests.psycopg2_tests.testutils import unittest, \
 class ConnectTestCase(unittest.TestCase):
     def setUp(self):
         self.args = None
-        def conect_stub(dsn, connection_factory=None, async=False):
-            self.args = (dsn, connection_factory, async)
+        def conect_stub(dsn, connection_factory=None, async_=False):
+            self.args = (dsn, connection_factory, async_)
 
         self._connect_orig = psycopg2._connect
         psycopg2._connect = conect_stub
@@ -43,9 +43,9 @@ class ConnectTestCase(unittest.TestCase):
     def test_there_has_to_be_something(self):
         self.assertRaises(TypeError, psycopg2.connect)
         self.assertRaises(TypeError, psycopg2.connect,
-            connection_factory=lambda dsn, async=False: None)
+            connection_factory=lambda dsn, async_=False: None)
         self.assertRaises(TypeError, psycopg2.connect,
-            async=True)
+            async_=True)
 
     def test_no_keywords(self):
         psycopg2.connect('')
@@ -84,7 +84,7 @@ class ConnectTestCase(unittest.TestCase):
         self.assertEqual(self.args[0], 'foo=bar')
 
     def test_factory(self):
-        def f(dsn, async=False):
+        def f(dsn, async_=False):
             pass
 
         psycopg2.connect(database='foo', bar='baz', connection_factory=f)
@@ -98,12 +98,12 @@ class ConnectTestCase(unittest.TestCase):
         self.assertEqual(self.args[2], False)
 
     def test_async(self):
-        psycopg2.connect(database='foo', bar='baz', async=1)
+        psycopg2.connect(database='foo', bar='baz', async_=1)
         self.assertEqual(self.args[0], 'dbname=foo bar=baz')
         self.assertEqual(self.args[1], None)
         self.assert_(self.args[2])
 
-        psycopg2.connect("dbname=foo bar=baz", async=True)
+        psycopg2.connect("dbname=foo bar=baz", async_=True)
         self.assertEqual(self.args[0], 'dbname=foo bar=baz')
         self.assertEqual(self.args[1], None)
         self.assert_(self.args[2])
