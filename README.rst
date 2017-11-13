@@ -78,6 +78,14 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 Release notes
 -------------
 
+2.7.7 (13 November 2017)
+++++++++++++++++++++++++
+
+Bugfixes:
+
+- Support installation under Postgres 10 by jimbattin (#90)
+
+
 2.7.6 (11 August 2017)
 ++++++++++++++++++++++
 
