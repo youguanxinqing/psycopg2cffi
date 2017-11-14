@@ -86,8 +86,8 @@ class AsyncTests(ConnectingTestCase):
         cur = self.conn.cursor()
         sync_cur = self.sync_conn.cursor()
 
-        self.assert_(self.conn.async_)
-        self.assert_(not self.sync_conn.async_)
+        self.assert_(self.conn.async)
+        self.assert_(not self.sync_conn.async)
 
         # the async connection should be in isolevel 0
         self.assertEquals(self.conn.isolation_level, 0)
