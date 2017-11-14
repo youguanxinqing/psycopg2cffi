@@ -329,7 +329,7 @@ class AsyncTests(ConnectingTestCase):
 
         conn = self.connect(connection_factory=MyConn, async_=True)
         self.assert_(isinstance(conn, MyConn))
-        self.assert_(conn.async_)
+        self.assert_(conn.async)
         conn.close()
 
     def test_flush_on_write(self):
