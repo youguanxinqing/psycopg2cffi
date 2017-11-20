@@ -123,10 +123,16 @@ class Connection(object):
 
         if 'async' in kwargs:
             self._async = kwargs.pop('async')
-        if 'async_' in kwargs:
+        elif 'async_' in kwargs:
             self._async = kwargs.pop('async_')
         else:
             self._async = False
+
+        items = []
+        items.extend([(k, v) for (k, v) in kwargs.items() if v is not None])
+
+        if items:
+            raise TypeError("'%s' is an invalid keyword argument" % items[0][0])
 
         self._async_status = consts.ASYNC_DONE
         self._async_cursor = None

@@ -69,7 +69,7 @@ def connect(dsn=None,
     Using the *cursor_factory* parameter, a new default cursor factory will be
     used by cursor().
 
-    Using *async_*=True an asynchronous connection will be created. *async_* is
+    Using *async*=True an asynchronous connection will be created. *async_* is
     a valid alias (for Python versions where *async* is a keyword).
 
     Any other keyword parameter will be passed to the underlying client
