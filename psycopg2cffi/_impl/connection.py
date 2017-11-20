@@ -99,7 +99,7 @@ class Connection(object):
     ProgrammingError = exceptions.ProgrammingError
     Warning = exceptions.Warning
 
-    def __init__(self, dsn, async_=False):
+    def __init__(self, dsn, **kwargs):
 
         self.dsn = dsn
         self.status = consts.STATUS_SETUP
@@ -121,7 +121,11 @@ class Connection(object):
         # The number of commits/rollbacks done so far
         self._mark = 0
 
-        self._async = async_
+        if 'async' in kwargs:
+            self._async = kwargs.pop('async')
+        if 'async_' in kwargs:
+            self._async = kwargs.pop('async_')
+
         self._async_status = consts.ASYNC_DONE
         self._async_cursor = None
 
