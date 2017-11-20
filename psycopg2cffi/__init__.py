@@ -41,7 +41,7 @@ del re
 
 def connect(dsn=None,
         database=None, user=None, password=None, host=None, port=None,
-        connection_factory=None, cursor_factory=None, **kwargs):
+        connection_factory=None, cursor_factory=None, async_=False, **kwargs):
     """
     Create a new database connection.
 
