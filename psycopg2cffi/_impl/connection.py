@@ -125,6 +125,8 @@ class Connection(object):
             self._async = kwargs.pop('async')
         if 'async_' in kwargs:
             self._async = kwargs.pop('async_')
+        else:
+            self._async = False
 
         self._async_status = consts.ASYNC_DONE
         self._async_cursor = None
