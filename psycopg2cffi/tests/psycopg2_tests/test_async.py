@@ -56,7 +56,7 @@ class AsyncTests(ConnectingTestCase):
         ConnectingTestCase.setUp(self)
 
         self.sync_conn = self.conn
-        self.conn = self.connect(async=True)
+        self.conn = self.connect(async_=True)
 
         self.wait(self.conn)
 
@@ -324,10 +324,10 @@ class AsyncTests(ConnectingTestCase):
 
     def test_async_subclass(self):
         class MyConn(psycopg2.extensions.connection):
-            def __init__(self, dsn, async=0):
-                psycopg2.extensions.connection.__init__(self, dsn, async=async)
+            def __init__(self, dsn, async_=0):
+                psycopg2.extensions.connection.__init__(self, dsn, async_=async_)
 
-        conn = self.connect(connection_factory=MyConn, async=True)
+        conn = self.connect(connection_factory=MyConn, async_=True)
         self.assert_(isinstance(conn, MyConn))
         self.assert_(conn.async)
         conn.close()
@@ -456,4 +456,3 @@ def test_suite():
 
 if __name__ == "__main__":
     unittest.main()
-
