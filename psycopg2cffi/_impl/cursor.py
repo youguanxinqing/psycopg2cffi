@@ -674,7 +674,7 @@ class Cursor(object):
             libpq.PQclear(self._pgres)
             self._pgres = ffi.NULL
 
-    def _pq_execute(self, query, async=False):
+    def _pq_execute(self, query, async_conn=False):
         """Execute the query"""
         with self._conn._lock:
             pgconn = self._conn._pgconn
@@ -683,7 +683,7 @@ class Cursor(object):
             if libpq.PQstatus(pgconn) != libpq.CONNECTION_OK:
                 raise self._conn._create_exception(cursor=self)
 
-            if not async:
+            if not async_conn:
                 with self._conn._lock:
                     if not self._conn._have_wait_callback():
                         self._pgres = libpq.PQexec(
