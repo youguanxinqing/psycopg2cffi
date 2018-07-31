@@ -1,5 +1,6 @@
 language: python
 sudo: false
+dist: xenial
 addons:
   postgresql: "9.4"
 before_script:
@@ -14,6 +15,7 @@ python:
  - "3.3"
  - "3.4"
  - "3.5"
+ - "3.6"
  - "pypy"
  - "pypy3"
 install: python setup.py install
