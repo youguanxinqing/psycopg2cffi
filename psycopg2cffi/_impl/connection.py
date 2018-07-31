@@ -325,7 +325,7 @@ class Connection(object):
         self.set_session(autocommit=value)
 
     @property
-    def get_async(self):
+    def async_(self):
         return self._async
 
     @check_closed
