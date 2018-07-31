@@ -78,6 +78,15 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 Release notes
 -------------
 
+2.8.0 (?)
+++++++++++++++++++++
+
+Python 3.7 support by unimariJo (#92) and farrokhi (#101).
+``async_`` should be used instead of ``async`` in public APIs
+(but the change is backwards compatible,
+``async`` is still supported as an alias).
+
+
 2.7.7 (13 November 2017)
 ++++++++++++++++++++++++
 
