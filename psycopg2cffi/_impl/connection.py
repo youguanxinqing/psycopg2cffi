@@ -889,6 +889,10 @@ class Connection(object):
                 ffi.string(datestyle).startswith(b'ISO')
 
 
+# Backwards compatibility, support async as async_ alias for connection
+setattr(Connection, 'async', 'async_')
+
+
 def _connect(dsn, connection_factory=None, async_=False):
     if connection_factory is None:
         connection_factory = Connection

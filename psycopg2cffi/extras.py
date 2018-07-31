@@ -91,16 +91,25 @@ class DictCursorBase(_cursor):
     def __iter__(self):
         if self._prefetch:
             res = super(DictCursorBase, self).__iter__()
-            first = six.next(res)
+            try:
+                first = six.next(res)
+            except StopIteration:
+                return
         if self._query_executed:
             self._build_index()
         if not self._prefetch:
             res = super(DictCursorBase, self).__iter__()
-            first = six.next(res)
+            try:
+                first = six.next(res)
+            except StopIteration:
+                return
 
         yield first
         while 1:
-            yield six.next(res)
+            try:
+                yield six.next(res)
+            except StopIteration:
+                return
 
 
 class DictConnection(_connection):
@@ -331,7 +340,12 @@ class NamedTupleCursor(_cursor):
         yield nt._make(t)
 
         while 1:
-            yield nt._make(six.next(it))
+            try:
+                t = six.next(it)
+            except StopIteration:
+                return
+            else:
+                yield nt._make(t)
 
     try:
         from collections import namedtuple
