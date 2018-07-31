@@ -1,6 +1,5 @@
 language: python
 sudo: false
-dist: xenial
 addons:
   postgresql: "9.4"
 before_script:
@@ -8,16 +7,6 @@ before_script:
  - "psql psycopg2_test -c 'create extension hstore;' -U postgres"
 env:
  - PSYCOPG2_TESTDB_USER=postgres
-python:
- - "2.6"
- - "2.7"
- - "3.2"
- - "3.3"
- - "3.4"
- - "3.5"
- - "3.6"
- - "pypy"
- - "pypy3"
 install: python setup.py install
 script: python setup.py test
 after_script:
@@ -27,3 +16,15 @@ after_script:
   - cd psycopg2-benchmarks/django_bench/ && ./bench 1000 5
 matrix:
   fast_finish: true
+  include:
+    - python: "2.6"
+    - python: "2.7"
+    - python: "3.3"
+    - python: "3.4"
+    - python: "3.5"
+    - python: "3.6"
+    - python: "pypy"
+    - python: "pypy3"
+    - python: 3.7
+      dist: xenial
+      sudo: true
