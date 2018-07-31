@@ -78,7 +78,12 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 Release notes
 -------------
 
-2.8.0 (?)
+2.8.1 (31 July 2018)
+++++++++++++++++++++
+
+Release date added
+
+2.8.0 (31 July 2018)
 ++++++++++++++++++++
 
 Python 3.7 support by unimariJo (#92) and farrokhi (#101).
