@@ -289,7 +289,10 @@ def _getquoted(param, conn):
     """Helper method"""
     if param is None:
         return b'NULL'
-    adapter = adapt(param)
+    if isinstance(param, _BaseAdapter):
+        adapter = param
+    else:
+        adapter = adapt(param)
     try:
         adapter.prepare(conn)
     except AttributeError:
