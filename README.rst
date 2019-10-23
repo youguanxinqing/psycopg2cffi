@@ -25,7 +25,7 @@ Installation was tested on Ubuntu 12.04, Ubuntu 14.04, CentOS (RHEL 5.0),
 OS X 10.8 - 10.10.
 It should be possible to make it work on Windows, but I did not test it.
 
-This module works under CPython 2.6+, CPython 3.2+, PyPy 2 and PyPy 3
+This module works under CPython 2.7+, CPython 3.4+, PyPy 2 and PyPy 3
 (PyPy version should be at least 2.0, which is ancient history now).
 
 To use this package with Django or SQLAlchemy invoke a compatibility
