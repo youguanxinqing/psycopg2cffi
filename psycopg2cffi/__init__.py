@@ -88,11 +88,11 @@ def connect(dsn=None,
     if port is not None:
         items.append(('port', port))
 
-    kwasync = {}
+    async_ = False
     if 'async' in kwargs:
-        kwasync['async'] = kwargs.pop('async')
+        async_ = kwargs.pop('async')
     if 'async_' in kwargs:
-        kwasync['async_'] = kwargs.pop('async_')
+        async_ = kwargs.pop('async_')
 
     items.extend([(k, v) for (k, v) in kwargs.items() if v is not None])
 
@@ -108,7 +108,7 @@ def connect(dsn=None,
             dsn = " ".join(["%s=%s" % (k, _param_escape(str(v)))
                 for (k, v) in items])
 
-    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+    conn = _connect(dsn, connection_factory=connection_factory, async_=async_)
     if cursor_factory is not None:
         conn.cursor_factory = cursor_factory
 
