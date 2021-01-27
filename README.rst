@@ -25,7 +25,7 @@ Installation was tested on Ubuntu 12.04, Ubuntu 14.04, CentOS (RHEL 5.0),
 OS X 10.8 - 10.10.
 It should be possible to make it work on Windows, but I did not test it.
 
-This module works under CPython 2.7+, CPython 3.4+, PyPy 2 and PyPy 3
+This module works under CPython 2.7+, CPython 3.5+, PyPy 2 and PyPy 3
 (PyPy version should be at least 2.0, which is ancient history now).
 
 To use this package with Django or SQLAlchemy invoke a compatibility
@@ -77,6 +77,25 @@ https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/unit-t
 
 Release notes
 -------------
+
+2.9.0 (27 Jan 2021)
++++++++++++++++++++
+
+New features:
+
+- Add execute_batch and execute_values to psycopg2cffi.extras by @fake-name in #98
+- psycopg2cffi.extras: add fetch argument to execute_values() by @intelfx in #119
+
+Bug fixes:
+
+- Fix for async keyword argument when creating a connection by @donalm in #104
+- Allow adapters to be passed as arguments of cursor's execute() by @amigrave in #107
+- Fix installation with old cffi by dand-oss in #116
+
+Test changes:
+
+- Dropped support for python 2.6, 3.3, 3.4 by @thedrow in #109
+- Added support for python 3.8 by @thedrow in #108
 
 2.8.1 (31 July 2018)
 ++++++++++++++++++++
