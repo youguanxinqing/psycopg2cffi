@@ -43,7 +43,6 @@ setup_kwargs = dict(
         'License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)',
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
