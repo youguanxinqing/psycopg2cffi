@@ -10,7 +10,7 @@ from psycopg2cffi._impl.connection import _connect
 from psycopg2cffi._impl.exceptions import *
 from psycopg2cffi._impl.typecasts import BINARY, DATETIME, NUMBER, ROWID, STRING
 
-__version__ = '2.8.1'
+__version__ = '2.9.0'
 apilevel = '2.0'
 paramstyle = 'pyformat'
 threadsafety = 2
