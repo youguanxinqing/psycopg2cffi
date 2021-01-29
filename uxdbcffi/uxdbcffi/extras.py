@@ -798,7 +798,7 @@ class HstoreAdapter(object):
         curs.execute(
             """\
 SELECT t.oid, %s
-FROM pg_type t JOIN pg_namespace ns
+FROM ux_type t JOIN ux_namespace ns
     ON typnamespace = ns.oid
 WHERE typname = 'hstore';
 """
@@ -997,9 +997,9 @@ class CompositeCaster(object):
         curs.execute(
             """\
 SELECT t.oid, %s, attname, atttypid
-FROM pg_type t
-JOIN pg_namespace ns ON typnamespace = ns.oid
-JOIN pg_attribute a ON attrelid = typrelid
+FROM ux_type t
+JOIN ux_namespace ns ON typnamespace = ns.oid
+JOIN ux_attribute a ON attrelid = typrelid
 WHERE typname = %%s AND nspname = %%s
     AND attnum > 0 AND NOT attisdropped
 ORDER BY attnum;

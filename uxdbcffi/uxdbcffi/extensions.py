@@ -36,42 +36,66 @@ from __future__ import unicode_literals
 # License for more details.
 import sys as _sys
 
-from psycopg2cffi._impl import connection as _connection
-from psycopg2cffi._impl.adapters import adapt, adapters
-from psycopg2cffi._impl.adapters import Binary, Boolean, Int, Float
-from psycopg2cffi._impl.adapters import QuotedString, AsIs, ISQLQuote
-from psycopg2cffi._impl.connection import Connection as connection
-from psycopg2cffi._impl.consts import *
-from psycopg2cffi._impl.cursor import Cursor as cursor
-from psycopg2cffi._impl.encodings import encodings
-from psycopg2cffi._impl.exceptions import QueryCanceledError
-from psycopg2cffi._impl.exceptions import TransactionRollbackError
-from psycopg2cffi._impl.exceptions import Diagnostics
-from psycopg2cffi._impl.lobject import LargeObject as lobject
-from psycopg2cffi._impl.notify import Notify
-from psycopg2cffi._impl.typecasts import (
-    UNICODE, INTEGER, LONGINTEGER, BOOLEAN, FLOAT, TIME, DATE, INTERVAL,
+from uxdbcffi._impl import connection as _connection
+from uxdbcffi._impl.adapters import adapt, adapters
+from uxdbcffi._impl.adapters import Binary, Boolean, Int, Float
+from uxdbcffi._impl.adapters import QuotedString, AsIs, ISQLQuote
+from uxdbcffi._impl.connection import Connection as connection
+from uxdbcffi._impl.consts import *
+from uxdbcffi._impl.cursor import Cursor as cursor
+from uxdbcffi._impl.encodings import encodings
+from uxdbcffi._impl.exceptions import QueryCanceledError
+from uxdbcffi._impl.exceptions import TransactionRollbackError
+from uxdbcffi._impl.exceptions import Diagnostics
+from uxdbcffi._impl.lobject import LargeObject as lobject
+from uxdbcffi._impl.notify import Notify
+from uxdbcffi._impl.typecasts import (
+    UNICODE,
+    INTEGER,
+    LONGINTEGER,
+    BOOLEAN,
+    FLOAT,
+    TIME,
+    DATE,
+    INTERVAL,
     DECIMAL,
-    BINARYARRAY, BOOLEANARRAY, DATEARRAY, DATETIMEARRAY, DECIMALARRAY,
-    FLOATARRAY, INTEGERARRAY, INTERVALARRAY, LONGINTEGERARRAY, ROWIDARRAY,
-    STRINGARRAY, TIMEARRAY, UNICODEARRAY)
-from psycopg2cffi._impl.typecasts import string_types, binary_types
-from psycopg2cffi._impl.typecasts import new_type, new_array_type, register_type
-from psycopg2cffi._impl.xid import Xid
+    BINARYARRAY,
+    BOOLEANARRAY,
+    DATEARRAY,
+    DATETIMEARRAY,
+    DECIMALARRAY,
+    FLOATARRAY,
+    INTEGERARRAY,
+    INTERVALARRAY,
+    LONGINTEGERARRAY,
+    ROWIDARRAY,
+    STRINGARRAY,
+    TIMEARRAY,
+    UNICODEARRAY,
+)
+from uxdbcffi._impl.typecasts import string_types, binary_types
+from uxdbcffi._impl.typecasts import new_type, new_array_type, register_type
+from uxdbcffi._impl.xid import Xid
 
 # These are looked for by the test suite to make the tests run
-from psycopg2cffi._impl.typecasts import DATETIME as PYDATETIME
+from uxdbcffi._impl.typecasts import DATETIME as PYDATETIME
+
 PYDATE = DATE
 PYTIME = TIME
 PYINTERVAL = INTERVAL
 
 # Return bytes from a string
 if _sys.version_info[0] < 3:
+
     def b(s):
         return s
+
+
 else:
+
     def b(s):
-        return s.encode('utf8')
+        return s.encode("utf8")
+
 
 def register_adapter(typ, callable):
     """Register 'callable' as an ISQLQuote adapter for type 'typ'."""
@@ -81,6 +105,7 @@ def register_adapter(typ, callable):
 # The SQL_IN class is the official adapter for tuples starting from 2.0.6.
 class SQL_IN(object):
     """Adapt any iterable to an SQL quotable object."""
+
     def __init__(self, seq):
         self._seq = seq
         self._conn = None
@@ -94,10 +119,10 @@ class SQL_IN(object):
         pobjs = [adapt(o) for o in self._seq]
         if self._conn is not None:
             for obj in pobjs:
-                if hasattr(obj, 'prepare'):
+                if hasattr(obj, "prepare"):
                     obj.prepare(self._conn)
         qobjs = [o.getquoted() for o in pobjs]
-        return b'(' + b', '.join(qobjs) + b')'
+        return b"(" + b", ".join(qobjs) + b")"
 
     def __str__(self):
         return str(self.getquoted())
@@ -109,6 +134,7 @@ class NoneAdapter(object):
     This adapter is not used normally as a fast path in mogrify uses NULL,
     but it makes easier to adapt composite types.
     """
+
     def __init__(self, obj):
         pass
 
@@ -117,7 +143,7 @@ class NoneAdapter(object):
 
 
 # Create default json typecasters for PostgreSQL 9.2 oids
-from psycopg2cffi._json import register_default_json, register_default_jsonb
+from uxdbcffi._json import register_default_json, register_default_jsonb
 
 try:
     JSON, JSONARRAY = register_default_json()
@@ -129,8 +155,10 @@ del register_default_json, register_default_jsonb
 
 
 # Create default Range typecasters
-from psycopg2cffi._range import Range
+from uxdbcffi._range import Range
+
 del Range
+
 
 def set_wait_callback(f):
     _connection._green_callback = f

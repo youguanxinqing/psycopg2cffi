@@ -333,10 +333,10 @@ class RangeCaster(object):
             curs.execute(
                 """\
 select rngtypid, rngsubtype,
-    (select typarray from pg_type where oid = rngtypid)
-from pg_range r
-join pg_type t on t.oid = rngtypid
-join pg_namespace ns on ns.oid = typnamespace
+    (select typarray from ux_type where oid = rngtypid)
+from ux_range r
+join ux_type t on t.oid = rngtypid
+join ux_namespace ns on ns.oid = typnamespace
 where typname = %s and ns.nspname = %s;
 """,
                 (tname, schema),

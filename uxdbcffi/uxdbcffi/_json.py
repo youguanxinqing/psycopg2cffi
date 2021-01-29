@@ -225,7 +225,7 @@ def _get_json_oids(conn_or_curs, name="json"):
 
     # get the oid for the hstore
     curs.execute(
-        "SELECT t.oid, %s FROM pg_type t WHERE t.typname = %%s;" % typarray, (name,)
+        "SELECT t.oid, %s FROM ux_type t WHERE t.typname = %%s;" % typarray, (name,)
     )
     r = curs.fetchone()
 

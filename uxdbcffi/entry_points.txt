@@ -1,0 +1,3 @@
+[sqlalchemy.dialects]
+uxdb = uxdbcffi.sqlalchemy_uxdb:PGDialect_uxdb
+

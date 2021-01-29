@@ -86,7 +86,7 @@ class Xid(object):
         cur = conn.cursor(cursor_factory=Cursor)
         try:
             cur.execute(
-                "SELECT gid, prepared, owner, database " "FROM pg_prepared_xacts"
+                "SELECT gid, prepared, owner, database " "FROM ux_prepared_xacts"
             )
 
             rv = []
