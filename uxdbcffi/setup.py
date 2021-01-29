@@ -62,6 +62,9 @@ setup_kwargs = dict(
     test_suite="uxdbcffi.tests.suite",
     packages=["uxdbcffi", "uxdbcffi._impl", "uxdbcffi.tests"],
     install_requires=["six"],
+    entry_points={
+        "sqlalchemy.dialects": ["uxdb = uxdbcffi.sqlalchemy_uxdb:PGDialect_uxdb"]
+    },
 )
 
 if new_cffi:
