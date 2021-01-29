@@ -8,6 +8,7 @@ dist/
 __pycache__
 env
 *.swp
-psycopg2cffi/_cffi__*.so
-psycopg2cffi/_config.py
-psycopg2cffi/_impl/_libpq.so
+tag*
+uxdbcffi/uxdbcffi/_cffi__*.so
+uxdbcffi/uxdbcffi/_config.py
+uxdbcffi/uxdbcffi/_impl/_libpq.so
