@@ -1,4 +1,4 @@
-''' CFFI interface to libpq the library '''
+""" CFFI interface to libpq the library """
 
 from __future__ import print_function
 
@@ -11,28 +11,29 @@ import subprocess
 from cffi import FFI
 
 
-PLATFORM_IS_WINDOWS = sys.platform.lower().startswith('win')
-LIBRARY_NAME = 'pq' if not PLATFORM_IS_WINDOWS else 'libpq'
+PLATFORM_IS_WINDOWS = sys.platform.lower().startswith("win")
+LIBRARY_NAME = "pq" if not PLATFORM_IS_WINDOWS else "libpq"
 
 
 class PostgresConfig:
-
     def __init__(self):
         try:
-            from psycopg2cffi import _config
+            from uxdbcffi import _config
         except ImportError:
             self.pg_config_exe = None
             if not self.pg_config_exe:
                 self.pg_config_exe = self.autodetect_pg_config_path()
             if self.pg_config_exe is None:
                 # FIXME - do we need some way to set it?
-                sys.stderr.write("""\
+                sys.stderr.write(
+                    """\
 Error: pg_config executable not found.
 Please add the directory containing pg_config to the PATH.
-""")
+"""
+                )
                 sys.exit(1)
-            self.libpq_include_dir = self.query('includedir') or None
-            self.libpq_lib_dir = self.query('libdir') or None
+            self.libpq_include_dir = self.query("includedir") or None
+            self.libpq_lib_dir = self.query("libdir") or None
             self.libpq_version = self.find_version()
         else:
             self.libpq_include_dir = _config.PG_INCLUDE_DIR
@@ -41,27 +42,29 @@ Please add the directory containing pg_config to the PATH.
 
     def query(self, attr_name):
         """Spawn the pg_config executable, querying for the given config
-        name, and return the printed value, sanitized. """
+        name, and return the printed value, sanitized."""
         try:
             pg_config_process = subprocess.Popen(
                 [self.pg_config_exe, "--" + attr_name],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                stderr=subprocess.PIPE,
+            )
         except OSError:
-            raise Warning("Unable to find 'pg_config' file in '%s'" %
-                          self.pg_config_exe)
+            raise Warning(
+                "Unable to find 'pg_config' file in '%s'" % self.pg_config_exe
+            )
         pg_config_process.stdin.close()
         result = pg_config_process.stdout.readline().strip()
         if not result:
             raise Warning(pg_config_process.stderr.readline())
         if not isinstance(result, str):
-            result = result.decode('ascii')
+            result = result.decode("ascii")
         return result
 
     def find_on_path(self, exename, path_directories=None):
         if not path_directories:
-            path_directories = os.environ['PATH'].split(os.pathsep)
+            path_directories = os.environ["PATH"].split(os.pathsep)
         for dir_name in path_directories:
             fullpath = os.path.join(dir_name, exename)
             if os.path.isfile(fullpath):
@@ -73,7 +76,7 @@ Please add the directory containing pg_config to the PATH.
         if PLATFORM_IS_WINDOWS:
             return self.autodetect_pg_config_path_windows()
         else:
-            return self.find_on_path('pg_config')
+            return self.find_on_path("pg_config")
 
     def autodetect_pg_config_path_windows(self):
         """Attempt several different ways of finding the pg_config
@@ -83,7 +86,7 @@ Please add the directory containing pg_config to the PATH.
         # in the config file or via the commandline.
 
         # First, check for pg_config.exe on the PATH, and use that if found.
-        pg_config_exe = self.find_on_path('pg_config.exe')
+        pg_config_exe = self.find_on_path("pg_config.exe")
         if pg_config_exe:
             return pg_config_exe
 
@@ -103,8 +106,9 @@ Please add the directory containing pg_config to the PATH.
 
         reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
         try:
-            pg_inst_list_key = winreg.OpenKey(reg,
-                'SOFTWARE\\PostgreSQL\\Installations')
+            pg_inst_list_key = winreg.OpenKey(
+                reg, "SOFTWARE\\PostgreSQL\\Installations"
+            )
         except EnvironmentError:
             # No PostgreSQL installation, as best as we can tell.
             return None
@@ -116,29 +120,27 @@ Please add the directory containing pg_config to the PATH.
             except EnvironmentError:
                 return None
 
-            pg_first_inst_key = winreg.OpenKey(reg,
-                'SOFTWARE\\PostgreSQL\\Installations\\'
-                + first_sub_key_name)
+            pg_first_inst_key = winreg.OpenKey(
+                reg, "SOFTWARE\\PostgreSQL\\Installations\\" + first_sub_key_name
+            )
             try:
                 pg_inst_base_dir = winreg.QueryValueEx(
-                    pg_first_inst_key, 'Base Directory')[0]
+                    pg_first_inst_key, "Base Directory"
+                )[0]
             finally:
                 winreg.CloseKey(pg_first_inst_key)
 
         finally:
             winreg.CloseKey(pg_inst_list_key)
 
-        pg_config_path = os.path.join(
-            pg_inst_base_dir, 'bin', 'pg_config.exe')
+        pg_config_path = os.path.join(pg_inst_base_dir, "bin", "pg_config.exe")
         if not os.path.exists(pg_config_path):
             return None
 
         # Support unicode paths, if this version of Python provides the
         # necessary infrastructure:
-        if sys.version_info[0] < 3 \
-                and hasattr(sys, 'getfilesystemencoding'):
-            pg_config_path = pg_config_path.encode(
-                sys.getfilesystemencoding())
+        if sys.version_info[0] < 3 and hasattr(sys, "getfilesystemencoding"):
+            pg_config_path = pg_config_path.encode(sys.getfilesystemencoding())
 
         return pg_config_path
 
@@ -147,12 +149,11 @@ Please add the directory containing pg_config to the PATH.
             # Here we take a conservative approach: we suppose that
             # *at least* PostgreSQL 7.4 is available (this is the only
             # 7.x series supported by psycopg 2)
-            pgversion = self.query('version').split()[1]
+            pgversion = self.query("version").split()[1]
         except:
-            pgversion = '7.4.0'
+            pgversion = "7.4.0"
 
-        verre = re.compile(
-            r'(\d+)\.(\d+)(?:(?:\.(\d+))|(devel|(alpha|beta|rc)\d+)?)')
+        verre = re.compile(r"(\d+)\.(\d+)(?:(?:\.(\d+))|(devel|(alpha|beta|rc)\d+)?)")
         m = verre.match(pgversion)
         if m:
             pgmajor, pgminor, pgpatch = m.group(1, 2, 3)
@@ -160,12 +161,11 @@ Please add the directory containing pg_config to the PATH.
                 pgpatch = 0
         else:
             sys.stderr.write(
-                "Error: could not determine PostgreSQL version from '%s'"
-                % pgversion)
+                "Error: could not determine PostgreSQL version from '%s'" % pgversion
+            )
             sys.exit(1)
 
-        return int(
-            '%02X%02X%02X' % (int(pgmajor), int(pgminor), int(pgpatch)), 16)
+        return int("%02X%02X%02X" % (int(pgmajor), int(pgminor), int(pgpatch)), 16)
 
 
 _config = PostgresConfig()
@@ -174,7 +174,8 @@ ffi = FFI()
 
 # order and comments taken from libpq (ctypes impl)
 
-ffi.cdef('''
+ffi.cdef(
+    """
 
 static int const _PG_VERSION;
 
@@ -329,15 +330,19 @@ extern char *PQcmdStatus(PGresult *res);
 extern char *PQcmdTuples(PGresult *res);
 extern Oid PQoidValue(const PGresult *res); /* new and improved */
 
-''')
+"""
+)
 
 if _config.libpq_version >= 0x090000:
-    ffi.cdef('''
+    ffi.cdef(
+        """
 // Escaping string for inclusion in sql commands
 extern char *PQescapeLiteral(PGconn *conn, const char *str, size_t len);
-    ''')
+    """
+    )
 
-ffi.cdef('''
+ffi.cdef(
+    """
 // Escaping string for inclusion in sql commands
 extern size_t PQescapeStringConn(PGconn *conn,
     char *to, const char *from, size_t length,
@@ -398,11 +403,11 @@ extern int lo_unlink(PGconn *conn, Oid lobjId);
 extern int lo_export(PGconn *conn, Oid lobjId, const char *filename);
 extern int lo_truncate(PGconn *conn, int fd, size_t len);
 
-''')
+"""
+)
 
 
-
-C_SOURCE = '''
+C_SOURCE = """
 #if (defined(_MSC_VER) && _MSC_VER < 1600)
     typedef __int32  int32_t;
     typedef __int64  int64_t;
@@ -460,10 +465,12 @@ static int const LIBPQ_DIAG_CONSTRAINT_NAME = 'n';
 static int const LIBPQ_DIAG_SOURCE_FILE = 'F';
 static int const LIBPQ_DIAG_SOURCE_LINE = 'L';
 static int const LIBPQ_DIAG_SOURCE_FUNCTION = 'R';
-''' + '''
+""" + """
 
 static int const _PG_VERSION = {libpq_version};
-'''.format(libpq_version=_config.libpq_version)
+""".format(
+    libpq_version=_config.libpq_version
+)
 
 
 _or_empty = lambda x: [x] if x else []
@@ -472,19 +479,17 @@ _or_empty = lambda x: [x] if x else []
 C_SOURCE_KWARGS = dict(
     libraries=[LIBRARY_NAME],
     library_dirs=(
-        _or_empty(sysconfig.get_config_var('LIBDIR')) +
-        _or_empty(_config.libpq_lib_dir)
-        ),
+        _or_empty(sysconfig.get_config_var("LIBDIR")) + _or_empty(_config.libpq_lib_dir)
+    ),
     include_dirs=(
-        _or_empty(sysconfig.get_python_inc()) +
-        _or_empty(_config.libpq_include_dir)
-        )
-    )
+        _or_empty(sysconfig.get_python_inc()) + _or_empty(_config.libpq_include_dir)
+    ),
+)
 
 
-if hasattr(ffi, 'set_source'):
-    ffi.set_source('psycopg2cffi._impl._libpq', C_SOURCE, **C_SOURCE_KWARGS)
+if hasattr(ffi, "set_source"):
+    ffi.set_source("uxdbcffi._impl._libpq", C_SOURCE, **C_SOURCE_KWARGS)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     ffi.compile()

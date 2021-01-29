@@ -4,8 +4,8 @@ import re
 import six
 import base64
 
-from psycopg2cffi._impl import consts
-from psycopg2cffi._impl.cursor import Cursor
+from uxdbcffi._impl import consts
+from uxdbcffi._impl.cursor import Cursor
 
 
 class Xid(object):
@@ -59,7 +59,7 @@ class Xid(object):
                 pass
 
         # parsing failed: unparsed xid
-        xid = Xid(0, '', '')
+        xid = Xid(0, "", "")
         xid.gtrid = s
         xid.format_id = None
         xid.bqual = None
@@ -86,8 +86,8 @@ class Xid(object):
         cur = conn.cursor(cursor_factory=Cursor)
         try:
             cur.execute(
-                "SELECT gid, prepared, owner, database "
-                "FROM pg_prepared_xacts")
+                "SELECT gid, prepared, owner, database " "FROM pg_prepared_xacts"
+            )
 
             rv = []
             for gid, prepared, owner, database in cur:
@@ -102,4 +102,3 @@ class Xid(object):
         finally:
             if rb:
                 conn.rollback()
-

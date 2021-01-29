@@ -9,7 +9,8 @@ except NameError:
 class OperationError(Exception):
     pass
 
-from psycopg2cffi._impl.libpq import libpq, ffi
+
+from uxdbcffi._impl.libpq import libpq, ffi
 
 
 class Warning(StandardError):
@@ -41,13 +42,13 @@ class Error(StandardError):
             return t
 
         d = t[2].copy()
-        d.pop('cursor', None)
-        d.pop('_pgres', None)
+        d.pop("cursor", None)
+        d.pop("_pgres", None)
         return (t[0], t[1], d)
 
     def __setstate__(self, state):
-        self.pgerror = state.get('pgerror')
-        self.pgcode = state.get('pgcode')
+        self.pgerror = state.get("pgerror")
+        self.pgcode = state.get("pgcode")
 
 
 class InterfaceError(Error):
@@ -95,12 +96,13 @@ class Diagnostics(object):
         self._exc = exc
 
     def _get_field(self, field):
-        from psycopg2cffi._impl.adapters import bytes_to_ascii
+        from uxdbcffi._impl.adapters import bytes_to_ascii
+
         if self._exc and self._exc._pgres:
             b = libpq.PQresultErrorField(self._exc._pgres, field)
             if b:
                 b = ffi.string(b)
-                if six.PY3: # py2 tests insist on str here
+                if six.PY3:  # py2 tests insist on str here
                     b = bytes_to_ascii(b)
                 return b
 
@@ -171,4 +173,3 @@ class Diagnostics(object):
     @property
     def source_function(self):
         return self._get_field(libpq.LIBPQ_DIAG_SOURCE_FUNCTION)
-

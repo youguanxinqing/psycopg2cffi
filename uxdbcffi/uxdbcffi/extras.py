@@ -38,24 +38,25 @@ try:
 except:
     _logging = None
 
-import psycopg2cffi as psycopg2
-from psycopg2cffi import extensions as _ext
-from psycopg2cffi.extensions import cursor as _cursor
-from psycopg2cffi.extensions import connection as _connection
-from psycopg2cffi.extensions import adapt as _A
-from psycopg2cffi._impl.adapters import ascii_to_bytes, bytes_to_ascii
+import uxdbcffi as uxdb
+from uxdbcffi import extensions as _ext
+from uxdbcffi.extensions import cursor as _cursor
+from uxdbcffi.extensions import connection as _connection
+from uxdbcffi.extensions import adapt as _A
+from uxdbcffi._impl.adapters import ascii_to_bytes, bytes_to_ascii
 
 
 class DictCursorBase(_cursor):
     """Base class for all dict-like cursors."""
 
     def __init__(self, *args, **kwargs):
-        if 'row_factory' in kwargs:
-            row_factory = kwargs['row_factory']
-            del kwargs['row_factory']
+        if "row_factory" in kwargs:
+            row_factory = kwargs["row_factory"]
+            del kwargs["row_factory"]
         else:
             raise NotImplementedError(
-                "DictCursorBase can't be instantiated without a row factory.")
+                "DictCursorBase can't be instantiated without a row factory."
+            )
         super(DictCursorBase, self).__init__(*args, **kwargs)
         self._query_executed = 0
         self._prefetch = 0
@@ -114,15 +115,17 @@ class DictCursorBase(_cursor):
 
 class DictConnection(_connection):
     """A connection that uses `DictCursor` automatically."""
+
     def cursor(self, *args, **kwargs):
-        kwargs.setdefault('cursor_factory', DictCursor)
+        kwargs.setdefault("cursor_factory", DictCursor)
         return super(DictConnection, self).cursor(*args, **kwargs)
+
 
 class DictCursor(DictCursorBase):
     """A cursor that keeps a list of column name -> index mappings."""
 
     def __init__(self, *args, **kwargs):
-        kwargs['row_factory'] = DictRow
+        kwargs["row_factory"] = DictRow
         super(DictCursor, self).__init__(*args, **kwargs)
         self._prefetch = 1
 
@@ -142,10 +145,11 @@ class DictCursor(DictCursorBase):
                 self.index[self.description[i][0]] = i
             self._query_executed = 0
 
+
 class DictRow(list):
     """A row object that allow by-colmun-name access to data."""
 
-    __slots__ = ('_index',)
+    __slots__ = ("_index",)
 
     def __init__(self, cursor):
         self._index = cursor.index
@@ -204,17 +208,22 @@ class DictRow(list):
 
     # drop the crusty Py2 methods
     if _sys.version_info[0] > 2:
-        items = iteritems; del iteritems
-        keys = iterkeys; del iterkeys
-        values = itervalues; del itervalues
+        items = iteritems
+        del iteritems
+        keys = iterkeys
+        del iterkeys
+        values = itervalues
+        del itervalues
         del has_key
 
 
 class RealDictConnection(_connection):
     """A connection that uses `RealDictCursor` automatically."""
+
     def cursor(self, *args, **kwargs):
-        kwargs.setdefault('cursor_factory', RealDictCursor)
+        kwargs.setdefault("cursor_factory", RealDictCursor)
         return super(RealDictConnection, self).cursor(*args, **kwargs)
+
 
 class RealDictCursor(DictCursorBase):
     """A cursor that uses a real dict as the base type for rows.
@@ -224,8 +233,9 @@ class RealDictCursor(DictCursorBase):
     to access database rows both as a dictionary and a list, then use
     the generic `DictCursor` instead of `!RealDictCursor`.
     """
+
     def __init__(self, *args, **kwargs):
-        kwargs['row_factory'] = RealDictRow
+        kwargs["row_factory"] = RealDictRow
         super(RealDictCursor, self).__init__(*args, **kwargs)
         self._prefetch = 0
 
@@ -245,10 +255,11 @@ class RealDictCursor(DictCursorBase):
                 self.column_mapping.append(self.description[i][0])
             self._query_executed = 0
 
+
 class RealDictRow(dict):
     """A `!dict` subclass representing a data record."""
 
-    __slots__ = ('_column_mapping')
+    __slots__ = "_column_mapping"
 
     def __init__(self, cursor):
         dict.__init__(self)
@@ -273,9 +284,11 @@ class RealDictRow(dict):
 
 class NamedTupleConnection(_connection):
     """A connection that uses `NamedTupleCursor` automatically."""
+
     def cursor(self, *args, **kwargs):
-        kwargs.setdefault('cursor_factory', NamedTupleCursor)
+        kwargs.setdefault("cursor_factory", NamedTupleCursor)
         return super(NamedTupleConnection, self).cursor(*args, **kwargs)
+
 
 class NamedTupleCursor(_cursor):
     """A cursor that generates results as `~collections.namedtuple`.
@@ -284,7 +297,7 @@ class NamedTupleCursor(_cursor):
     their elements can be accessed both as regular numeric items as well as
     attributes.
 
-        >>> nt_cur = conn.cursor(cursor_factory=psycopg2.extras.NamedTupleCursor)
+        >>> nt_cur = conn.cursor(cursor_factory=uxdb.extras.NamedTupleCursor)
         >>> rec = nt_cur.fetchone()
         >>> rec
         Record(id=1, num=100, data="abc'def")
@@ -293,6 +306,7 @@ class NamedTupleCursor(_cursor):
         >>> rec.data
         "abc'def"
     """
+
     Record = None
 
     def execute(self, query, vars=None):
@@ -350,9 +364,12 @@ class NamedTupleCursor(_cursor):
     try:
         from collections import namedtuple
     except ImportError as _exc:
+
         def _make_nt(self):
             raise self._exc
+
     else:
+
         def _make_nt(self, namedtuple=namedtuple):
             return namedtuple("Record", [d[0] for d in self.description or ()])
 
@@ -386,21 +403,25 @@ class LoggingConnection(_connection):
 
     def _logtofile(self, msg, curs):
         msg = self.filter(msg, curs)
-        if msg: self._logobj.write(msg + _os.linesep)
+        if msg:
+            self._logobj.write(msg + _os.linesep)
 
     def _logtologger(self, msg, curs):
         msg = self.filter(msg, curs)
-        if msg: self._logobj.debug(msg)
+        if msg:
+            self._logobj.debug(msg)
 
     def _check(self):
-        if not hasattr(self, '_logobj'):
+        if not hasattr(self, "_logobj"):
             raise self.ProgrammingError(
-                "LoggingConnection object has not been initialize()d")
+                "LoggingConnection object has not been initialize()d"
+            )
 
     def cursor(self, *args, **kwargs):
         self._check()
-        kwargs.setdefault('cursor_factory', LoggingCursor)
+        kwargs.setdefault("cursor_factory", LoggingCursor)
         return super(LoggingConnection, self).cursor(*args, **kwargs)
+
 
 class LoggingCursor(_cursor):
     """A cursor that logs queries using its connection logging facilities."""
@@ -429,6 +450,7 @@ class MinTimeLoggingConnection(LoggingConnection):
     Note that this connection uses the specialized cursor
     `MinTimeLoggingCursor`.
     """
+
     def initialize(self, logobj, mintime=0):
         LoggingConnection.initialize(self, logobj)
         self._mintime = mintime
@@ -439,8 +461,9 @@ class MinTimeLoggingConnection(LoggingConnection):
             return msg + _os.linesep + "  (execution time: %d ms)" % t
 
     def cursor(self, *args, **kwargs):
-        kwargs.setdefault('cursor_factory', MinTimeLoggingCursor)
+        kwargs.setdefault("cursor_factory", MinTimeLoggingCursor)
         return LoggingConnection.cursor(self, *args, **kwargs)
+
 
 class MinTimeLoggingCursor(LoggingCursor):
     """The cursor sub-class companion to `MinTimeLoggingConnection`."""
@@ -455,6 +478,7 @@ class MinTimeLoggingCursor(LoggingCursor):
 
 
 # a dbtype and adapter for Python UUID type
+
 
 class UUID_adapter(object):
     """Adapt Python's uuid.UUID__ type to PostgreSQL's uuid__.
@@ -471,7 +495,7 @@ class UUID_adapter(object):
             return self
 
     def getquoted(self):
-        return b''.join([b"'", ascii_to_bytes(str(self._uuid)), b"'::uuid"])
+        return b"".join([b"'", ascii_to_bytes(str(self._uuid)), b"'::uuid"])
 
     def __bytes__(self):
         return self.getquoted()
@@ -501,8 +525,9 @@ def register_uuid(oids=None, conn_or_curs=None):
         oid1 = oids
         oid2 = 2951
 
-    _ext.UUID = _ext.new_type((oid1, ), "UUID",
-            lambda data, cursor: data and uuid.UUID(data) or None)
+    _ext.UUID = _ext.new_type(
+        (oid1,), "UUID", lambda data, cursor: data and uuid.UUID(data) or None
+    )
     _ext.UUIDARRAY = _ext.new_array_type((oid2,), "UUID[]", _ext.UUID)
 
     _ext.register_type(_ext.UUID, conn_or_curs)
@@ -514,6 +539,7 @@ def register_uuid(oids=None, conn_or_curs=None):
 
 # a type, dbtype and adapter for PostgreSQL inet type
 
+
 class Inet(object):
     """Wrap a string to allow for correct SQL-quoting of inet values.
 
@@ -522,6 +548,7 @@ class Inet(object):
     on it to make sure it is impossible to execute an SQL-injection
     by passing an evil value to the initializer.
     """
+
     def __init__(self, addr):
         self.addr = addr
 
@@ -533,7 +560,7 @@ class Inet(object):
 
     def getquoted(self):
         obj = _A(self.addr)
-        if hasattr(obj, 'prepare'):
+        if hasattr(obj, "prepare"):
             obj.prepare(self._conn)
         return obj.getquoted() + b"::inet"
 
@@ -543,6 +570,7 @@ class Inet(object):
 
     def __str__(self):
         return str(self.addr)
+
 
 def register_inet(oid=None, conn_or_curs=None):
     """Create the INET type and an Inet adapter.
@@ -562,9 +590,10 @@ def register_inet(oid=None, conn_or_curs=None):
         oid1 = oid
         oid2 = 1041
 
-    _ext.INET = _ext.new_type((oid1, ), "INET",
-            lambda data, cursor: data and Inet(data) or None)
-    _ext.INETARRAY = _ext.new_array_type((oid2, ), "INETARRAY", _ext.INET)
+    _ext.INET = _ext.new_type(
+        (oid1,), "INET", lambda data, cursor: data and Inet(data) or None
+    )
+    _ext.INETARRAY = _ext.new_array_type((oid2,), "INETARRAY", _ext.INET)
 
     _ext.register_type(_ext.INET, conn_or_curs)
     _ext.register_type(_ext.INETARRAY, conn_or_curs)
@@ -581,6 +610,7 @@ def register_tstz_w_secs(oids=None, conn_or_curs=None):
     the function doesn't do anything.
     """
     import warnings
+
     warnings.warn("deprecated", DeprecationWarning)
 
 
@@ -588,12 +618,12 @@ def wait_select(conn):
     """Wait until a connection or cursor has data available.
 
     The function is an example of a wait callback to be registered with
-    `~psycopg2.extensions.set_wait_callback()`. This function uses
+    `~uxdb.extensions.set_wait_callback()`. This function uses
     :py:func:`~select.select()` to wait for data available.
 
     """
     import select
-    from psycopg2cffi.extensions import POLL_OK, POLL_READ, POLL_WRITE
+    from uxdbcffi.extensions import POLL_OK, POLL_READ, POLL_WRITE
 
     while 1:
         state = conn.poll()
@@ -610,9 +640,9 @@ def wait_select(conn):
 def _solve_conn_curs(conn_or_curs):
     """Return the connection and a DBAPI cursor from a connection or cursor."""
     if conn_or_curs is None:
-        raise psycopg2.ProgrammingError("no connection or cursor provided")
+        raise uxdb.ProgrammingError("no connection or cursor provided")
 
-    if hasattr(conn_or_curs, 'execute'):
+    if hasattr(conn_or_curs, "execute"):
         conn = conn_or_curs.connection
         curs = conn.cursor(cursor_factory=_cursor)
     else:
@@ -624,6 +654,7 @@ def _solve_conn_curs(conn_or_curs):
 
 class HstoreAdapter(object):
     """Adapt a Python dict to the hstore syntax."""
+
     def __init__(self, wrapped):
         self.wrapped = wrapped
         self.unicode = False
@@ -652,11 +683,11 @@ class HstoreAdapter(object):
                 v.prepare(self.conn)
                 v = v.getquoted()
             else:
-                v = b'NULL'
+                v = b"NULL"
 
             rv.append(b"(" + k + b" => " + v + b")")
 
-        return b"(" + b'||'.join(rv) + b")"
+        return b"(" + b"||".join(rv) + b")"
 
     def _getquoted_9(self):
         """Use the hstore(text[], text[]) function."""
@@ -671,7 +702,8 @@ class HstoreAdapter(object):
 
     getquoted = _getquoted_9
 
-    _re_hstore = _re.compile(r"""
+    _re_hstore = _re.compile(
+        r"""
         # hstore key:
         # a string of normal or escaped chars
         "((?: [^"\\] | \\. )*)"
@@ -682,7 +714,9 @@ class HstoreAdapter(object):
             | "((?: [^"\\] | \\. )*)"
         )
         (?:\s*,\s*|$) # pairs separated by comma or end of string.
-    """, _re.VERBOSE | _re.UNICODE)
+    """,
+        _re.VERBOSE | _re.UNICODE,
+    )
 
     @classmethod
     def parse(self, s, cur, _bsdec=_re.compile(r"\\(.)", _re.UNICODE)):
@@ -700,23 +734,28 @@ class HstoreAdapter(object):
         rv = {}
         start = 0
         if six.PY3 and isinstance(s, six.binary_type):
-            s = s.decode(_ext.encodings[cur.connection.encoding]) \
-                    if cur else bytes_to_ascii(s)
+            s = (
+                s.decode(_ext.encodings[cur.connection.encoding])
+                if cur
+                else bytes_to_ascii(s)
+            )
         for m in self._re_hstore.finditer(s):
             if m is None or m.start() != start:
-                raise psycopg2.InterfaceError(
-                    "error parsing hstore pair at char %d" % start)
-            k = _bsdec.sub(r'\1', m.group(1), _re.UNICODE)
+                raise uxdb.InterfaceError(
+                    "error parsing hstore pair at char %d" % start
+                )
+            k = _bsdec.sub(r"\1", m.group(1), _re.UNICODE)
             v = m.group(2)
             if v is not None:
-                v = _bsdec.sub(r'\1', v, _re.UNICODE)
+                v = _bsdec.sub(r"\1", v, _re.UNICODE)
 
             rv[k] = v
             start = m.end()
 
         if start < len(s):
-            raise psycopg2.InterfaceError(
-                "error parsing hstore: unparsed data after char %d" % start)
+            raise uxdb.InterfaceError(
+                "error parsing hstore: unparsed data after char %d" % start
+            )
 
         return rv
 
@@ -725,8 +764,11 @@ class HstoreAdapter(object):
         if s is None:
             return None
         else:
-            return s.decode(_ext.encodings[cur.connection.encoding]) \
-                    if cur else bytes_to_ascii(s)
+            return (
+                s.decode(_ext.encodings[cur.connection.encoding])
+                if cur
+                else bytes_to_ascii(s)
+            )
 
     @classmethod
     def parse_unicode(self, s, cur):
@@ -741,8 +783,7 @@ class HstoreAdapter(object):
 
     @classmethod
     def get_oids(self, conn_or_curs):
-        """Return the lists of OID of the hstore and hstore[] types.
-        """
+        """Return the lists of OID of the hstore and hstore[] types."""
         conn, curs = _solve_conn_curs(conn_or_curs)
 
         # Store the transaction status of the connection to revert it after use
@@ -754,25 +795,29 @@ class HstoreAdapter(object):
         rv0, rv1 = [], []
 
         # get the oid for the hstore
-        curs.execute("""\
+        curs.execute(
+            """\
 SELECT t.oid, %s
 FROM pg_type t JOIN pg_namespace ns
     ON typnamespace = ns.oid
 WHERE typname = 'hstore';
-""" % typarray)
+"""
+            % typarray
+        )
         for oids in curs:
             rv0.append(oids[0])
             rv1.append(oids[1])
 
         # revert the status of the connection as before the command
-        if (conn_status != _ext.STATUS_IN_TRANSACTION
-        and not conn.autocommit):
+        if conn_status != _ext.STATUS_IN_TRANSACTION and not conn.autocommit:
             conn.rollback()
 
         return tuple(rv0), tuple(rv1)
 
-def register_hstore(conn_or_curs, globally=False, unicode=False,
-        oid=None, array_oid=None):
+
+def register_hstore(
+    conn_or_curs, globally=False, unicode=False, oid=None, array_oid=None
+):
     """Register adapter and typecaster for `!dict`\-\ |hstore| conversions.
 
     :param conn_or_curs: a connection or cursor: the typecaster will be
@@ -800,14 +845,15 @@ def register_hstore(conn_or_curs, globally=False, unicode=False,
 
     The |hstore| contrib module must be already installed in the database
     (executing the ``hstore.sql`` script in your ``contrib`` directory).
-    Raise `~psycopg2.ProgrammingError` if the type is not found.
+    Raise `~uxdb.ProgrammingError` if the type is not found.
     """
     if oid is None:
         oid = HstoreAdapter.get_oids(conn_or_curs)
         if oid is None or not oid[0]:
-            raise psycopg2.ProgrammingError(
+            raise uxdb.ProgrammingError(
                 "hstore type not found in the database. "
-                "please install it from your 'contrib/hstore.sql' file")
+                "please install it from your 'contrib/hstore.sql' file"
+            )
         else:
             array_oid = oid[1]
             oid = oid[0]
@@ -845,19 +891,21 @@ class CompositeCaster(object):
     using an :ref:`asynchronous connections <async-support>`).
 
     """
+
     def __init__(self, name, oid, attrs, array_oid=None, schema=None):
         self.name = name
         self.schema = schema
         self.oid = oid
         self.array_oid = array_oid
 
-        self.attnames = [ a[0] for a in attrs ]
-        self.atttypes = [ a[1] for a in attrs ]
+        self.attnames = [a[0] for a in attrs]
+        self.atttypes = [a[1] for a in attrs]
         self._create_type(name, self.attnames)
         self.typecaster = _ext.new_type((oid,), name, self.parse)
         if array_oid:
             self.array_typecaster = _ext.new_array_type(
-                (array_oid,), "%sARRAY" % name, self.typecaster)
+                (array_oid,), "%sARRAY" % name, self.typecaster
+            )
         else:
             self.array_typecaster = None
 
@@ -867,12 +915,12 @@ class CompositeCaster(object):
 
         tokens = self.tokenize(s)
         if len(tokens) != len(self.atttypes):
-            raise psycopg2.DataError(
-                "expecting %d components for the type %s, %d found instead" %
-                (len(self.atttypes), self.name, len(tokens)))
+            raise uxdb.DataError(
+                "expecting %d components for the type %s, %d found instead"
+                % (len(self.atttypes), self.name, len(tokens))
+            )
 
-        values = [ curs.cast(oid, token)
-            for oid, token in zip(self.atttypes, tokens) ]
+        values = [curs.cast(oid, token) for oid, token in zip(self.atttypes, tokens)]
 
         return self.make(values)
 
@@ -888,22 +936,24 @@ class CompositeCaster(object):
 
         return self._ctor(values)
 
-    _re_tokenize = _re.compile(r"""
+    _re_tokenize = _re.compile(
+        r"""
   \(? ([,)])                        # an empty token, representing NULL
 | \(? " ((?: [^"] | "")*) " [,)]    # or a quoted string
 | \(? ([^",)]+) [,)]                # or an unquoted string
-    """, _re.VERBOSE)
+    """,
+        _re.VERBOSE,
+    )
 
     _re_undouble = _re.compile(r'(["\\])\1')
 
     @classmethod
     def tokenize(self, s):
-        ''' Gets bytestring, returns list of bytestrings
-        '''
+        """Gets bytestring, returns list of bytestrings"""
         rv = []
         for m in self._re_tokenize.finditer(s):
             if m is None:
-                raise psycopg2.InterfaceError("can't parse type: %r", s)
+                raise uxdb.InterfaceError("can't parse type: %r", s)
             if m.group(1) is not None:
                 rv.append(None)
             elif m.group(2) is not None:
@@ -934,17 +984,18 @@ class CompositeCaster(object):
         conn_status = conn.status
 
         # Use the correct schema
-        if '.' in name:
-            schema, tname = name.split('.', 1)
+        if "." in name:
+            schema, tname = name.split(".", 1)
         else:
             tname = name
-            schema = 'public'
+            schema = "public"
 
         # column typarray not available before PG 8.3
         typarray = conn.server_version >= 80300 and "typarray" or "NULL"
 
         # get the type oid and attributes
-        curs.execute("""\
+        curs.execute(
+            """\
 SELECT t.oid, %s, attname, atttypid
 FROM pg_type t
 JOIN pg_namespace ns ON typnamespace = ns.oid
@@ -952,25 +1003,26 @@ JOIN pg_attribute a ON attrelid = typrelid
 WHERE typname = %%s AND nspname = %%s
     AND attnum > 0 AND NOT attisdropped
 ORDER BY attnum;
-""" % typarray, (tname, schema))
+"""
+            % typarray,
+            (tname, schema),
+        )
 
         recs = curs.fetchall()
 
         # revert the status of the connection as before the command
-        if (conn_status != _ext.STATUS_IN_TRANSACTION
-        and not conn.autocommit):
+        if conn_status != _ext.STATUS_IN_TRANSACTION and not conn.autocommit:
             conn.rollback()
 
         if not recs:
-            raise psycopg2.ProgrammingError(
-                "PostgreSQL type '%s' not found" % name)
+            raise uxdb.ProgrammingError("PostgreSQL type '%s' not found" % name)
 
         type_oid = recs[0][0]
         array_oid = recs[0][1]
-        type_attrs = [ (r[2], r[3]) for r in recs ]
+        type_attrs = [(r[2], r[3]) for r in recs]
 
-        return self(tname, type_oid, type_attrs,
-            array_oid=array_oid, schema=schema)
+        return self(tname, type_oid, type_attrs, array_oid=array_oid, schema=schema)
+
 
 def register_composite(name, conn_or_curs, globally=False, factory=None):
     """Register a typecaster to convert a composite type into a tuple.
@@ -994,10 +1046,11 @@ def register_composite(name, conn_or_curs, globally=False, factory=None):
     _ext.register_type(caster.typecaster, not globally and conn_or_curs or None)
 
     if caster.array_typecaster is not None:
-        _ext.register_type(caster.array_typecaster, not globally and conn_or_curs or None)
+        _ext.register_type(
+            caster.array_typecaster, not globally and conn_or_curs or None
+        )
 
     return caster
-
 
 
 def _paginate(seq, page_size):
@@ -1114,13 +1167,13 @@ def execute_values(cur, sql, argslist, template=None, page_size=100, fetch=False
     result = [] if fetch else None
     for page in _paginate(argslist, page_size=page_size):
         if template is None:
-            template = b'(' + b','.join([b'%s'] * len(page[0])) + b')'
+            template = b"(" + b",".join([b"%s"] * len(page[0])) + b")"
         parts = pre[:]
         for args in page:
             parts.append(cur.mogrify(template, args))
-            parts.append(b',')
+            parts.append(b",")
         parts[-1:] = post
-        cur.execute(b''.join(parts))
+        cur.execute(b"".join(parts))
         if fetch:
             result.extend(cur.fetchall())
 
@@ -1135,23 +1188,24 @@ def _split_sql(sql):
     """
     curr = pre = []
     post = []
-    tokens = _re.split(br'(%.)', sql)
+    tokens = _re.split(br"(%.)", sql)
     for token in tokens:
-        if len(token) != 2 or token[:1] != b'%':
+        if len(token) != 2 or token[:1] != b"%":
             curr.append(token)
             continue
 
-        if token[1:] == b's':
+        if token[1:] == b"s":
             if curr is pre:
                 curr = post
             else:
-                raise ValueError(
-                    "the query contains more than one '%s' placeholder")
-        elif token[1:] == b'%':
-            curr.append(b'%')
+                raise ValueError("the query contains more than one '%s' placeholder")
+        elif token[1:] == b"%":
+            curr.append(b"%")
         else:
-            raise ValueError("unsupported format character: '%s'"
-                % token[1:].decode('ascii', 'replace'))
+            raise ValueError(
+                "unsupported format character: '%s'"
+                % token[1:].decode("ascii", "replace")
+            )
 
     if curr is pre:
         raise ValueError("the query doesn't contain any '%s' placeholder")
@@ -1160,12 +1214,11 @@ def _split_sql(sql):
 
 
 # expose the json adaptation stuff into the module
-from psycopg2cffi._json import json, Json, register_json, register_default_json
-from psycopg2cffi._json import register_default_json, register_default_jsonb
-
+from uxdbcffi._json import json, Json, register_json, register_default_json
+from uxdbcffi._json import register_default_json, register_default_jsonb
 
 
 # Expose range-related objects
-from psycopg2cffi._range import Range, NumericRange
-from psycopg2cffi._range import DateRange, DateTimeRange, DateTimeTZRange
-from psycopg2cffi._range import register_range, RangeAdapter, RangeCaster
+from uxdbcffi._range import Range, NumericRange
+from uxdbcffi._range import DateRange, DateTimeRange, DateTimeTZRange
+from uxdbcffi._range import register_range, RangeAdapter, RangeCaster

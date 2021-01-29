@@ -1,7 +1,6 @@
 import sys
-import psycopg2cffi
+import uxdbcffi
 
 
 def register():
-    sys.modules['psycopg2'] = psycopg2cffi
-
+    sys.modules["uxdb"] = uxdbcffi

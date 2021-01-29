@@ -8,26 +8,28 @@ import weakref
 import six
 from six.moves import xrange
 
-from psycopg2cffi import tz
-from psycopg2cffi._impl import consts
-from psycopg2cffi._impl import exceptions
-from psycopg2cffi._impl.libpq import libpq, ffi
-from psycopg2cffi._impl import typecasts
-from psycopg2cffi._impl import util
-from psycopg2cffi._impl.adapters import _getquoted
-from psycopg2cffi._impl.exceptions import InterfaceError, ProgrammingError
+from uxdbcffi import tz
+from uxdbcffi._impl import consts
+from uxdbcffi._impl import exceptions
+from uxdbcffi._impl.libpq import libpq, ffi
+from uxdbcffi._impl import typecasts
+from uxdbcffi._impl import util
+from uxdbcffi._impl.adapters import _getquoted
+from uxdbcffi._impl.exceptions import InterfaceError, ProgrammingError
 
 
-is_32bits = sys.maxsize < 2**32
+is_32bits = sys.maxsize < 2 ** 32
 
 
 def check_closed(func):
     """Check if the connection is closed and raise an error"""
+
     @wraps(func)
     def check_closed_(self, *args, **kwargs):
         if self.closed:
             raise InterfaceError("connection already closed")
         return func(self, *args, **kwargs)
+
     return check_closed_
 
 
@@ -36,11 +38,13 @@ def check_no_tuples(func):
     postgresql status was PGRES_TUPLES_OK
 
     """
+
     @wraps(func)
     def check_no_tuples_(self, *args, **kwargs):
         if self._no_tuples and self._name is None:
             raise ProgrammingError("no results to fetch")
         return func(self, *args, **kwargs)
+
     return check_no_tuples_
 
 
@@ -49,14 +53,26 @@ def check_async(func):
     def check_async_(self, *args, **kwargs):
         if self._conn._async:
             raise exceptions.ProgrammingError(
-                '%s cannot be used in asynchronous mode' % func.__name__)
+                "%s cannot be used in asynchronous mode" % func.__name__
+            )
         return func(self, *args, **kwargs)
+
     return check_async_
 
 
 # Used for Cursor.description
-Column = namedtuple('Column', ['name', 'type_code', 'display_size',
-    'internal_size', 'precision', 'scale', 'null_ok'])
+Column = namedtuple(
+    "Column",
+    [
+        "name",
+        "type_code",
+        "display_size",
+        "internal_size",
+        "precision",
+        "scale",
+        "null_ok",
+    ],
+)
 
 
 class Cursor(object):
@@ -175,10 +191,7 @@ class Cursor(object):
             length = 0
         else:
             length = len(parameters)
-        sql = "SELECT * FROM %s(%s)" % (
-            procname,
-            ", ".join(["%s"] * length)
-        )
+        sql = "SELECT * FROM %s(%s)" % (procname, ", ".join(["%s"] * length))
         self.execute(sql, parameters)
         return parameters
 
@@ -232,10 +245,12 @@ class Cursor(object):
         if self._name:
             if self._query:
                 raise ProgrammingError(
-                    "can't call .execute() on named cursors more than once")
+                    "can't call .execute() on named cursors more than once"
+                )
             if self._conn.autocommit and not self._withhold:
                 raise ProgrammingError(
-                    "can't use a named cursor outside of transactions")
+                    "can't use a named cursor outside of transactions"
+                )
 
         if isinstance(query, six.text_type):
             query = query.encode(self._conn._py_enc)
@@ -253,12 +268,13 @@ class Cursor(object):
         self._clear_pgres()
 
         if self._name:
-            self._query = \
+            self._query = (
                 util.ascii_to_bytes(
-                        'DECLARE "%s" %sCURSOR %s HOLD FOR ' % (
-                            self._name, scroll,
-                            "WITH" if self._withhold else "WITHOUT")) \
+                    'DECLARE "%s" %sCURSOR %s HOLD FOR '
+                    % (self._name, scroll, "WITH" if self._withhold else "WITHOUT")
+                )
                 + self._query
+            )
 
         self._pq_execute(self._query, conn._async)
 
@@ -306,8 +322,7 @@ class Cursor(object):
 
         """
         if self._name is not None:
-            self._pq_execute(
-                'FETCH FORWARD 1 FROM "%s"' % self._name)
+            self._pq_execute('FETCH FORWARD 1 FROM "%s"' % self._name)
 
         if self._rownumber >= self._rowcount:
             return None
@@ -343,8 +358,7 @@ class Cursor(object):
 
         if self._name is not None:
             self._clear_pgres()
-            self._pq_execute(
-                'FETCH FORWARD %d FROM "%s"' % (size, self._name))
+            self._pq_execute('FETCH FORWARD %d FROM "%s"' % (size, self._name))
 
         if size > self._rowcount - self._rownumber or size < 0:
             size = self._rowcount - self._rownumber
@@ -418,8 +432,7 @@ class Cursor(object):
 
     @check_closed
     @check_async
-    def copy_from(self, file, table, sep='\t', null='\\N', size=8192,
-                  columns=None):
+    def copy_from(self, file, table, sep="\t", null="\\N", size=8192, columns=None):
         """Reads data from a file-like object appending them to a database
         table (COPY table FROM file syntax).
 
@@ -429,15 +442,18 @@ class Cursor(object):
 
         """
         if columns:
-            columns_str = '(%s)' % ','.join([column for column in columns])
+            columns_str = "(%s)" % ",".join([column for column in columns])
         else:
-            columns_str = ''
+            columns_str = ""
 
-        query = util.ascii_to_bytes(
-                "COPY %s%s FROM stdin WITH DELIMITER AS " % (
-                    table, columns_str)) + \
-                util.quote_string(self._conn, sep) + b' NULL AS ' + \
-                util.quote_string(self._conn, null)
+        query = (
+            util.ascii_to_bytes(
+                "COPY %s%s FROM stdin WITH DELIMITER AS " % (table, columns_str)
+            )
+            + util.quote_string(self._conn, sep)
+            + b" NULL AS "
+            + util.quote_string(self._conn, null)
+        )
 
         self._copysize = size
         self._copyfile = file
@@ -449,7 +465,7 @@ class Cursor(object):
 
     @check_closed
     @check_async
-    def copy_to(self, file, table, sep='\t', null='\\N', columns=None):
+    def copy_to(self, file, table, sep="\t", null="\\N", columns=None):
         """Writes the content of a table to a file-like object (COPY table
         TO file syntax).
 
@@ -459,15 +475,18 @@ class Cursor(object):
 
         """
         if columns:
-            columns_str = '(%s)' % ','.join([column for column in columns])
+            columns_str = "(%s)" % ",".join([column for column in columns])
         else:
-            columns_str = ''
+            columns_str = ""
 
-        query = util.ascii_to_bytes(
-                "COPY %s%s TO stdout WITH DELIMITER AS " % (
-                    table, columns_str)) + \
-                util.quote_string(self._conn, sep) + b' NULL AS ' + \
-                util.quote_string(self._conn, null)
+        query = (
+            util.ascii_to_bytes(
+                "COPY %s%s TO stdout WITH DELIMITER AS " % (table, columns_str)
+            )
+            + util.quote_string(self._conn, sep)
+            + b" NULL AS "
+            + util.quote_string(self._conn, null)
+        )
 
         self._copyfile = file
         try:
@@ -481,9 +500,11 @@ class Cursor(object):
         if not sql:
             return
 
-        if not hasattr(file, 'read') and not hasattr(file, 'write'):
-            raise TypeError("file must be a readable file-like object for"
-                " COPY FROM; a writeable file-like object for COPY TO.")
+        if not hasattr(file, "read") and not hasattr(file, "write"):
+            raise TypeError(
+                "file must be a readable file-like object for"
+                " COPY FROM; a writeable file-like object for COPY TO."
+            )
 
         self._copysize = size
         self._copyfile = file
@@ -621,8 +642,7 @@ class Cursor(object):
     @withhold.setter
     def withhold(self, value):
         if not self._name:
-            raise ProgrammingError(
-                "trying to set .withhold on unnamed cursor")
+            raise ProgrammingError("trying to set .withhold on unnamed cursor")
 
         self._withhold = bool(value)
 
@@ -633,21 +653,19 @@ class Cursor(object):
     @scrollable.setter
     def scrollable(self, value):
         if not self._name:
-            raise ProgrammingError(
-                "trying to set .scrollable on unnamed cursor")
+            raise ProgrammingError("trying to set .scrollable on unnamed cursor")
 
         self._scrollable = bool(value) if value is not None else None
 
     @check_closed
-    def scroll(self, value, mode='relative'):
+    def scroll(self, value, mode="relative"):
         if not self._name:
-            if mode == 'relative':
+            if mode == "relative":
                 new_pos = self._rownumber + value
-            elif mode == 'absolute':
+            elif mode == "absolute":
                 new_pos = value
             else:
-                raise ProgrammingError(
-                    "scroll mode must be 'relative' or 'absolute'")
+                raise ProgrammingError("scroll mode must be 'relative' or 'absolute'")
 
             if not 0 <= new_pos < self._rowcount:
                 raise ProgrammingError("scroll destination out of bounds")
@@ -656,14 +674,15 @@ class Cursor(object):
         else:
             if self._conn._async_cursor is not None:
                 raise ProgrammingError(
-                    "cannot be used while an asynchronous query is underway")
+                    "cannot be used while an asynchronous query is underway"
+                )
 
             if self._mark != self._conn._mark and not self._withhold:
                 raise ProgrammingError("named cursor isn't valid anymore")
 
             # This should also raise a ProgrammingError if the mode is
             # not absolute or relative. But mimic psycopg for now.
-            if mode == 'absolute':
+            if mode == "absolute":
                 cmd = 'MOVE ABSOLUTE %d FROM "%s"' % (value, self._name)
             else:
                 cmd = 'MOVE %d FROM "%s"' % (value, self._name)
@@ -686,8 +705,7 @@ class Cursor(object):
             if not async_conn:
                 with self._conn._lock:
                     if not self._conn._have_wait_callback():
-                        self._pgres = libpq.PQexec(
-                                pgconn, util.ascii_to_bytes(query))
+                        self._pgres = libpq.PQexec(pgconn, util.ascii_to_bytes(query))
                     else:
                         self._pgres = self._conn._execute_green(query)
                     if not self._pgres:
@@ -704,7 +722,8 @@ class Cursor(object):
                         # but the test_async_after_async expects it.
                         if self._conn._async_cursor:
                             raise ProgrammingError(
-                                'cannot be used while an asynchronous query is underway')
+                                "cannot be used while an asynchronous query is underway"
+                            )
 
                         raise self._conn._create_exception(cursor=self)
 
@@ -723,7 +742,8 @@ class Cursor(object):
         pgstatus = libpq.PQresultStatus(self._pgres)
         if pgstatus != libpq.PGRES_FATAL_ERROR:
             self._statusmessage = util.bytes_to_ascii(
-                    ffi.string(libpq.PQcmdStatus(self._pgres)))
+                ffi.string(libpq.PQcmdStatus(self._pgres))
+            )
         else:
             self._statusmessage = None
 
@@ -768,10 +788,10 @@ class Cursor(object):
                 fsize = libpq.PQfsize(self._pgres, i)
                 fmod = libpq.PQfmod(self._pgres, i)
                 if fmod > 0:
-                    fmod -= 4   # TODO: sizeof(int)
+                    fmod -= 4  # TODO: sizeof(int)
 
                 if fsize == -1:
-                    if ftype == 1700:   # NUMERIC
+                    if ftype == 1700:  # NUMERIC
                         isize = fmod >> 16
                     else:
                         isize = fmod
@@ -785,16 +805,19 @@ class Cursor(object):
                     prec = scale = None
 
                 casts.append(self._get_cast(ftype))
-                description.append(Column(
-                    name=ffi.string(libpq.PQfname(self._pgres, i))\
-                            .decode(self._conn._py_enc),
-                    type_code=ftype,
-                    display_size=None,
-                    internal_size=isize,
-                    precision=prec,
-                    scale=scale,
-                    null_ok=None,
-                ))
+                description.append(
+                    Column(
+                        name=ffi.string(libpq.PQfname(self._pgres, i)).decode(
+                            self._conn._py_enc
+                        ),
+                        type_code=ftype,
+                        display_size=None,
+                        internal_size=isize,
+                        precision=prec,
+                        scale=scale,
+                        null_ok=None,
+                    )
+                )
 
                 fast_parser = None
                 if is_32bits:
@@ -809,7 +832,6 @@ class Cursor(object):
                 elif ftype == 701:
                     fast_parser = libpq.PQEgetdouble, ffi.new("double*")
                 fast_parsers.append(fast_parser)
-
 
             self._description = tuple(description)
             self._casts = casts
@@ -834,7 +856,7 @@ class Cursor(object):
 
         errmsg = ffi.NULL
         if error == 2:
-            errmsg = 'error in PQputCopyData() call'
+            errmsg = "error in PQputCopyData() call"
 
         libpq.PQputCopyEnd(pgconn, errmsg)
         self._clear_pgres()
@@ -844,7 +866,7 @@ class Cursor(object):
         is_text = isinstance(self._copyfile, TextIOBase)
         pgconn = self._conn._pgconn
         while True:
-            buf = ffi.new('char **')
+            buf = ffi.new("char **")
             length = libpq.PQgetCopyData(pgconn, buf, 0)
 
             if length > 0:
@@ -887,10 +909,10 @@ class Cursor(object):
                     row[i] = None if error else p[0]
                 else:
                     length = libpq.PQgetlength(self._pgres, row_num, i)
-                    val = ffi.buffer(libpq.PQgetvalue(
-                        self._pgres, row_num, i), length)[:]
-                    row[i] = typecasts.typecast(
-                            self._casts[i], val, length, self)
+                    val = ffi.buffer(libpq.PQgetvalue(self._pgres, row_num, i), length)[
+                        :
+                    ]
+                    row[i] = typecasts.typecast(self._casts[i], val, length, self)
 
         self._rownumber += 1
 
@@ -919,7 +941,7 @@ def _combine_cmd_params(cmd, params, conn):
 
     # Return when no argument binding is required.  Note that this method is
     # not called from .execute() if `params` is None.
-    if b'%' not in cmd:
+    if b"%" not in cmd:
         return cmd
 
     idx = 0
@@ -934,14 +956,14 @@ def _combine_cmd_params(cmd, params, conn):
     while idx < cmd_length:
 
         # Escape
-        if cmd[idx:idx+2] == b'%%':
+        if cmd[idx : idx + 2] == b"%%":
             parts.append(cmd[next_start:idx])
-            parts.append(b'%')
+            parts.append(b"%")
             idx += 1
             next_start = idx + 1
 
         # Named parameters
-        elif cmd[idx:idx+2] == b'%(':
+        elif cmd[idx : idx + 2] == b"%(":
 
             # Validate that we don't mix formats
             if named_args_format is False:
@@ -950,13 +972,12 @@ def _combine_cmd_params(cmd, params, conn):
                 named_args_format = True
 
             # Check for incomplate placeholder
-            max_lookahead = cmd.find(b'%', idx + 2)
-            end = cmd.find(b')', idx + 2, max_lookahead)
+            max_lookahead = cmd.find(b"%", idx + 2)
+            end = cmd.find(b")", idx + 2, max_lookahead)
             if end < 0:
-                raise ProgrammingError(
-                    "incomplete placeholder: '%(' without ')'")
+                raise ProgrammingError("incomplete placeholder: '%(' without ')'")
 
-            key = cmd[idx + 2:end].decode(conn._py_enc)
+            key = cmd[idx + 2 : end].decode(conn._py_enc)
             if arg_values is None:
                 arg_values = {}
             if key not in arg_values:
@@ -971,7 +992,7 @@ def _combine_cmd_params(cmd, params, conn):
             _check_format_char(cmd[end + 1], idx)
 
         # Indexed parameters
-        elif cmd[idx:idx+1] == b'%':
+        elif cmd[idx : idx + 1] == b"%":
 
             # Validate that we don't mix formats
             if named_args_format is True:
@@ -998,13 +1019,13 @@ def _combine_cmd_params(cmd, params, conn):
 
     if named_args_format is False:
         if n_arg_values != len(params):
-            raise TypeError(
-                "not all arguments converted during string formatting")
+            raise TypeError("not all arguments converted during string formatting")
 
-    return b''.join(parts)
+    return b"".join(parts)
 
 
-_s_ord = ord(b's')
+_s_ord = ord(b"s")
+
 
 def _check_format_char(format_char_ord, pos):
     """Raise an exception when the format_char is unsupported"""
@@ -1012,7 +1033,5 @@ def _check_format_char(format_char_ord, pos):
         format_char_ord = ord(format_char_ord)
     if format_char_ord != _s_ord:
         raise ValueError(
-            "unsupported format character 0x%x at index %d" %
-            (format_char_ord, pos))
-
-
+            "unsupported format character 0x%x at index %d" % (format_char_ord, pos)
+        )

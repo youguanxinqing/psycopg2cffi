@@ -1,57 +1,67 @@
 import datetime
 from time import localtime
 
-from psycopg2cffi import extensions
-from psycopg2cffi import tz
-from psycopg2cffi._impl.adapters import Binary, Date, Time, Timestamp
-from psycopg2cffi._impl.adapters import DateFromTicks, TimeFromTicks
-from psycopg2cffi._impl.adapters import TimestampFromTicks
-from psycopg2cffi._impl.connection import _connect
-from psycopg2cffi._impl.exceptions import *
-from psycopg2cffi._impl.typecasts import BINARY, DATETIME, NUMBER, ROWID, STRING
+from uxdbcffi import extensions
+from uxdbcffi import tz
+from uxdbcffi._impl.adapters import Binary, Date, Time, Timestamp
+from uxdbcffi._impl.adapters import DateFromTicks, TimeFromTicks
+from uxdbcffi._impl.adapters import TimestampFromTicks
+from uxdbcffi._impl.connection import _connect
+from uxdbcffi._impl.exceptions import *
+from uxdbcffi._impl.typecasts import BINARY, DATETIME, NUMBER, ROWID, STRING
 
-__version__ = '2.9.0'
-apilevel = '2.0'
-paramstyle = 'pyformat'
+__version__ = "2.9.0"
+apilevel = "2.0"
+paramstyle = "pyformat"
 threadsafety = 2
 
-import psycopg2cffi.extensions as _ext
+import uxdbcffi.extensions as _ext
+
 _ext.register_adapter(tuple, _ext.SQL_IN)
 _ext.register_adapter(type(None), _ext.NoneAdapter)
 
 
 import re
 
-def _param_escape(s,
-        re_escape=re.compile(r"([\\'])"),
-        re_space=re.compile(r'\s')):
+
+def _param_escape(s, re_escape=re.compile(r"([\\'])"), re_space=re.compile(r"\s")):
     """
     Apply the escaping rule required by PQconnectdb
     """
-    if not s: return "''"
+    if not s:
+        return "''"
 
-    s = re_escape.sub(r'\\\1', s)
+    s = re_escape.sub(r"\\\1", s)
     if re_space.search(s):
         s = "'" + s + "'"
 
     return s
 
+
 del re
 
 
-def connect(dsn=None,
-        database=None, user=None, password=None, host=None, port=None,
-        connection_factory=None, cursor_factory=None, **kwargs):
+def connect(
+    dsn=None,
+    database=None,
+    user=None,
+    password=None,
+    host=None,
+    port=None,
+    connection_factory=None,
+    cursor_factory=None,
+    **kwargs
+):
     """
     Create a new database connection.
 
     The connection parameters can be specified either as a string:
 
-        conn = psycopg2.connect("dbname=test user=postgres password=secret")
+        conn = uxdb.connect("dbname=test user=postgres password=secret")
 
     or using a set of keyword arguments:
 
-        conn = psycopg2.connect(database="test", user="postgres", password="secret")
+        conn = uxdb.connect(database="test", user="postgres", password="secret")
 
     The basic connection parameters are:
 
@@ -78,35 +88,35 @@ def connect(dsn=None,
     """
     items = []
     if database is not None:
-        items.append(('dbname', database))
+        items.append(("dbname", database))
     if user is not None:
-        items.append(('user', user))
+        items.append(("user", user))
     if password is not None:
-        items.append(('password', password))
+        items.append(("password", password))
     if host is not None:
-        items.append(('host', host))
+        items.append(("host", host))
     if port is not None:
-        items.append(('port', port))
+        items.append(("port", port))
 
     async_ = False
-    if 'async' in kwargs:
-        async_ = kwargs.pop('async')
-    if 'async_' in kwargs:
-        async_ = kwargs.pop('async_')
+    if "async" in kwargs:
+        async_ = kwargs.pop("async")
+    if "async_" in kwargs:
+        async_ = kwargs.pop("async_")
 
     items.extend([(k, v) for (k, v) in kwargs.items() if v is not None])
 
     if dsn is not None and items:
         raise TypeError(
             "'%s' is an invalid keyword argument when the dsn is specified"
-                % items[0][0])
+            % items[0][0]
+        )
 
     if dsn is None:
         if not items:
-            raise TypeError('missing dsn and no parameters')
+            raise TypeError("missing dsn and no parameters")
         else:
-            dsn = " ".join(["%s=%s" % (k, _param_escape(str(v)))
-                for (k, v) in items])
+            dsn = " ".join(["%s=%s" % (k, _param_escape(str(v))) for (k, v) in items])
 
     conn = _connect(dsn, connection_factory=connection_factory, async_=async_)
     if cursor_factory is not None:

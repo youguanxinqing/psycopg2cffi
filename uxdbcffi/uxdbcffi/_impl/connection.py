@@ -5,26 +5,26 @@ import weakref
 from functools import wraps
 import six
 
-from psycopg2cffi._impl import consts
-from psycopg2cffi._impl import encodings as _enc
-from psycopg2cffi._impl import exceptions
-from psycopg2cffi._impl.libpq import libpq, ffi
-from psycopg2cffi._impl import util
-from psycopg2cffi._impl.adapters import bytes_to_ascii, ascii_to_bytes
-from psycopg2cffi._impl.cursor import Cursor
-from psycopg2cffi._impl.lobject import LargeObject
-from psycopg2cffi._impl.notify import Notify
-from psycopg2cffi._impl.xid import Xid
+from uxdbcffi._impl import consts
+from uxdbcffi._impl import encodings as _enc
+from uxdbcffi._impl import exceptions
+from uxdbcffi._impl.libpq import libpq, ffi
+from uxdbcffi._impl import util
+from uxdbcffi._impl.adapters import bytes_to_ascii, ascii_to_bytes
+from uxdbcffi._impl.cursor import Cursor
+from uxdbcffi._impl.lobject import LargeObject
+from uxdbcffi._impl.notify import Notify
+from uxdbcffi._impl.xid import Xid
 
 
 # Map between isolation levels names and values and back.
 _isolevels = {
-    '':                 consts.ISOLATION_LEVEL_AUTOCOMMIT,
-    'read uncommitted': consts.ISOLATION_LEVEL_READ_UNCOMMITTED,
-    'read committed':   consts.ISOLATION_LEVEL_READ_COMMITTED,
-    'repeatable read':  consts.ISOLATION_LEVEL_REPEATABLE_READ,
-    'serializable':     consts.ISOLATION_LEVEL_SERIALIZABLE,
-    'default':         -1,
+    "": consts.ISOLATION_LEVEL_AUTOCOMMIT,
+    "read uncommitted": consts.ISOLATION_LEVEL_READ_UNCOMMITTED,
+    "read committed": consts.ISOLATION_LEVEL_READ_COMMITTED,
+    "repeatable read": consts.ISOLATION_LEVEL_REPEATABLE_READ,
+    "serializable": consts.ISOLATION_LEVEL_SERIALIZABLE,
+    "default": -1,
 }
 
 for k, v in list(_isolevels.items()):
@@ -39,8 +39,9 @@ def check_closed(func):
     @wraps(func)
     def check_closed_(self, *args, **kwargs):
         if self.closed:
-            raise exceptions.InterfaceError('connection already closed')
+            raise exceptions.InterfaceError("connection already closed")
         return func(self, *args, **kwargs)
+
     return check_closed_
 
 
@@ -48,8 +49,9 @@ def check_notrans(func):
     @wraps(func)
     def check_notrans_(self, *args, **kwargs):
         if self.status != consts.STATUS_READY:
-            raise exceptions.ProgrammingError('not valid in transaction')
+            raise exceptions.ProgrammingError("not valid in transaction")
         return func(self, *args, **kwargs)
+
     return check_notrans_
 
 
@@ -58,9 +60,10 @@ def check_tpc(func):
     def check_tpc_(self, *args, **kwargs):
         if self._tpc_xid:
             raise exceptions.ProgrammingError(
-                '%s cannot be used during a two-phase transaction'
-                % func.__name__)
+                "%s cannot be used during a two-phase transaction" % func.__name__
+            )
         return func(self, *args, **kwargs)
+
     return check_tpc_
 
 
@@ -70,8 +73,10 @@ def check_tpc_supported(func):
         if self.server_version < 80100:
             raise exceptions.NotSupportedError(
                 "server version %s: two-phase transactions not supported"
-                % self.server_version)
+                % self.server_version
+            )
         return func(self, *args, **kwargs)
+
     return check_tpc_supported_
 
 
@@ -80,8 +85,10 @@ def check_async(func):
     def check_async_(self, *args, **kwargs):
         if self._async:
             raise exceptions.ProgrammingError(
-                '%s cannot be used in asynchronous mode' % func.__name__)
+                "%s cannot be used in asynchronous mode" % func.__name__
+            )
         return func(self, *args, **kwargs)
+
     return check_async_
 
 
@@ -121,10 +128,10 @@ class Connection(object):
         # The number of commits/rollbacks done so far
         self._mark = 0
 
-        if 'async' in kwargs:
-            self._async = kwargs.pop('async')
-        elif 'async_' in kwargs:
-            self._async = kwargs.pop('async_')
+        if "async" in kwargs:
+            self._async = kwargs.pop("async")
+        elif "async_" in kwargs:
+            self._async = kwargs.pop("async_")
         else:
             self._async = False
 
@@ -139,10 +146,12 @@ class Connection(object):
 
         self_ref = weakref.ref(self)
         self._notice_callback = ffi.callback(
-            'void(void *, const char *)',
+            "void(void *, const char *)",
             lambda arg, message: self_ref()._process_notice(
                 arg,
-                ffi.string(message).decode(self_ref()._py_enc or 'utf-8', 'replace')))
+                ffi.string(message).decode(self_ref()._py_enc or "utf-8", "replace"),
+            ),
+        )
 
         if not self._async:
             self._connect_sync()
@@ -150,15 +159,14 @@ class Connection(object):
             self._connect_async()
 
     def _connect_sync(self):
-        self._pgconn = libpq.PQconnectdb(self.dsn.encode('utf-8'))
+        self._pgconn = libpq.PQconnectdb(self.dsn.encode("utf-8"))
         if not self._pgconn:
-            raise exceptions.OperationalError('PQconnectdb() failed')
+            raise exceptions.OperationalError("PQconnectdb() failed")
         elif libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
             raise self._create_exception()
 
         # Register notice processor
-        libpq.PQsetNoticeProcessor(
-                self._pgconn, self._notice_callback, ffi.NULL)
+        libpq.PQsetNoticeProcessor(self._pgconn, self._notice_callback, ffi.NULL)
 
         self.status = consts.STATUS_READY
         self._setup()
@@ -174,12 +182,11 @@ class Connection(object):
         """
         self._pgconn = libpq.PQconnectStart(ascii_to_bytes(self.dsn))
         if not self._pgconn:
-            raise exceptions.OperationalError('PQconnectStart() failed')
+            raise exceptions.OperationalError("PQconnectStart() failed")
         elif libpq.PQstatus(self._pgconn) == libpq.CONNECTION_BAD:
             raise self._create_exception()
 
-        libpq.PQsetNoticeProcessor(
-                self._pgconn, self._notice_callback, ffi.NULL)
+        libpq.PQsetNoticeProcessor(self._pgconn, self._notice_callback, ffi.NULL)
 
     def __del__(self):
         self._close()
@@ -214,7 +221,8 @@ class Connection(object):
     def reset(self):
         with self._lock:
             self._execute_command(
-                "ABORT; RESET ALL; SET SESSION AUTHORIZATION DEFAULT;")
+                "ABORT; RESET ALL; SET SESSION AUTHORIZATION DEFAULT;"
+            )
             self.status = consts.STATUS_READY
             self._mark += 1
             self._autocommit = False
@@ -223,7 +231,7 @@ class Connection(object):
     def _get_guc(self, name):
         """Return the value of a configuration parameter."""
         with self._lock:
-            query = 'SHOW %s' % name
+            query = "SHOW %s" % name
 
             if _green_callback:
                 pgres = self._execute_green(query)
@@ -238,22 +246,24 @@ class Connection(object):
 
     def _set_guc(self, name, value):
         """Set the value of a configuration parameter."""
-        if value.lower() != 'default':
+        if value.lower() != "default":
             value = util.quote_string(self, value)
         else:
-            value = b'default'
-        self._execute_command(ascii_to_bytes('SET %s TO ' % name) + value)
+            value = b"default"
+        self._execute_command(ascii_to_bytes("SET %s TO " % name) + value)
 
     def _set_guc_onoff(self, name, value):
         """Set the value of a configuration parameter to a boolean.
 
         The string 'default' is accepted too.
         """
-        if isinstance(value, six.string_types) and \
-                value.lower() in (b'default', 'default'):
-            value = 'default'
+        if isinstance(value, six.string_types) and value.lower() in (
+            b"default",
+            "default",
+        ):
+            value = "default"
         else:
-            value = 'on' if value else 'off'
+            value = "on" if value else "off"
         self._set_guc(name, value)
 
     @property
@@ -262,13 +272,13 @@ class Connection(object):
         if self._autocommit:
             return consts.ISOLATION_LEVEL_AUTOCOMMIT
         else:
-            name = self._get_guc('default_transaction_isolation')
+            name = self._get_guc("default_transaction_isolation")
             return _isolevels[name.lower()]
 
     @check_async
     def set_isolation_level(self, level):
         if level < 0 or level > 4:
-            raise ValueError('isolation level must be between 0 and 4')
+            raise ValueError("isolation level must be between 0 and 4")
 
         prev = self.isolation_level
         if prev == level:
@@ -282,36 +292,38 @@ class Connection(object):
 
     @check_closed
     @check_notrans
-    def set_session(self, isolation_level=None, readonly=None, deferrable=None,
-                    autocommit=None):
+    def set_session(
+        self, isolation_level=None, readonly=None, deferrable=None, autocommit=None
+    ):
         if isolation_level is not None:
             if isinstance(isolation_level, int):
                 if isolation_level < 1 or isolation_level > 4:
-                    raise ValueError('isolation level must be between 1 and 4')
+                    raise ValueError("isolation level must be between 1 and 4")
                 isolation_level = _isolevels[isolation_level]
             elif isinstance(isolation_level, six.string_types):
                 if isinstance(isolation_level, six.binary_type):
                     isolation_level = bytes_to_ascii(isolation_level)
                 isolation_level = isolation_level.lower()
                 if not isolation_level or isolation_level not in _isolevels:
-                    raise ValueError("bad value for isolation level: '%s'" %
-                        isolation_level)
+                    raise ValueError(
+                        "bad value for isolation level: '%s'" % isolation_level
+                    )
             else:
                 raise TypeError("bad isolation level: '%r'" % isolation_level)
 
             if self.server_version < 80000:
-                if isolation_level == 'read uncommitted':
-                    isolation_level = 'read committed'
-                elif isolation_level == 'repeatable read':
-                    isolation_level = 'serializable'
+                if isolation_level == "read uncommitted":
+                    isolation_level = "read committed"
+                elif isolation_level == "repeatable read":
+                    isolation_level = "serializable"
 
             self._set_guc("default_transaction_isolation", isolation_level)
 
         if readonly is not None:
-            self._set_guc_onoff('default_transaction_read_only', readonly)
+            self._set_guc_onoff("default_transaction_read_only", readonly)
 
         if deferrable is not None:
-            self._set_guc_onoff('default_transaction_deferrable', deferrable)
+            self._set_guc_onoff("default_transaction_deferrable", deferrable)
 
         if autocommit is not None:
             self._autocommit = bool(autocommit)
@@ -339,8 +351,7 @@ class Connection(object):
     def get_transaction_status(self):
         return libpq.PQtransactionStatus(self._pgconn)
 
-    def cursor(self, name=None, cursor_factory=None,
-            withhold=False, scrollable=None):
+    def cursor(self, name=None, cursor_factory=None, withhold=False, scrollable=None):
         if cursor_factory is None:
             cursor_factory = self.cursor_factory or Cursor
 
@@ -348,8 +359,9 @@ class Connection(object):
 
         if not isinstance(cur, Cursor):
             raise TypeError(
-                "cursor factory must be subclass of %s" %
-                '.'.join([Cursor.__module__, Cursor.__name__]))
+                "cursor factory must be subclass of %s"
+                % ".".join([Cursor.__module__, Cursor.__name__])
+            )
 
         if withhold:
             cur.withhold = withhold
@@ -359,7 +371,8 @@ class Connection(object):
 
         if name and self._async:
             raise exceptions.ProgrammingError(
-                "asynchronous connections cannot produce named cursors")
+                "asynchronous connections cannot produce named cursors"
+            )
 
         cur._mark = self._mark
         return cur
@@ -368,7 +381,7 @@ class Connection(object):
     @check_tpc
     def cancel(self):
         err_length = 256
-        errbuf = ffi.new('char[]', err_length)
+        errbuf = ffi.new("char[]", err_length)
         if libpq.PQcancel(self._cancel, errbuf, err_length) == 0:
             raise exceptions.OperationalError(ffi.string(errbuf))
 
@@ -397,7 +410,7 @@ class Connection(object):
 
         pyenc = _enc.encodings[encoding]
         self._rollback()
-        self._set_guc('client_encoding', encoding)
+        self._set_guc("client_encoding", encoding)
         self._encoding = encoding
         self._py_enc = pyenc
 
@@ -436,11 +449,13 @@ class Connection(object):
 
         if self.status != consts.STATUS_READY:
             raise exceptions.ProgrammingError(
-                'tpc_begin must be called outside a transaction')
+                "tpc_begin must be called outside a transaction"
+            )
 
         if self._autocommit:
             raise exceptions.ProgrammingError(
-                "tpc_begin can't be called in autocommit mode")
+                "tpc_begin can't be called in autocommit mode"
+            )
 
         self._begin_transaction()
         self._tpc_xid = xid
@@ -449,22 +464,23 @@ class Connection(object):
     @check_async
     @check_tpc_supported
     def tpc_commit(self, xid=None):
-        self._finish_tpc('COMMIT PREPARED', self._commit, xid)
+        self._finish_tpc("COMMIT PREPARED", self._commit, xid)
 
     @check_closed
     @check_async
     @check_tpc_supported
     def tpc_rollback(self, xid=None):
-        self._finish_tpc('ROLLBACK PREPARED', self._rollback, xid)
+        self._finish_tpc("ROLLBACK PREPARED", self._rollback, xid)
 
     @check_closed
     @check_async
     def tpc_prepare(self):
         if not self._tpc_xid:
             raise exceptions.ProgrammingError(
-                'prepare must be called inside a two-phase transaction')
+                "prepare must be called inside a two-phase transaction"
+            )
 
-        self._execute_tpc_command('PREPARE TRANSACTION', self._tpc_xid)
+        self._execute_tpc_command("PREPARE TRANSACTION", self._tpc_xid)
         self.status = consts.STATUS_PREPARED
 
     @check_closed
@@ -473,8 +489,9 @@ class Connection(object):
     def tpc_recover(self):
         return Xid.tpc_recover(self)
 
-    def lobject(self, oid=0, mode='', new_oid=0, new_file=None,
-                lobject_factory=LargeObject):
+    def lobject(
+        self, oid=0, mode="", new_oid=0, new_file=None, lobject_factory=LargeObject
+    ):
         obj = lobject_factory(self, oid, mode, new_oid, new_file)
         return obj
 
@@ -489,8 +506,11 @@ class Connection(object):
                 return self._poll_setup_async()
             return res
 
-        if self.status in (consts.STATUS_READY, consts.STATUS_BEGIN,
-                           consts.STATUS_PREPARED):
+        if self.status in (
+            consts.STATUS_READY,
+            consts.STATUS_BEGIN,
+            consts.STATUS_PREPARED,
+        ):
             res = self._poll_query()
 
             if res == consts.POLL_OK and self._async and self._async_cursor:
@@ -500,7 +520,8 @@ class Connection(object):
                 if curs is None:
                     util.pq_clear_async(self)
                     raise exceptions.InterfaceError(
-                        "the asynchronous cursor has disappeared")
+                        "the asynchronous cursor has disappeared"
+                    )
 
                 libpq.PQclear(curs._pgres)
 
@@ -619,8 +640,7 @@ class Connection(object):
                 return res
 
             pgres = util.pq_get_last_result(self._pgconn)
-            if not pgres or \
-                libpq.PQresultStatus(pgres) != libpq.PGRES_COMMAND_OK:
+            if not pgres or libpq.PQresultStatus(pgres) != libpq.PGRES_COMMAND_OK:
                 raise exceptions.OperationalError("can't set datetyle to ISO")
             libpq.PQclear(pgres)
 
@@ -639,7 +659,7 @@ class Connection(object):
             # force it to ISO
             if not self._iso_compatible_datestyle():
                 self.status = consts.STATUS_DATESTYLE
-                self._set_guc('datestyle', 'ISO')
+                self._set_guc("datestyle", "ISO")
 
             self._closed = 0
 
@@ -654,7 +674,7 @@ class Connection(object):
 
     def _begin_transaction(self):
         if self.status == consts.STATUS_READY and not self._autocommit:
-            self._execute_command('BEGIN')
+            self._execute_command("BEGIN")
             self.status = consts.STATUS_BEGIN
 
     def _execute_command(self, command):
@@ -670,16 +690,14 @@ class Connection(object):
                 pgstatus = libpq.PQresultStatus(pgres)
                 if pgstatus != libpq.PGRES_COMMAND_OK:
                     exc = self._create_exception(pgres=pgres)
-                    pgres = None    # ownership transferred to exc
+                    pgres = None  # ownership transferred to exc
                     raise exc
             finally:
                 if pgres:
                     libpq.PQclear(pgres)
 
     def _execute_tpc_command(self, command, xid):
-        cmd = b' '.join([
-            ascii_to_bytes(command),
-            util.quote_string(self, str(xid))])
+        cmd = b" ".join([ascii_to_bytes(command), util.quote_string(self, str(xid))])
         self._execute_command(cmd)
         self._mark += 1
 
@@ -687,7 +705,8 @@ class Connection(object):
         """Execute version for green threads"""
         if self._async_cursor:
             raise exceptions.ProgrammingError(
-                "a single async query can be executed on the same connection")
+                "a single async query can be executed on the same connection"
+            )
 
         self._async_cursor = True
 
@@ -714,7 +733,8 @@ class Connection(object):
             if self.status != consts.STATUS_READY:
                 raise exceptions.ProgrammingError(
                     "tpc_commit/tpc_rollback with a xid "
-                    "must be called outside a transaction")
+                    "must be called outside a transaction"
+                )
 
             self._execute_tpc_command(command, xid)
 
@@ -723,7 +743,8 @@ class Connection(object):
             if not self._tpc_xid:
                 raise exceptions.ProgrammingError(
                     "tpc_commit/tpc_rollback with no parameter "
-                    "must be called in a two-phase transaction")
+                    "must be called in a two-phase transaction"
+                )
 
             if self.status == consts.STATUS_BEGIN:
                 fallback()
@@ -731,7 +752,8 @@ class Connection(object):
                 self._execute_tpc_command(command, self._tpc_xid)
             else:
                 raise exceptions.InterfaceError(
-                    'unexpected state in tpc_commit/tpc_rollback')
+                    "unexpected state in tpc_commit/tpc_rollback"
+                )
 
             self.status = consts.STATUS_READY
             self._tpc_xid = None
@@ -756,7 +778,7 @@ class Connection(object):
                 return
             self._mark += 1
             try:
-                self._execute_command('COMMIT')
+                self._execute_command("COMMIT")
             finally:
                 self.status = consts.STATUS_READY
 
@@ -766,26 +788,26 @@ class Connection(object):
                 return
             self._mark += 1
             try:
-                self._execute_command('ROLLBACK')
+                self._execute_command("ROLLBACK")
             finally:
                 self.status = consts.STATUS_READY
 
     def _get_encoding(self):
         """Retrieving encoding"""
-        client_encoding = self.get_parameter_status('client_encoding')
+        client_encoding = self.get_parameter_status("client_encoding")
         self._encoding = _enc.normalize(client_encoding)
         self._py_enc = _enc.encodings[self._encoding]
 
     def _get_equote(self):
-        ret = libpq.PQparameterStatus(
-                self._pgconn, b'standard_conforming_strings')
-        return ret and ffi.string(ret) == b'off' or False
+        ret = libpq.PQparameterStatus(self._pgconn, b"standard_conforming_strings")
+        return ret and ffi.string(ret) == b"off" or False
 
     def _is_busy(self):
         with self._lock:
             if libpq.PQconsumeInput(self._pgconn) == 0:
                 raise exceptions.OperationalError(
-                    ffi.string(libpq.PQerrorMessage(self._pgconn)))
+                    ffi.string(libpq.PQerrorMessage(self._pgconn))
+                )
             res = libpq.PQisBusy(self._pgconn)
             self._process_notifies()
             return res
@@ -800,7 +822,7 @@ class Connection(object):
         self.notices.append(message)
         length = len(self.notices)
         if length > 50:
-            del self.notices[:length - 50]
+            del self.notices[: length - 50]
 
     def _process_notifies(self):
         while True:
@@ -811,7 +833,8 @@ class Connection(object):
             notify = Notify(
                 pg_notify.be_pid,
                 ffi.string(pg_notify.relname).decode(self._py_enc),
-                ffi.string(pg_notify.extra).decode(self._py_enc))
+                ffi.string(pg_notify.extra).decode(self._py_enc),
+            )
             self._notifies.append(notify)
 
             libpq.PQfreemem(pg_notify)
@@ -825,8 +848,9 @@ class Connection(object):
         cursor will have it set to Null.
 
         """
-        assert pgres is None or cursor is None, \
-            "cannot specify pgres and cursor together"
+        assert (
+            pgres is None or cursor is None
+        ), "cannot specify pgres and cursor together"
 
         if cursor and cursor._pgres:
             pgres, cursor._pgres = cursor._pgres, ffi.NULL
@@ -835,15 +859,14 @@ class Connection(object):
         code = pgmsg = None
         # _py_enc can be not initialized yet in case of errors when
         # establishing the connection
-        err_enc = self._py_enc or 'utf-8'
+        err_enc = self._py_enc or "utf-8"
 
         # If no custom message is passed then get the message from postgres.
         # If pgres is available then we first try to get the message for the
         # last command, and then the error message for the connection
         if pgres:
             pgmsg = libpq.PQresultErrorMessage(pgres)
-            pgmsg = ffi.string(pgmsg).decode(err_enc, 'replace') \
-                    if pgmsg else None
+            pgmsg = ffi.string(pgmsg).decode(err_enc, "replace") if pgmsg else None
 
             # Get the correct exception class based on the error code
             code = libpq.PQresultErrorField(pgres, libpq.LIBPQ_DIAG_SQLSTATE)
@@ -856,14 +879,13 @@ class Connection(object):
 
         if not pgmsg:
             pgmsg = libpq.PQerrorMessage(self._pgconn)
-            pgmsg = ffi.string(pgmsg).decode(err_enc, 'replace') \
-                    if pgmsg else None
+            pgmsg = ffi.string(pgmsg).decode(err_enc, "replace") if pgmsg else None
 
         if msg is None and pgmsg:
             msg = pgmsg
             for prefix in ("ERROR:  ", "FATAL:  ", "PANIC:  "):
                 if msg.startswith(prefix):
-                    msg = msg[len(prefix):]
+                    msg = msg[len(prefix) :]
                     break
 
         # Clear the connection if the status is CONNECTION_BAD (fatal error)
@@ -882,15 +904,13 @@ class Connection(object):
         return bool(_green_callback)
 
     def _iso_compatible_datestyle(self):
-        ''' Return whether connection DateStyle is ISO-compatible
-        '''
-        datestyle = libpq.PQparameterStatus(self._pgconn, b'DateStyle')
-        return datestyle != ffi.NULL and \
-                ffi.string(datestyle).startswith(b'ISO')
+        """Return whether connection DateStyle is ISO-compatible"""
+        datestyle = libpq.PQparameterStatus(self._pgconn, b"DateStyle")
+        return datestyle != ffi.NULL and ffi.string(datestyle).startswith(b"ISO")
 
 
 # Backwards compatibility, support async as async_ alias for connection
-setattr(Connection, 'async', 'async_')
+setattr(Connection, "async", "async_")
 
 
 def _connect(dsn, connection_factory=None, async_=False):

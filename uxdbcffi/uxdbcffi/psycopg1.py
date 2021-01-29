@@ -28,17 +28,18 @@ old code while porting to psycopg 2. Import it as follows::
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
 # License for more details.
 
-from psycopg2cffi.extensions import cursor as _2cursor
-from psycopg2cffi.extensions import connection as _2connection
+from uxdbcffi.extensions import cursor as _2cursor
+from uxdbcffi.extensions import connection as _2connection
 
-from psycopg2cffi import *
-import psycopg2cffi.extensions as _ext
+from uxdbcffi import *
+import uxdbcffi.extensions as _ext
+
 _2connect = connect
 
 
 def connect(*args, **kwargs):
     """connect(dsn, ...) -> new psycopg 1.1.x compatible connection object"""
-    kwargs['connection_factory'] = connection
+    kwargs["connection_factory"] = connection
     conn = _2connect(*args, **kwargs)
     conn.set_isolation_level(_ext.ISOLATION_LEVEL_READ_COMMITTED)
     return conn
@@ -93,4 +94,3 @@ class cursor(_2cursor):
         for row in rows:
             res.append(self.__build_dict(row))
         return res
-

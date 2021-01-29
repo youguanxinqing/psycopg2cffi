@@ -6,9 +6,9 @@ import datetime
 from time import localtime
 import six
 
-from psycopg2cffi._impl.libpq import libpq, ffi
-from psycopg2cffi._impl.adapters import bytes_to_ascii, ascii_to_bytes
-from psycopg2cffi._impl.exceptions import DataError
+from uxdbcffi._impl.libpq import libpq, ffi
+from uxdbcffi._impl.adapters import bytes_to_ascii, ascii_to_bytes
+from uxdbcffi._impl.exceptions import DataError
 
 # Typecasters accept bytes and return python objects.
 # This only applies to our internal typecasers - user-defined ones
@@ -44,8 +44,8 @@ class Type(object):
 def register_type(type_obj, scope=None):
     typecasts = string_types
     if scope:
-        from psycopg2cffi._impl.connection import Connection
-        from psycopg2cffi._impl.cursor import Cursor
+        from uxdbcffi._impl.connection import Connection
+        from uxdbcffi._impl.cursor import Cursor
 
         if isinstance(scope, Connection):
             typecasts = scope._typecasts
@@ -74,7 +74,7 @@ def typecast(caster, value, length, cursor):
 def parse_unknown(value, length, cursor):
     if value is None:
         return None
-    if value != b'{}':
+    if value != b"{}":
         # FIXME hmm not sure
         if six.PY3 and isinstance(value, six.binary_type):
             return parse_unicode(value, length, cursor)
@@ -84,18 +84,25 @@ def parse_unknown(value, length, cursor):
 
 
 if six.PY3:
+
     def parse_string(value, length, cursor):
-        return value.decode(cursor.connection._py_enc) \
-                if value is not None else None
+        return value.decode(cursor.connection._py_enc) if value is not None else None
+
+
 else:
+
     def parse_string(value, length, cursor):
         return value
 
 
 if six.PY3:
+
     def parse_longinteger(value, length, cursor):
         return int(value) if value is not None else None
+
+
 else:
+
     def parse_longinteger(value, length, cursor):
         return long(value) if value is not None else None
 
@@ -120,9 +127,8 @@ def parse_binary(value, length, cursor):
     if value is None:
         return None
 
-    to_length = ffi.new('size_t *')
-    s = libpq.PQunescapeBytea(
-            ffi.new('unsigned char[]', value), to_length)
+    to_length = ffi.new("size_t *")
+    s = libpq.PQunescapeBytea(ffi.new("unsigned char[]", value), to_length)
     try:
         res = ffi.buffer(s, to_length[0])[:]
     finally:
@@ -151,6 +157,7 @@ class parse_array(object):
         '{{"meeting", "lunch"}, {"training", "presentation"}}'
 
     """
+
     def __init__(self, caster):
         self._caster = caster
 
@@ -159,7 +166,7 @@ class parse_array(object):
             return None
 
         s = value
-        if not (len(s) >= 2 and  s[:1] == b"{" and s[-1:] == b"}"):
+        if not (len(s) >= 2 and s[:1] == b"{" and s[-1:] == b"}"):
             raise DataError("malformed array")
 
         i = 1
@@ -167,8 +174,8 @@ class parse_array(object):
         stack = [array]
         value_length = len(s) - 1
         while i < value_length:
-            si = s[i:i+1]
-            if si == b'{':
+            si = s[i : i + 1]
+            if si == b"{":
                 sub_array = []
                 array.append(sub_array)
                 stack.append(sub_array)
@@ -177,13 +184,13 @@ class parse_array(object):
 
                 array = sub_array
                 i += 1
-            elif si == b'}':
+            elif si == b"}":
                 stack.pop()
                 if not stack:
                     raise DataError("unbalanced braces in array")
                 array = stack[-1]
                 i += 1
-            elif si in b', ':
+            elif si in b", ":
                 i += 1
             else:
                 # Number of quotes, this will always be 0 or 2 (int vs str)
@@ -194,13 +201,13 @@ class parse_array(object):
 
                 buf = []
                 while i < value_length:
-                    si = s[i:i+1]
+                    si = s[i : i + 1]
                     if not escape_char:
                         if si == b'"':
                             quotes += 1
-                        elif si == b'\\':
+                        elif si == b"\\":
                             escape_char = True
-                        elif quotes % 2 == 0 and (si == b'}' or si == b','):
+                        elif quotes % 2 == 0 and (si == b"}" or si == b","):
                             break
                         else:
                             buf.append(si)
@@ -210,8 +217,8 @@ class parse_array(object):
 
                     i += 1
 
-                str_buf = b''.join(buf)
-                if len(str_buf) == 4 and str_buf.lower() == b'null':
+                str_buf = b"".join(buf)
+                if len(str_buf) == 4 and str_buf.lower() == b"null":
                     val = typecast(self._caster, None, 0, cursor)
                 else:
                     val = typecast(self._caster, str_buf, len(str_buf), cursor)
@@ -239,20 +246,20 @@ def _parse_time_to_args(value, cursor):
     The given value is in the format of `16:28:09.506488+01`
 
     """
-    hour, minute, second = value.split(b':', 2)
+    hour, minute, second = value.split(b":", 2)
 
     sign = 0
     tzinfo = None
     timezone = None
-    if b'-' in second:
+    if b"-" in second:
         sign = -1
-        second, timezone = second.split(b'-')
-    elif b'+' in second:
+        second, timezone = second.split(b"-")
+    elif b"+" in second:
         sign = 1
-        second, timezone = second.split(b'+')
+        second, timezone = second.split(b"+")
 
     if not cursor.tzinfo_factory is None and sign:
-        parts = timezone.split(b':')
+        parts = timezone.split(b":")
         tz_min = 60 * int(parts[0])
         if len(parts) > 1:
             tz_min += int(parts[1])
@@ -260,9 +267,9 @@ def _parse_time_to_args(value, cursor):
             tz_min += 1
         tzinfo = cursor.tzinfo_factory(sign * tz_min)
 
-    if b'.' in second:
-        second, frac = second.split(b'.')
-        micros = int((frac + (b'0' * (6 - len(frac))))[:6])
+    if b"." in second:
+        second, frac = second.split(b".")
+        micros = int((frac + (b"0" * (6 - len(frac))))[:6])
     else:
         micros = 0
 
@@ -274,22 +281,23 @@ def parse_datetime(value, length, cursor):
         return None
     if isinstance(value, six.text_type):
         value = ascii_to_bytes(value)
-    if value == b'infinity':
+    if value == b"infinity":
         return datetime.datetime.max
-    elif value == b'-infinity':
+    elif value == b"-infinity":
         return datetime.datetime.min
 
     try:
-        date, time = value.split(b' ')
-        date_args = date.split(b'-')
+        date, time = value.split(b" ")
+        date_args = date.split(b"-")
         return datetime.datetime(
-                int(date_args[0]),
-                int(date_args[1]),
-                int(date_args[2]),
-                *_parse_time_to_args(time, cursor))
+            int(date_args[0]),
+            int(date_args[1]),
+            int(date_args[2]),
+            *_parse_time_to_args(time, cursor)
+        )
     except (TypeError, ValueError):
-        if value.endswith(b'BC'):
-            raise ValueError('BC dates not supported')
+        if value.endswith(b"BC"):
+            raise ValueError("BC dates not supported")
         raise DataError("bad datetime: '%s'" % bytes_to_ascii(value))
 
 
@@ -298,16 +306,16 @@ def parse_date(value, length, cursor):
         return None
     if isinstance(value, six.text_type):
         value = ascii_to_bytes(value)
-    if value == b'infinity':
+    if value == b"infinity":
         return datetime.date.max
-    elif value == b'-infinity':
+    elif value == b"-infinity":
         return datetime.date.min
 
     try:
-        return datetime.date(*[int(x) for x in value.split(b'-')])
+        return datetime.date(*[int(x) for x in value.split(b"-")])
     except (TypeError, ValueError):
-        if value.endswith(b'BC'):
-            raise ValueError('BC dates not supported')
+        if value.endswith(b"BC"):
+            raise ValueError("BC dates not supported")
         raise DataError("bad datetime: '%s'" % bytes_to_ascii(value))
 
 
@@ -322,13 +330,17 @@ def parse_time(value, length, cursor):
         raise DataError("bad datetime: '%s'" % value)
 
 
-_re_interval = re.compile(br"""
+_re_interval = re.compile(
+    br"""
     (?:(-?\+?\d+)\sy\w+\s?)?    # year
     (?:(-?\+?\d+)\sm\w+\s?)?    # month
     (?:(-?\+?\d+)\sd\w+\s?)?    # day
     (?:(-?\+?)(\d+):(\d+):(\d+) # +/- hours:mins:secs
         (?:\.(\d+))?)?          # second fraction
-    """, re.VERBOSE)
+    """,
+    re.VERBOSE,
+)
+
 
 def parse_interval(value, length, cursor):
     """Typecast an interval to a datetime.timedelta instance.
@@ -357,11 +369,11 @@ def parse_interval(value, length, cursor):
     if hours is not None:
         secs = int(hours) * 3600 + int(mins) * 60 + int(secs)
         if frac is not None:
-            micros = int((frac + (b'0' * (6 - len(frac))))[:6])
+            micros = int((frac + (b"0" * (6 - len(frac))))[:6])
         else:
             micros = 0
 
-        if sign == b'-':
+        if sign == b"-":
             secs = -secs
             micros = -micros
     else:
@@ -371,7 +383,8 @@ def parse_interval(value, length, cursor):
 
 
 def Date(year, month, day):
-    from psycopg2cffi.extensions.adapters import DateTime
+    from uxdbcffi.extensions.adapters import DateTime
+
     date = datetime.date(year, month, day)
     return DateTime(date)
 
@@ -382,7 +395,8 @@ def DateFromTicks(ticks):
 
 
 def Binary(obj):
-    from psycopg2cffi.extensions.adapters import Binary
+    from uxdbcffi.extensions.adapters import Binary
+
     return Binary(obj)
 
 
@@ -394,50 +408,41 @@ def _default_type(name, oids, caster):
 
 
 # DB API 2.0 types
-BINARY = _default_type('BINARY', [17], parse_binary)
-DATETIME = _default_type('DATETIME',  [1114, 1184, 704, 1186], parse_datetime)
-NUMBER = _default_type('NUMBER', [20, 33, 21, 701, 700, 1700], parse_float)
-ROWID = _default_type('ROWID', [26], parse_integer)
-STRING = _default_type('STRING', [19, 18, 25, 1042, 1043], parse_string)
+BINARY = _default_type("BINARY", [17], parse_binary)
+DATETIME = _default_type("DATETIME", [1114, 1184, 704, 1186], parse_datetime)
+NUMBER = _default_type("NUMBER", [20, 33, 21, 701, 700, 1700], parse_float)
+ROWID = _default_type("ROWID", [26], parse_integer)
+STRING = _default_type("STRING", [19, 18, 25, 1042, 1043], parse_string)
 
 # Register the basic typecasters
-BOOLEAN = _default_type('BOOLEAN', [16], parse_boolean)
-DATE = _default_type('DATE', [1082], parse_date)
-DECIMAL = _default_type('DECIMAL', [1700], parse_decimal)
-FLOAT = _default_type('FLOAT', [701, 700], parse_float)
-INTEGER = _default_type('INTEGER', [23, 21], parse_integer)
-INTERVAL = _default_type('INTERVAL', [704, 1186], parse_interval)
-LONGINTEGER = _default_type('LONGINTEGER', [20], parse_longinteger)
-TIME = _default_type('TIME', [1083, 1266], parse_time)
-UNKNOWN = _default_type('UNKNOWN', [705], parse_unknown)
+BOOLEAN = _default_type("BOOLEAN", [16], parse_boolean)
+DATE = _default_type("DATE", [1082], parse_date)
+DECIMAL = _default_type("DECIMAL", [1700], parse_decimal)
+FLOAT = _default_type("FLOAT", [701, 700], parse_float)
+INTEGER = _default_type("INTEGER", [23, 21], parse_integer)
+INTERVAL = _default_type("INTERVAL", [704, 1186], parse_interval)
+LONGINTEGER = _default_type("LONGINTEGER", [20], parse_longinteger)
+TIME = _default_type("TIME", [1083, 1266], parse_time)
+UNKNOWN = _default_type("UNKNOWN", [705], parse_unknown)
 
 # Array types
-BINARYARRAY = _default_type(
-    'BINARYARRAY', [1001], parse_array(BINARY))
-BOOLEANARRAY = _default_type(
-    'BOOLEANARRAY', [1000], parse_array(BOOLEAN))
-DATEARRAY = _default_type(
-    'DATEARRAY', [1182], parse_array(DATE))
-DATETIMEARRAY = _default_type(
-    'DATETIMEARRAY', [1115, 1185], parse_array(DATETIME))
-DECIMALARRAY = _default_type(
-    'DECIMALARRAY', [1231], parse_array(DECIMAL))
-FLOATARRAY = _default_type(
-    'FLOATARRAY', [1017, 1021, 1022], parse_array(FLOAT))
-INTEGERARRAY = _default_type(
-    'INTEGERARRAY', [1005, 1006, 1007], parse_array(INTEGER))
-INTERVALARRAY = _default_type(
-    'INTERVALARRAY', [1187], parse_array(INTERVAL))
-LONGINTEGERARRAY = _default_type(
-    'LONGINTEGERARRAY', [1016], parse_array(LONGINTEGER))
-ROWIDARRAY = _default_type(
-    'ROWIDARRAY', [1013, 1028], parse_array(ROWID))
+BINARYARRAY = _default_type("BINARYARRAY", [1001], parse_array(BINARY))
+BOOLEANARRAY = _default_type("BOOLEANARRAY", [1000], parse_array(BOOLEAN))
+DATEARRAY = _default_type("DATEARRAY", [1182], parse_array(DATE))
+DATETIMEARRAY = _default_type("DATETIMEARRAY", [1115, 1185], parse_array(DATETIME))
+DECIMALARRAY = _default_type("DECIMALARRAY", [1231], parse_array(DECIMAL))
+FLOATARRAY = _default_type("FLOATARRAY", [1017, 1021, 1022], parse_array(FLOAT))
+INTEGERARRAY = _default_type("INTEGERARRAY", [1005, 1006, 1007], parse_array(INTEGER))
+INTERVALARRAY = _default_type("INTERVALARRAY", [1187], parse_array(INTERVAL))
+LONGINTEGERARRAY = _default_type("LONGINTEGERARRAY", [1016], parse_array(LONGINTEGER))
+ROWIDARRAY = _default_type("ROWIDARRAY", [1013, 1028], parse_array(ROWID))
 STRINGARRAY = _default_type(
-    'STRINGARRAY', [1002, 1003, 1009, 1014, 1015], parse_array(STRING))
-TIMEARRAY = _default_type(
-    'TIMEARRAY', [1183, 1270], parse_array(TIME))
+    "STRINGARRAY", [1002, 1003, 1009, 1014, 1015], parse_array(STRING)
+)
+TIMEARRAY = _default_type("TIMEARRAY", [1183, 1270], parse_array(TIME))
 
 
-UNICODE = Type('UNICODE', [19, 18, 25, 1042, 1043], parse_unicode)
-UNICODEARRAY = Type('UNICODEARRAY', [1002, 1003, 1009, 1014, 1015],
-    parse_array(UNICODE))
+UNICODE = Type("UNICODE", [19, 18, 25, 1042, 1043], parse_unicode)
+UNICODEARRAY = Type(
+    "UNICODEARRAY", [1002, 1003, 1009, 1014, 1015], parse_array(UNICODE)
+)
